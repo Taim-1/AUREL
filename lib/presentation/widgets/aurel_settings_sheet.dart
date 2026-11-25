@@ -13,9 +13,7 @@ class AurelSettingsSheet extends StatefulWidget {
 }
 
 class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
-  late final TextEditingController _jamendoController;
   late final TextEditingController _lyricsController;
-  bool _savingMusic = false;
   bool _savingLyrics = false;
   bool _showLyricsKey = false;
 
@@ -23,39 +21,13 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
   void initState() {
     super.initState();
     final controller = context.read<AurelController>();
-    _jamendoController = TextEditingController(
-      text: controller.jamendo.clientId,
-    );
     _lyricsController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _jamendoController.dispose();
     _lyricsController.dispose();
     super.dispose();
-  }
-
-  Future<void> _saveMusic() async {
-    setState(() => _savingMusic = true);
-    try {
-      await context
-          .read<AurelController>()
-          .saveJamendoClientId(_jamendoController.text);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Music settings saved')),
-        );
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _savingMusic = false);
-    }
   }
 
   Future<void> _saveLyrics() async {
@@ -219,47 +191,6 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
                     ],
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 25),
-            const Text(
-              'Music source',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 7),
-            const Text(
-              'AUREL searches multiple music collections together. Add a catalogue access ID only when one is supplied in your AUREL setup instructions.',
-              style: TextStyle(
-                color: AurelColors.muted,
-                fontSize: 12,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 11),
-            TextField(
-              controller: _jamendoController,
-              autocorrect: false,
-              decoration: const InputDecoration(
-                labelText: 'Music catalogue access ID',
-                hintText: 'Enter your access ID',
-              ),
-            ),
-            const SizedBox(height: 9),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _savingMusic ? null : _saveMusic,
-                child: _savingMusic
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save music settings'),
               ),
             ),
             const SizedBox(height: 24),
