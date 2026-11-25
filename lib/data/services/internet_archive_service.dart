@@ -27,7 +27,7 @@ class InternetArchiveService {
     if (normalized.isEmpty) return const [];
 
     final safeQuery = normalized
-        .replaceAll(RegExp(r'[\\\\+\\-!(){}\\[\\]^"~*?:/]'), ' ')
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\\u0600-\\u06FF ]'), ' ')
         .replaceAll(RegExp(r'\\s+'), ' ')
         .trim();
     if (safeQuery.isEmpty) return const [];
