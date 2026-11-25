@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
 import '../repositories/library_repository.dart';
-import 'device_library_service.dart';
 import 'download_service.dart';
 import 'jamendo_service.dart';
 import 'playback_controller.dart';
@@ -12,7 +11,6 @@ class AurelController extends ChangeNotifier {
   AurelController({
     required this.repository,
     required this.jamendo,
-    required this.deviceLibrary,
     required this.downloads,
     required this.playback,
   }) {
@@ -21,23 +19,19 @@ class AurelController extends ChangeNotifier {
 
   final LibraryRepository repository;
   final JamendoService jamendo;
-  final DeviceLibraryService deviceLibrary;
   final DownloadService downloads;
   final PlaybackController playback;
 
   List<Track> discoverTracks = [];
   List<Track> searchResults = [];
-  List<Track> deviceTracks = [];
   List<Track> favoriteTracks = [];
   List<Track> downloadedTracks = [];
   List<MusicPlaylist> playlists = [];
   final Set<String> downloadingIds = {};
   bool isLoadingDiscover = false;
   bool isSearching = false;
-  bool isScanningDevice = false;
   String? discoverError;
   String? searchError;
-  String? deviceError;
   String searchQuery = '';
   int selectedTab = 0;
 
@@ -81,20 +75,6 @@ class AurelController extends ChangeNotifier {
       searchError = error.toString();
     } finally {
       isSearching = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> scanDevice() async {
-    isScanningDevice = true;
-    deviceError = null;
-    notifyListeners();
-    try {
-      deviceTracks = await deviceLibrary.scan();
-    } catch (error) {
-      deviceError = error.toString();
-    } finally {
-      isScanningDevice = false;
       notifyListeners();
     }
   }
@@ -148,9 +128,7 @@ class AurelController extends ChangeNotifier {
 
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
     final tracks = queue ??
-        (track.isLocal
-            ? (track.isDownloaded ? downloadedTracks : deviceTracks)
-            : discoverTracks);
+        (track.isDownloaded ? downloadedTracks : discoverTracks);
     await playback.playTrack(track, tracks);
   }
 

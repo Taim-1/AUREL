@@ -48,7 +48,7 @@ Jamendo track responses include `audiodownload_allowed`. AUREL only enables the 
 
 ## Android permissions
 
-AUREL requests audio-library permission only when the user chooses **Scan device**. Android 13+ uses `READ_MEDIA_AUDIO`; Android 12 and earlier use `READ_EXTERNAL_STORAGE`. Downloads are stored inside AUREL's private app documents directory and do not require broad storage access.
+AUREL does not scan your phone or import audio from other apps. Tracks downloaded through AUREL are stored in the app's private documents directory and are available in the Downloads tab for offline listening.
 
 ## Build
 
@@ -59,10 +59,10 @@ The generated release APK uses Flutter's default debug signing configuration. Fo
 ## Project structure
 
 - `lib/data/models` — track model and serialization
-- `lib/data/services` — Jamendo, MediaStore, playback, and downloads
+- `lib/data/services` — Jamendo, playback, and downloads
 - `lib/data/repositories` — local preferences and library state
 - `lib/presentation` — app shell, screens, and reusable UI
-- `platform/android` — native Android MediaStore bridge and audio manifest template
+- `platform/android` — native audio-service activity and manifest template
 - `.github/workflows` — CI and APK build
 
 ## Rights and catalog scope

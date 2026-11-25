@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'data/repositories/library_repository.dart';
 import 'data/services/aurel_controller.dart';
-import 'data/services/device_library_service.dart';
 import 'data/services/download_service.dart';
 import 'data/services/jamendo_service.dart';
 import 'data/services/playback_controller.dart';
@@ -29,7 +28,6 @@ Future<void> main() async {
   final controller = AurelController(
     repository: repository,
     jamendo: jamendo,
-    deviceLibrary: DeviceLibraryService(),
     downloads: DownloadService(),
     playback: playback,
   );

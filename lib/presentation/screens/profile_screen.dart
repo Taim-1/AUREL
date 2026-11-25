@@ -108,7 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Jamendo uses an application client ID to provide music discovery and streaming.',
+          'Jamendo provides discovery and streaming from independent artists. You can use your own application client ID.',
           style: TextStyle(color: AurelColors.muted, fontSize: 12, height: 1.5),
         ),
         const SizedBox(height: 13),
@@ -144,7 +144,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 9),
         _SettingRow(
           icon: Icons.favorite_outline_rounded,
           title: 'Liked tracks',
@@ -155,14 +154,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: 'Offline tracks',
           value: '${controller.downloadedTracks.length}',
         ),
-        _SettingRow(
-          icon: Icons.phone_android_rounded,
-          title: 'Device tracks',
-          value: '${controller.deviceTracks.length}',
-        ),
         const SizedBox(height: 18),
         const Text(
-          'AUREL streams independent music from Jamendo and plays music stored on your device. Downloads are available only when the artist has enabled them for that track.',
+          'AUREL saves downloads inside its private app storage. It does not scan or import audio from other apps on your phone.',
           style: TextStyle(color: AurelColors.muted, fontSize: 11, height: 1.55),
         ),
         const SizedBox(height: 12),
