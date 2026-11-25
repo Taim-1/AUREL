@@ -7,6 +7,7 @@ import '../models/lyrics_document.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
 import '../repositories/library_repository.dart';
+import 'aurel_account_service.dart';
 import 'download_service.dart';
 import 'jamendo_service.dart';
 import 'lyrics_service.dart';
@@ -19,6 +20,7 @@ class AurelController extends ChangeNotifier {
     required this.downloads,
     required this.playback,
     required this.lyrics,
+    required this.account,
   }) {
     playback.addListener(_onPlaybackChanged);
   }
@@ -79,6 +81,9 @@ class AurelController extends ChangeNotifier {
   final DownloadService downloads;
   final PlaybackController playback;
   final LyricsService lyrics;
+  final AurelAccountService account;
+
+  String? cloudSyncError;
 
   List<Track> discoverTracks = [];
   List<Track> searchResults = [];
@@ -117,6 +122,7 @@ class AurelController extends ChangeNotifier {
   int selectedTab = 0;
 
   Future<void> initialize() async {
+    await account.initialize();
     await jamendo.initialize();
     await lyrics.initialize();
     favoriteTracks = await repository.loadFavorites();
@@ -124,11 +130,62 @@ class AurelController extends ChangeNotifier {
     recentlyPlayed = await repository.loadRecentlyPlayed();
     playlists = await repository.loadPlaylists();
     offlineMode = await repository.loadOfflineMode();
+    if (account.isSignedIn) {
+      await restoreCloudLibrary();
+    }
     notifyListeners();
     if (!offlineMode) {
       await refreshDiscover();
     }
   }
+
+  Future<void> restoreCloudLibrary() async {
+    if (!account.isSignedIn) return;
+    try {
+      final cloud = await account.loadCloudLibrary();
+      if (cloud == null) {
+        await syncCloudLibrary();
+        return;
+      }
+
+      favoriteTracks = _appendUnique(favoriteTracks, cloud.favorites);
+      recentlyPlayed = _appendUnique(recentlyPlayed, cloud.recentlyPlayed)
+          .take(100)
+          .toList(growable: false);
+
+      final mergedPlaylists = <String, MusicPlaylist>{
+        for (final playlist in cloud.playlists) playlist.id: playlist,
+        for (final playlist in playlists) playlist.id: playlist,
+      };
+      playlists = mergedPlaylists.values.toList(growable: false);
+
+      await repository.saveFavorites(favoriteTracks);
+      await repository.saveRecentlyPlayed(recentlyPlayed);
+      await repository.savePlaylists(playlists);
+      await syncCloudLibrary();
+    } catch (error) {
+      cloudSyncError = error.toString().replaceFirst('Exception: ', '');
+    }
+    notifyListeners();
+  }
+
+  Future<void> syncCloudLibrary() async {
+    if (!account.isSignedIn) return;
+    try {
+      await account.saveCloudLibrary(
+        favorites: favoriteTracks,
+        playlists: playlists,
+        recentlyPlayed: recentlyPlayed,
+      );
+      cloudSyncError = null;
+    } catch (error) {
+      cloudSyncError = error.toString().replaceFirst('Exception: ', '');
+      rethrow;
+    }
+    notifyListeners();
+  }
+
+  void notifyAccountChanged() => notifyListeners();
 
   List<Track> _appendUnique(List<Track> current, List<Track> incoming) {
     final ids = current.map((track) => track.id).toSet();
@@ -305,6 +362,7 @@ class AurelController extends ChangeNotifier {
       favoriteTracks = [...favoriteTracks, track];
     }
     await repository.saveFavorites(favoriteTracks);
+    await syncCloudLibrary();
     notifyListeners();
   }
 
@@ -321,6 +379,7 @@ class AurelController extends ChangeNotifier {
     );
     playlists = [...playlists, playlist];
     await repository.savePlaylists(playlists);
+    await syncCloudLibrary();
     notifyListeners();
   }
 
@@ -335,12 +394,14 @@ class AurelController extends ChangeNotifier {
         if (i == index) updated else playlists[i],
     ];
     await repository.savePlaylists(playlists);
+    await syncCloudLibrary();
     notifyListeners();
   }
 
   Future<void> removePlaylist(String playlistId) async {
     playlists = playlists.where((item) => item.id != playlistId).toList();
     await repository.savePlaylists(playlists);
+    await syncCloudLibrary();
     notifyListeners();
   }
 
@@ -380,6 +441,7 @@ class AurelController extends ChangeNotifier {
       ...recentlyPlayed.where((item) => item.id != track.id),
     ].take(20).toList(growable: false);
     await repository.saveRecentlyPlayed(recentlyPlayed);
+    await syncCloudLibrary();
     notifyListeners();
   }
 
