@@ -325,12 +325,12 @@ class NowPlayingScreen extends StatelessWidget {
               const SizedBox(height: 24),
               Material(
                 color: AurelColors.surfaceRaised,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: const BorderRadius.all(Radius.circular(16)),
                 child: InkWell(
                   onTap: () => _showLyrics(context),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
+                  borderRadius: const BorderRadius.all(Radius.circular(16)),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 15,
                     ),
