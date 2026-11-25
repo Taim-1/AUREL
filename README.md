@@ -1,70 +1,72 @@
 # AUREL
 
-AUREL is a premium-styled Flutter music player for Android, built around two clear music sources:
+AUREL is a carefully designed Android music player built with Flutter. It combines licensed independent-music discovery with a private offline collection that belongs to the app.
 
-- **Your device library** — scan audio indexed by Android MediaStore and play it locally.
-- **Jamendo discovery** — search and stream independent music through Jamendo's official API.
+## What is included
 
-The app includes background playback and lock-screen controls, favorites, downloads (only when the artist/API explicitly permits them), a persistent mini-player, and an offline downloads library.
+- Discover popular independent music and explore by mood or tag.
+- Search artists and tracks, with paginated results rather than a small fixed catalogue window.
+- Stream tracks with album artwork and metadata.
+- Full player with seeking, shuffle, repeat, previous/next, and a compact mini-player.
+- Background playback, media notification, lock-screen controls, and headset media buttons.
+- Favourites and user-created playlists, saved locally.
+- Offline downloads stored in AUREL's private app storage, only for tracks whose artist/API setting explicitly permits downloading.
+
+AUREL intentionally does **not** scan the phone or import tracks from other apps. Music downloaded through AUREL stays in AUREL's private collection.
 
 ## Design
 
-AUREL uses a deep charcoal canvas with restrained champagne-metallic accents, generous spacing, rounded surfaces, and a custom AUREL mark. The interface is designed for phones first.
+AUREL uses a deep charcoal canvas, restrained silver/champagne accents, rounded surfaces, a custom adaptive Android icon, and a matching splash screen.
 
 ## Run locally
 
-Use Flutter **3.50.1 stable** (Dart 3.14). The app uses Flutter's standalone `material_ui` package.
+Use Flutter **3.50.1 stable** (Dart 3.14). The UI uses Flutter's standalone `material_ui` package.
 
 ```bash
 flutter create --platforms=android --org com.aurel --project-name aurel .
 flutter pub get
-flutter run
 ```
 
-The native Android integration is in `platform/android/`. After generating the Android scaffold, copy the bridge and manifest:
+Copy the Android integration files:
 
 ```bash
 mkdir -p android/app/src/main/kotlin/com/aurel/aurel
 cp platform/android/MainActivity.kt android/app/src/main/kotlin/com/aurel/aurel/
 cp platform/android/AndroidManifest.xml android/app/src/main/
+cp -R platform/android/res/. android/app/src/main/res/
 ```
 
-Set `compileSdk = 36` in `android/app/build.gradle.kts` to satisfy the current permission plugin. The GitHub Actions workflow performs this setup automatically.
+Set `compileSdk = 36` in `android/app/build.gradle.kts`. The included GitHub Actions workflow performs the Android scaffold and resource setup automatically.
 
 ## Jamendo API
 
-Jamendo requires an application `client_id` for API requests. A public read-only testing ID is used as a development fallback so the discovery screens can be exercised; replace it with your own app ID before distributing AUREL:
+Jamendo requires an application `client_id` for API requests. AUREL uses Jamendo's public read-only test ID only as a development fallback. Before distributing the app, register your own application in the [Jamendo Developer Portal](https://devportal.jamendo.com/).
 
-1. Register an application in the [Jamendo Developer Portal](https://devportal.jamendo.com/).
-2. Set `JAMENDO_CLIENT_ID` as a GitHub Actions repository secret for release builds, or pass it locally:
+You can pass the ID at build time:
 
 ```bash
 flutter run --dart-define=JAMENDO_CLIENT_ID=your_client_id
 ```
 
-The app also allows changing the client ID in Profile settings. It is an API identifier, not a user password. Never commit private account credentials.
+Or enter it in AUREL's Profile settings. A client ID is an application identifier, not a password. Do not commit private credentials to the repository.
 
-Jamendo track responses include `audiodownload_allowed`. AUREL only enables the download action when this value is true and a download URL is present. Streaming and download availability depend on the track, its rights, and Jamendo's service.
+Jamendo's track response includes `audiodownload_allowed`. AUREL only enables downloads when that value is true and a download URL is provided. Track availability and use remain subject to the artist's Creative Commons licence and Jamendo's API terms.
 
-## Android permissions
+## Build an APK
 
-AUREL does not scan your phone or import audio from other apps. Tracks downloaded through AUREL are stored in the app's private documents directory and are available in the Downloads tab for offline listening.
+Push to `main` or run **Actions → AUREL Android Build → Run workflow**. The workflow installs the Android SDK, generates the Android scaffold, runs Dart formatting, static analysis and tests, builds a release APK, and uploads it as a workflow artifact.
 
-## Build
-
-Push to `main` or run **Actions → AUREL Android Build → Run workflow**. The workflow runs dependency resolution, static analysis, tests, and a release APK build, then uploads the APK as a workflow artifact.
-
-The generated release APK uses Flutter's default debug signing configuration. For Play Store publication, configure a private upload keystore and signing secrets.
+The generated APK is for direct testing and uses Flutter's default debug signing configuration. Play Store distribution requires a private upload keystore and signing secrets. Do not publish the development Jamendo test ID as a production app configuration.
 
 ## Project structure
 
-- `lib/data/models` — track model and serialization
-- `lib/data/services` — Jamendo, playback, and downloads
-- `lib/data/repositories` — local preferences and library state
+- `lib/data/models` — track and playlist models
+- `lib/data/services` — Jamendo API, playback, and downloads
+- `lib/data/repositories` — local favourites, playlists, downloads, and settings
 - `lib/presentation` — app shell, screens, and reusable UI
-- `platform/android` — native audio-service activity and manifest template
+- `platform/android` — audio-service activity, manifest, icon, and splash resources
 - `.github/workflows` — CI and APK build
 
-## Rights and catalog scope
+## Catalogue scope
 
-AUREL does not scrape Spotify, Apple Music, YouTube, or DRM-protected sources. Jamendo provides independent music under track-specific terms; it is not the same catalog as Spotify or Apple Music. AUREL can also play music already stored on the user's device.
+AUREL does not scrape Spotify, Apple Music, YouTube, or DRM-protected sources. Jamendo is a different catalogue of independent artists; it is not the commercial catalogue of Spotify or Apple Music.

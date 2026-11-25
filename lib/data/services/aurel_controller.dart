@@ -17,6 +17,8 @@ class AurelController extends ChangeNotifier {
     playback.addListener(notifyListeners);
   }
 
+  static const _pageSize = 30;
+
   final LibraryRepository repository;
   final JamendoService jamendo;
   final DownloadService downloads;
@@ -28,11 +30,23 @@ class AurelController extends ChangeNotifier {
   List<Track> downloadedTracks = [];
   List<MusicPlaylist> playlists = [];
   final Set<String> downloadingIds = {};
+
   bool isLoadingDiscover = false;
+  bool isLoadingMoreDiscover = false;
+  bool hasMoreDiscover = true;
   bool isSearching = false;
+  bool isLoadingMoreSearch = false;
+  bool hasMoreSearch = false;
+
   String? discoverError;
   String? searchError;
+  String? searchMoreError;
   String searchQuery = '';
+  String? _activeTag;
+  int _discoverOffset = 0;
+  int _searchOffset = 0;
+  int _discoverGeneration = 0;
+  int _searchGeneration = 0;
   int selectedTab = 0;
 
   Future<void> initialize() async {
@@ -44,45 +58,157 @@ class AurelController extends ChangeNotifier {
     await refreshDiscover();
   }
 
+  List<Track> _appendUnique(List<Track> current, List<Track> incoming) {
+    final ids = current.map((track) => track.id).toSet();
+    return [
+      ...current,
+      ...incoming.where((track) => ids.add(track.id)),
+    ];
+  }
+
   Future<void> refreshDiscover() async {
+    final generation = ++_discoverGeneration;
     isLoadingDiscover = true;
+    isLoadingMoreDiscover = false;
+    hasMoreDiscover = true;
     discoverError = null;
+    _discoverOffset = 0;
     notifyListeners();
+
     try {
-      discoverTracks = await jamendo.popular();
+      final page = await jamendo.popular(limit: _pageSize, offset: 0);
+      if (generation != _discoverGeneration) return;
+      discoverTracks = page;
+      _discoverOffset = page.length;
+      hasMoreDiscover = page.length == _pageSize;
     } catch (error) {
-      discoverError = error.toString();
+      if (generation == _discoverGeneration) {
+        discoverError = error.toString();
+      }
     } finally {
-      isLoadingDiscover = false;
-      notifyListeners();
+      if (generation == _discoverGeneration) {
+        isLoadingDiscover = false;
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> searchMusic(String query) async {
-    searchQuery = query.trim();
-    if (searchQuery.isEmpty) {
-      searchResults = [];
-      searchError = null;
+  Future<void> loadMoreDiscover() async {
+    if (!hasMoreDiscover || isLoadingDiscover || isLoadingMoreDiscover) return;
+    final generation = _discoverGeneration;
+    isLoadingMoreDiscover = true;
+    discoverError = null;
+    notifyListeners();
+
+    try {
+      final page = await jamendo.popular(
+        limit: _pageSize,
+        offset: _discoverOffset,
+      );
+      if (generation != _discoverGeneration) return;
+      discoverTracks = _appendUnique(discoverTracks, page);
+      _discoverOffset += page.length;
+      hasMoreDiscover = page.length == _pageSize;
+    } catch (error) {
+      if (generation == _discoverGeneration) {
+        discoverError = error.toString();
+      }
+    } finally {
+      if (generation == _discoverGeneration) {
+        isLoadingMoreDiscover = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> searchMusic(String query) => _startSearch(query);
+
+  Future<void> searchByTag(String tag) =>
+      _startSearch(tag, tag: tag.trim());
+
+  Future<void> _startSearch(String query, {String? tag}) async {
+    final normalized = query.trim();
+    final generation = ++_searchGeneration;
+    _activeTag = tag;
+    searchQuery = normalized;
+    searchResults = [];
+    _searchOffset = 0;
+    hasMoreSearch = false;
+    isLoadingMoreSearch = false;
+    searchError = null;
+    searchMoreError = null;
+
+    if (normalized.isEmpty) {
+      isSearching = false;
       notifyListeners();
       return;
     }
+
     isSearching = true;
-    searchError = null;
     notifyListeners();
+
     try {
-      searchResults = await jamendo.search(searchQuery);
+      final page = tag == null
+          ? await jamendo.search(normalized, limit: _pageSize, offset: 0)
+          : await jamendo.byTag(tag, limit: _pageSize, offset: 0);
+      if (generation != _searchGeneration) return;
+      searchResults = page;
+      _searchOffset = page.length;
+      hasMoreSearch = page.length == _pageSize;
     } catch (error) {
-      searchError = error.toString();
+      if (generation == _searchGeneration) {
+        searchError = error.toString();
+      }
     } finally {
-      isSearching = false;
-      notifyListeners();
+      if (generation == _searchGeneration) {
+        isSearching = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> loadMoreSearch() async {
+    if (!hasMoreSearch || isSearching || isLoadingMoreSearch) return;
+    final generation = _searchGeneration;
+    final query = searchQuery;
+    final tag = _activeTag;
+    isLoadingMoreSearch = true;
+    searchMoreError = null;
+    notifyListeners();
+
+    try {
+      final page = tag == null
+          ? await jamendo.search(
+              query,
+              limit: _pageSize,
+              offset: _searchOffset,
+            )
+          : await jamendo.byTag(
+              tag,
+              limit: _pageSize,
+              offset: _searchOffset,
+            );
+      if (generation != _searchGeneration) return;
+      searchResults = _appendUnique(searchResults, page);
+      _searchOffset += page.length;
+      hasMoreSearch = page.length == _pageSize;
+    } catch (error) {
+      if (generation == _searchGeneration) {
+        searchMoreError = error.toString();
+      }
+    } finally {
+      if (generation == _searchGeneration) {
+        isLoadingMoreSearch = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> toggleFavorite(Track track) async {
     final exists = favoriteTracks.any((item) => item.id == track.id);
     if (exists) {
-      favoriteTracks = favoriteTracks.where((item) => item.id != track.id).toList();
+      favoriteTracks =
+          favoriteTracks.where((item) => item.id != track.id).toList();
     } else {
       favoriteTracks = [...favoriteTracks, track];
     }
@@ -157,7 +283,8 @@ class AurelController extends ChangeNotifier {
 
   Future<void> removeDownload(Track track) async {
     await downloads.delete(track);
-    downloadedTracks = downloadedTracks.where((item) => item.id != track.id).toList();
+    downloadedTracks =
+        downloadedTracks.where((item) => item.id != track.id).toList();
     await repository.saveDownloads(downloadedTracks);
     if (playback.currentTrack?.id == track.id) {
       await playback.player.stop();

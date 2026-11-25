@@ -49,6 +49,9 @@ class NowPlayingScreen extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
+            tooltip: controller.isFavorite(track)
+                ? 'Remove from favourites'
+                : 'Add to favourites',
             onPressed: () => context.read<AurelController>().toggleFavorite(track),
             icon: Icon(
               controller.isFavorite(track)
@@ -119,19 +122,6 @@ class NowPlayingScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () =>
-                        context.read<AurelController>().toggleFavorite(track),
-                    icon: Icon(
-                      controller.isFavorite(track)
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: controller.isFavorite(track)
-                          ? const Color(0xFFE58A9C)
-                          : AurelColors.champagne,
-                      size: 25,
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 17),
@@ -182,11 +172,50 @@ class NowPlayingScreen extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    tooltip: playback.isShuffleEnabled
+                        ? 'Turn shuffle off'
+                        : 'Turn shuffle on',
+                    onPressed: () => playback.toggleShuffle(),
+                    icon: Icon(
+                      Icons.shuffle_rounded,
+                      color: playback.isShuffleEnabled
+                          ? AurelColors.champagneLight
+                          : AurelColors.muted,
+                    ),
+                  ),
+                  Text(
+                    '${playback.currentIndex + 1} / ${playback.queue.length}',
+                    style: const TextStyle(
+                      color: AurelColors.muted,
+                      fontSize: 11,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: playback.repeatLabel,
+                    onPressed: () => playback.cycleRepeatMode(),
+                    icon: Icon(
+                      playback.isRepeatOne
+                          ? Icons.repeat_one_rounded
+                          : Icons.repeat_rounded,
+                      color: playback.isRepeatAll || playback.isRepeatOne
+                          ? AurelColors.champagneLight
+                          : AurelColors.muted,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   IconButton(
+                    tooltip: 'Previous track',
                     onPressed: () => playback.previous(),
                     icon: const Icon(Icons.skip_previous_rounded, size: 34),
                   ),
@@ -215,6 +244,7 @@ class NowPlayingScreen extends StatelessWidget {
                     ),
                   ),
                   IconButton(
+                    tooltip: 'Next track',
                     onPressed: () => playback.next(),
                     icon: const Icon(Icons.skip_next_rounded, size: 34),
                   ),

@@ -9,6 +9,8 @@ import '../models/track.dart';
 class PlaybackController extends ChangeNotifier {
   PlaybackController() {
     player.playerStateStream.listen((_) => notifyListeners());
+    player.shuffleModeEnabledStream.listen((_) => notifyListeners());
+    player.loopModeStream.listen((_) => notifyListeners());
     player.currentIndexStream.listen((index) {
       if (index != null && index >= 0 && index < queue.length) {
         currentIndex = index;
@@ -20,13 +22,27 @@ class PlaybackController extends ChangeNotifier {
   final AudioPlayer player = AudioPlayer();
   List<Track> queue = const [];
   int currentIndex = -1;
+
   bool get isPlaying => player.playing;
+  bool get isShuffleEnabled => player.shuffleModeEnabled;
+  bool get isRepeatOne => player.loopMode == LoopMode.one;
+  bool get isRepeatAll => player.loopMode == LoopMode.all;
+  String get repeatLabel {
+    if (isRepeatOne) return 'Repeat one';
+    if (isRepeatAll) return 'Repeat all';
+    return 'Repeat off';
+  }
+
   Track? get currentTrack =>
-      currentIndex >= 0 && currentIndex < queue.length ? queue[currentIndex] : null;
+      currentIndex >= 0 && currentIndex < queue.length
+          ? queue[currentIndex]
+          : null;
 
   Future<void> playTrack(Track track, List<Track> sourceQueue) async {
     final tracks = sourceQueue.isEmpty ? <Track>[track] : List<Track>.of(sourceQueue);
     final index = tracks.indexWhere((item) => item.id == track.id);
+    if (index < 0) tracks.insert(0, track);
+
     queue = tracks;
     currentIndex = index < 0 ? 0 : index;
 
@@ -69,6 +85,25 @@ class PlaybackController extends ChangeNotifier {
       }
       await player.play();
     }
+  }
+
+  Future<void> toggleShuffle() async {
+    final enable = !player.shuffleModeEnabled;
+    if (enable) {
+      await player.shuffle();
+    }
+    await player.setShuffleModeEnabled(enable);
+    notifyListeners();
+  }
+
+  Future<void> cycleRepeatMode() async {
+    final nextMode = switch (player.loopMode) {
+      LoopMode.off => LoopMode.all,
+      LoopMode.all => LoopMode.one,
+      LoopMode.one => LoopMode.off,
+    };
+    await player.setLoopMode(nextMode);
+    notifyListeners();
   }
 
   Future<void> next() async {

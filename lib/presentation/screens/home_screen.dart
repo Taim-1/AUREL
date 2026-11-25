@@ -93,6 +93,35 @@ class HomeScreen extends StatelessWidget {
             ...tracks.take(12).map(
                   (track) => TrackTile(track: track, queue: tracks),
                 ),
+          if (tracks.isNotEmpty && controller.hasMoreDiscover)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 18),
+              child: OutlinedButton.icon(
+                onPressed: controller.isLoadingMoreDiscover
+                    ? null
+                    : () => context.read<AurelController>().loadMoreDiscover(),
+                icon: controller.isLoadingMoreDiscover
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AurelColors.champagne,
+                        ),
+                      )
+                    : const Icon(Icons.expand_more_rounded, size: 18),
+                label: Text(
+                  controller.isLoadingMoreDiscover
+                      ? 'Loading more music'
+                      : 'Load more music',
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AurelColors.champagne,
+                  side: const BorderSide(color: AurelColors.divider),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+              ),
+            ),
           const SizedBox(height: 10),
           if (tracks.isNotEmpty) ...[
             const _SectionHeading(title: 'Fresh picks'),
@@ -155,7 +184,7 @@ class HomeScreen extends StatelessWidget {
 
   void _searchMood(BuildContext context, String query) {
     context.read<AurelController>().selectTab(1);
-    context.read<AurelController>().searchMusic(query);
+    context.read<AurelController>().searchByTag(query);
   }
 }
 

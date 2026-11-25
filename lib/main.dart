@@ -18,6 +18,9 @@ Future<void> main() async {
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.aurel.music.playback',
     androidNotificationChannelName: 'AUREL Playback',
+    androidNotificationChannelDescription: 'Music playback controls',
+    androidNotificationIcon: 'drawable/ic_aurel_notification',
+    notificationColor: const Color(0xFFD9BC91),
     androidNotificationOngoing: true,
   );
 
