@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'data/repositories/library_repository.dart';
+import 'data/services/aurel_account_service.dart';
 import 'data/services/aurel_controller.dart';
 import 'data/services/download_service.dart';
 import 'data/services/jamendo_service.dart';
@@ -33,6 +34,9 @@ Future<void> main() async {
 
   final preferences = SharedPreferencesAsync();
   final repository = LibraryRepository(preferences);
+  final account = AurelAccountService();
+  await account.initialize();
+
   final playback = PlaybackController();
   final jamendo = JamendoService(repository);
   final controller = AurelController(
@@ -41,6 +45,7 @@ Future<void> main() async {
     downloads: DownloadService(),
     playback: playback,
     lyrics: LyricsService(),
+    account: account,
   );
 
   runApp(
