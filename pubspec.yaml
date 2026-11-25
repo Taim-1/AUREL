@@ -17,6 +17,7 @@ dependencies:
   path_provider: ^2.1.6
   provider: ^6.1.5+1
   shared_preferences: ^2.5.6
+  flutter_secure_storage: ^11.2.0
 
 dev_dependencies:
   flutter_test:
@@ -25,3 +26,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/aurel_app_icon.jpg

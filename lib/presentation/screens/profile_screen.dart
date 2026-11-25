@@ -14,19 +14,23 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late final TextEditingController _clientController;
+  late final TextEditingController _lyricsKeyController;
   bool _saving = false;
+  bool _savingLyrics = false;
+  bool _showLyricsKey = false;
 
   @override
   void initState() {
     super.initState();
-    _clientController = TextEditingController(
-      text: context.read<AurelController>().jamendo.clientId,
-    );
+    final controller = context.read<AurelController>();
+    _clientController = TextEditingController(text: controller.jamendo.clientId);
+    _lyricsKeyController = TextEditingController();
   }
 
   @override
   void dispose() {
     _clientController.dispose();
+    _lyricsKeyController.dispose();
     super.dispose();
   }
 
@@ -49,6 +53,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveLyricsKey() async {
+    setState(() => _savingLyrics = true);
+    try {
+      await context
+          .read<AurelController>()
+          .saveLyricsApiKey(_lyricsKeyController.text);
+      _lyricsKeyController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lyrics key saved securely on this device')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingLyrics = false);
+    }
+  }
+
+  Future<void> _clearLyricsKey() async {
+    try {
+      await context.read<AurelController>().clearLyricsApiKey();
+      _lyricsKeyController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lyrics key removed from this device')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
     }
   }
 
@@ -180,6 +225,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   )
                 : const Text('Save music settings'),
           ),
+        ),
+        const SizedBox(height: 28),
+        const Text(
+          'Licensed lyrics',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'AUREL uses Musixmatch’s licensed lyrics API. Add your own developer key to enable lyrics. Your key is stored in encrypted device storage and is never committed to the repository.',
+          style: TextStyle(color: AurelColors.muted, fontSize: 12, height: 1.55),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          controller.hasLyricsApiKey
+              ? 'API key saved on this device'
+              : 'No lyrics API key configured',
+          style: TextStyle(
+            color: controller.hasLyricsApiKey
+                ? AurelColors.champagneLight
+                : AurelColors.muted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _lyricsKeyController,
+          autocorrect: false,
+          enableSuggestions: false,
+          obscureText: !_showLyricsKey,
+          decoration: InputDecoration(
+            labelText: 'Musixmatch API key',
+            hintText: 'Paste your personal API key',
+            suffixIcon: IconButton(
+              tooltip: _showLyricsKey ? 'Hide key' : 'Show key',
+              onPressed: () => setState(() => _showLyricsKey = !_showLyricsKey),
+              icon: Icon(
+                _showLyricsKey
+                    ? Icons.visibility_off_rounded
+                    : Icons.visibility_rounded,
+                color: AurelColors.muted,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: _savingLyrics ? null : _saveLyricsKey,
+            child: _savingLyrics
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save lyrics key'),
+          ),
+        ),
+        if (controller.hasLyricsApiKey)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _clearLyricsKey,
+              icon: const Icon(Icons.delete_outline_rounded, size: 17),
+              label: const Text('Remove saved lyrics key'),
+              style: TextButton.styleFrom(
+                foregroundColor: AurelColors.muted,
+              ),
+            ),
+          ),
+        const SizedBox(height: 6),
+        const Text(
+          'Get a key through the official Musixmatch Developer Portal. Synchronized subtitles may depend on your API plan. For a public release, route provider requests through a secure server instead of distributing an API key in the app.',
+          style: TextStyle(color: AurelColors.muted, fontSize: 10, height: 1.5),
         ),
         const SizedBox(height: 26),
         const Text(

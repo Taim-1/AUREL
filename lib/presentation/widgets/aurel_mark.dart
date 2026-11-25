@@ -13,37 +13,22 @@ class AurelMark extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: compact ? 34 : 42,
-          height: compact ? 34 : 42,
+          width: compact ? 38 : 46,
+          height: compact ? 38 : 46,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(compact ? 11 : 14),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AurelColors.champagneLight,
-                AurelColors.champagne,
-                Color(0xFF8C6D49),
-              ],
-            ),
+            borderRadius: BorderRadius.circular(compact ? 12 : 15),
             boxShadow: [
               BoxShadow(
-                color: AurelColors.champagne.withValues(alpha: 0.16),
-                blurRadius: 18,
+                color: AurelColors.champagne.withValues(alpha: 0.18),
+                blurRadius: 20,
                 spreadRadius: 1,
               ),
             ],
           ),
-          alignment: Alignment.center,
-          child: Text(
-            'A',
-            style: TextStyle(
-              color: const Color(0xFF15110C),
-              fontFamily: 'serif',
-              fontSize: compact ? 25 : 31,
-              fontWeight: FontWeight.w700,
-              height: 1,
-            ),
+          clipBehavior: Clip.antiAlias,
+          child: Image.asset(
+            'assets/branding/aurel_app_icon.jpg',
+            fit: BoxFit.cover,
           ),
         ),
         const SizedBox(width: 10),

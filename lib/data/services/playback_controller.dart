@@ -97,7 +97,15 @@ class PlaybackController extends ChangeNotifier {
         title: track.title,
         artist: track.artist,
         album: track.album,
-        artUri: artUri != null && artUri.hasScheme ? artUri : null,
+        artUri: artUri != null &&
+                (artUri.scheme == 'https' || artUri.scheme == 'content')
+            ? artUri
+            : null,
+        artHeaders: const {'Accept': 'image/*'},
+        displayTitle: track.title,
+        displaySubtitle: track.artist,
+        displayDescription:
+            track.album.isEmpty ? 'AUREL · Feel the Music' : track.album,
         duration: Duration(milliseconds: track.durationMs),
       ),
     );

@@ -10,6 +10,7 @@ import 'data/repositories/library_repository.dart';
 import 'data/services/aurel_controller.dart';
 import 'data/services/download_service.dart';
 import 'data/services/jamendo_service.dart';
+import 'data/services/lyrics_service.dart';
 import 'data/services/playback_controller.dart';
 
 Future<void> main() async {
@@ -33,6 +34,7 @@ Future<void> main() async {
     jamendo: jamendo,
     downloads: DownloadService(),
     playback: playback,
+    lyrics: LyricsService(),
   );
 
   runApp(

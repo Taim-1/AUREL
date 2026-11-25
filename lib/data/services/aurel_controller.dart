@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/lyrics_document.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
 import '../repositories/library_repository.dart';
 import 'download_service.dart';
 import 'jamendo_service.dart';
+import 'lyrics_service.dart';
 import 'playback_controller.dart';
 
 class AurelController extends ChangeNotifier {
@@ -14,16 +18,67 @@ class AurelController extends ChangeNotifier {
     required this.jamendo,
     required this.downloads,
     required this.playback,
+    required this.lyrics,
   }) {
-    playback.addListener(notifyListeners);
+    playback.addListener(_onPlaybackChanged);
   }
 
   static const _pageSize = 30;
+
+  void _onPlaybackChanged() {
+    final trackId = playback.currentTrack?.id;
+    if (trackId != _lyricsTrackId) {
+      unawaited(loadLyricsForCurrentTrack());
+    }
+    notifyListeners();
+  }
+
+  Future<void> loadLyricsForCurrentTrack({bool forceRefresh = false}) async {
+    final track = playback.currentTrack;
+    if (track == null) {
+      _lyricsRequestGeneration++;
+      _lyricsTrackId = null;
+      currentLyrics = null;
+      isLoadingLyrics = false;
+      lyricsError = null;
+      notifyListeners();
+      return;
+    }
+    if (!forceRefresh && _lyricsTrackId == track.id) return;
+
+    final generation = ++_lyricsRequestGeneration;
+    _lyricsTrackId = track.id;
+    currentLyrics = null;
+    lyricsError = null;
+    isLoadingLyrics = true;
+    notifyListeners();
+
+    try {
+      final document = await lyrics.fetchFor(
+        track,
+        forceRefresh: forceRefresh,
+      );
+      if (generation != _lyricsRequestGeneration) return;
+      currentLyrics = document;
+      if (document == null) {
+        lyricsError = 'Lyrics are not available for this track yet.';
+      }
+    } catch (error) {
+      if (generation != _lyricsRequestGeneration) return;
+      lyricsError = error.toString().replaceFirst('Exception: ', '');
+    } finally {
+      if (generation == _lyricsRequestGeneration) {
+        isLoadingLyrics = false;
+        notifyListeners();
+      }
+    }
+  }
 
   final LibraryRepository repository;
   final JamendoService jamendo;
   final DownloadService downloads;
   final PlaybackController playback;
+  final LyricsService lyrics;
 
   List<Track> discoverTracks = [];
   List<Track> searchResults = [];
@@ -32,6 +87,12 @@ class AurelController extends ChangeNotifier {
   List<Track> recentlyPlayed = [];
   List<MusicPlaylist> playlists = [];
   bool offlineMode = false;
+
+  LyricsDocument? currentLyrics;
+  bool isLoadingLyrics = false;
+  String? lyricsError;
+  String? _lyricsTrackId;
+  int _lyricsRequestGeneration = 0;
 
   final Set<String> downloadingIds = {};
   final Map<String, double> downloadProgress = {};
@@ -57,6 +118,7 @@ class AurelController extends ChangeNotifier {
 
   Future<void> initialize() async {
     await jamendo.initialize();
+    await lyrics.initialize();
     favoriteTracks = await repository.loadFavorites();
     downloadedTracks = await repository.loadDownloads();
     recentlyPlayed = await repository.loadRecentlyPlayed();
@@ -400,6 +462,24 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get hasLyricsApiKey => lyrics.hasApiKey;
+
+  Future<void> saveLyricsApiKey(String value) async {
+    await lyrics.saveApiKey(value);
+    lyricsError = null;
+    currentLyrics = null;
+    notifyListeners();
+  }
+
+  Future<void> clearLyricsApiKey() async {
+    await lyrics.clearApiKey();
+    _lyricsRequestGeneration++;
+    currentLyrics = null;
+    isLoadingLyrics = false;
+    lyricsError = 'Add your Musixmatch API key in Profile to load licensed lyrics.';
+    notifyListeners();
+  }
+
   Future<void> saveJamendoClientId(String value) async {
     await jamendo.setClientId(value);
     discoverError = null;
@@ -416,7 +496,7 @@ class AurelController extends ChangeNotifier {
     for (final token in _downloadTokens.values) {
       if (!token.isCancelled) token.cancel('AUREL is closing');
     }
-    playback.removeListener(notifyListeners);
+    playback.removeListener(_onPlaybackChanged);
     playback.dispose();
     super.dispose();
   }

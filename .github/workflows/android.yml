@@ -57,7 +57,7 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Set Android compile SDK
+      - name: Set Android SDK versions
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -66,6 +66,10 @@ jobs:
           content = content.replace(
               'compileSdk = flutter.compileSdkVersion',
               'compileSdk = 36'
+          )
+          content = content.replace(
+              'minSdk = flutter.minSdkVersion',
+              'minSdk = 23'
           )
           path.write_text(content)
           PY
