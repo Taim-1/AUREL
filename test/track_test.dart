@@ -246,5 +246,50 @@ void main() {
       expect(restored.localPath, original.localPath);
       expect(restored.playbackUri, startsWith('file:'));
     });
+  group('Expanded catalogue metadata', () {
+    test('normalizes recording metadata and preserves ISRC', () {
+      final track = Track.fromMusicBrainz({
+        'id': 'recording-123',
+        'title': 'A Song',
+        'length': 213000,
+        'isrcs': ['USABC2600001'],
+        'artist-credit': [
+          {
+            'name': 'Aurel Artist',
+            'artist': {'name': 'Aurel Artist'},
+            'joinphrase': '',
+          },
+        ],
+      });
+
+      expect(track.id, 'musicbrainz-recording-123');
+      expect(track.title, 'A Song');
+      expect(track.artist, 'Aurel Artist');
+      expect(track.recordingId, 'USABC2600001');
+      expect(track.durationMs, 213000);
+      expect(track.canPlay, isFalse);
+      expect(track.isMetadataOnly, isTrue);
+    });
+
+    test('marks openly licensed audio as playable and downloadable', () {
+      final track = Track.fromWikimediaCommons(
+        pageId: '98765',
+        title: 'Open Piano',
+        artist: 'Aurel Composer',
+        mediaUrl: 'https://upload.wikimedia.org/example/open-piano.ogg',
+        sourceUrl: 'https://commons.wikimedia.org/wiki/File:Open_Piano.ogg',
+        licenseName: 'CC BY-SA',
+        licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
+        attribution: 'Open Piano by Aurel Composer',
+        durationMs: 120000,
+      );
+
+      expect(track.canPlay, isTrue);
+      expect(track.downloadAllowed, isTrue);
+      expect(track.providerId, 'wikimedia_commons');
+      expect(track.licenseName, 'CC BY-SA');
+      expect(track.attribution, contains('Aurel Composer'));
+    });
+  });
   });
 }
