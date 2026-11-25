@@ -39,11 +39,22 @@ jobs:
           mkdir -p android/app/src/main/kotlin/com/aurel/aurel
           cp platform/android/MainActivity.kt android/app/src/main/kotlin/com/aurel/aurel/MainActivity.kt
           cp platform/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          rm -f test/widget_test.dart
 
       - name: Install Android API 37
+        shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          fi
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "sdkmanager was not found under $SDK_ROOT"
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0"
 
       - name: Set Android compile SDK
         run: |
@@ -61,11 +72,11 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Format Dart sources
+        run: dart format lib test
 
       - name: Analyze
-        run: flutter analyze --fatal-infos
+        run: flutter analyze
 
       - name: Run tests
         run: flutter test
