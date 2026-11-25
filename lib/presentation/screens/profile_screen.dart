@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
-import '../screens/account_screen.dart';
 import '../widgets/aurel_settings_sheet.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -114,14 +113,6 @@ class ProfileScreen extends StatelessWidget {
           'A refined music experience with discovery, playback, account sync and private offline listening.',
         ),
       ],
-    );
-  }
-
-  void _openAccount(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const AccountScreen(),
-      ),
     );
   }
 
