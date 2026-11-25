@@ -37,6 +37,13 @@ class CatalogTokenService {
       throw const CatalogTokenException('Unknown music provider.');
     }
 
+    final user = account.currentUser;
+    if (user == null) {
+      throw CatalogTokenException(
+        'Sign in to your AUREL account before using $provider catalog search.',
+      );
+    }
+
     final cached = _cache[key];
     if (cached != null &&
         cached.expiresAt.isAfter(
@@ -45,7 +52,6 @@ class CatalogTokenService {
       return cached.value;
     }
 
-    final user = account.currentUser;
     final projectId = user == null ? null : account.firebaseProjectId;
     if (user == null || projectId == null || projectId.isEmpty) {
       throw CatalogTokenException(
