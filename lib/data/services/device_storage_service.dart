@@ -28,7 +28,7 @@ class DeviceStorageSnapshot {
   }
 
   static String formatBytes(int bytes) {
-    const units = ['B', 'KB', 'GB', 'TB'];
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     if (bytes < 1024) return '$bytes B';
 
     var value = bytes.toDouble();
