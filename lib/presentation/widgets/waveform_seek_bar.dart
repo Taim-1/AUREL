@@ -1,5 +1,8 @@
 import 'dart:math' as math;
 
+// Paint must remain mutable because the active waveform assigns its shader.
+// ignore_for_file: prefer_const_constructors
+
 import 'package:material_ui/material_ui.dart';
 
 class WaveformSeekBar extends StatefulWidget {
@@ -134,8 +137,6 @@ class _WaveformPainter extends CustomPainter {
     final inactive = Paint()
       ..color = const Color(0xFF665B4C).withValues(alpha: 0.52)
       ..style = PaintingStyle.fill;
-    // This Paint receives a shader through its mutable setter.
-    // ignore: prefer_const_constructors
     final active = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
