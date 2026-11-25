@@ -127,7 +127,7 @@ class _WaveformPainter extends CustomPainter {
     const barWidth = 2.3;
     const maxBarHeight = 34.0;
     final totalWidth = sixtyBars * barWidth + (sixtyBars - 1) * gap;
-    final left = math.max(0.0, (size.width - totalWidth) / 2);
+    final left = math.max(0.0, (size.width - totalWidth) / 2).toDouble();
     final usableHeight = size.height - topInset - bottomInset;
     final activeBars = (progress * sixtyBars).floor();
 
@@ -150,7 +150,7 @@ class _WaveformPainter extends CustomPainter {
 
     for (var i = 0; i < sixtyBars; i++) {
       final normalized = _heights[i];
-      final height = math.max(4.5, usableHeight * normalized);
+      final height = math.max(4.5, usableHeight * normalized).toDouble();
       final x = left + i * (barWidth + gap);
       final y = topInset + (usableHeight - height) / 2;
       final rect = RRect.fromRectAndRadius(
