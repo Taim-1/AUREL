@@ -152,7 +152,7 @@ class TrackTile extends StatelessWidget {
       onTap: () async {
         if (!track.canPlay) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text(
                 'This recording is listed in the AUREL catalogue, but '
                 'an authorized in-app audio stream is not available.',
