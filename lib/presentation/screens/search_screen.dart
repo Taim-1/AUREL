@@ -512,7 +512,7 @@ class _SectionHeading extends StatelessWidget {
             ),
           ),
         ),
-        if (trailing != null) trailing!,
+        ?trailing,
         if (action != null)
           TextButton(
             onPressed: onAction,
