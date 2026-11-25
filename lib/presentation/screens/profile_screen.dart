@@ -174,53 +174,6 @@ class ProfileScreen extends StatelessWidget {
                 'Music Lover ♫',
                 style: TextStyle(color: AurelColors.muted, fontSize: 12),
               ),
-              const SizedBox(height: 13),
-              InkWell(
-                onTap: () => _openAccount(context),
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 13,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AurelColors.surfaceRaised,
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: AurelColors.champagne.withValues(alpha: 0.22),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        controller.account.isSignedIn
-                            ? Icons.cloud_done_rounded
-                            : Icons.cloud_sync_rounded,
-                        color: AurelColors.champagneLight,
-                        size: 15,
-                      ),
-                      const SizedBox(width: 7),
-                      Text(
-                        controller.account.isSignedIn
-                            ? 'Account connected'
-                            : 'Connect account & sync',
-                        style: const TextStyle(
-                          color: AurelColors.champagneLight,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        color: AurelColors.muted,
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
