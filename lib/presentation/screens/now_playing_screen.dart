@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/album_art.dart';
+import '../widgets/playback_settings_sheet.dart';
 
 class NowPlayingScreen extends StatelessWidget {
   const NowPlayingScreen({super.key});
@@ -48,6 +49,22 @@ class NowPlayingScreen extends StatelessWidget {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: 'Sound and playback settings',
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: AurelColors.surface,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+              ),
+              builder: (_) => const PlaybackSettingsSheet(),
+            ),
+            icon: const Icon(
+              Icons.tune_rounded,
+              color: AurelColors.champagne,
+            ),
+          ),
           IconButton(
             tooltip: controller.isFavorite(track)
                 ? 'Remove from favourites'
