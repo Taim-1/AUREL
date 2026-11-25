@@ -45,6 +45,7 @@ class DownloadService {
         cancelToken: cancelToken,
         onReceiveProgress: onProgress,
         options: Options(
+          headers: track.playbackHeaders.isEmpty ? null : track.playbackHeaders,
           followRedirects: true,
           validateStatus: (status) =>
               status != null && status >= 200 && status < 300,

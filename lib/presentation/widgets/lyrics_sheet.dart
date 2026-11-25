@@ -189,7 +189,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
                   ),
                 ),
               const Text(
-                'Licensed lyrics via Musixmatch',
+                'Licensed lyrics',
                 style: TextStyle(
                   color: AurelColors.muted,
                   fontSize: 9,

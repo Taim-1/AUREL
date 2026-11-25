@@ -3,364 +3,301 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
-import '../widgets/aurel_mark.dart';
+import '../widgets/aurel_settings_sheet.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  late final TextEditingController _clientController;
-  late final TextEditingController _lyricsKeyController;
-  bool _saving = false;
-  bool _savingLyrics = false;
-  bool _showLyricsKey = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final controller = context.read<AurelController>();
-    _clientController = TextEditingController(text: controller.jamendo.clientId);
-    _lyricsKeyController = TextEditingController();
+  void _openSettings(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AurelColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => const AurelSettingsSheet(),
+    );
   }
 
-  @override
-  void dispose() {
-    _clientController.dispose();
-    _lyricsKeyController.dispose();
-    super.dispose();
+  void _showAppearance(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AurelColors.surfaceRaised,
+        title: const Text('Appearance'),
+        content: const Text(
+          'AUREL uses its approved Champagne Noir identity: deep black surfaces, champagne highlights, warm silver details and the ribbon-A mark.',
+          style: TextStyle(
+            color: AurelColors.muted,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _saveClientId() async {
-    setState(() => _saving = true);
-    try {
-      await context
-          .read<AurelController>()
-          .saveJamendoClientId(_clientController.text);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Music service settings saved')),
-        );
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
+  void _showNotifications(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AurelColors.surfaceRaised,
+        title: const Text('Notifications'),
+        content: const Text(
+          'AUREL uses Android media notifications for the current song, artwork and playback controls. You can also manage notification permission in Android settings.',
+          style: TextStyle(
+            color: AurelColors.muted,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _saveLyricsKey() async {
-    setState(() => _savingLyrics = true);
-    try {
-      await context
-          .read<AurelController>()
-          .saveLyricsApiKey(_lyricsKeyController.text);
-      _lyricsKeyController.clear();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lyrics key saved securely on this device')),
-        );
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _savingLyrics = false);
-    }
+  void _showPremiumFeatures(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AurelColors.surfaceRaised,
+        title: const Text('Premium Features'),
+        content: const Text(
+          'AUREL’s current listening features are free to use. Account sync, playlists, favourites, licensed lyrics and permitted offline downloads are part of the listening experience.',
+          style: TextStyle(
+            color: AurelColors.muted,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Lovely'),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _clearLyricsKey() async {
-    try {
-      await context.read<AurelController>().clearLyricsApiKey();
-      _lyricsKeyController.clear();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lyrics key removed from this device')),
-        );
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
-    }
+  void _showAbout(BuildContext context) {
+    showAboutDialog(
+      context: context,
+      applicationName: 'AUREL',
+      applicationVersion: '1.0.0',
+      applicationIcon: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          'assets/branding/aurel_app_icon.jpg',
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+        ),
+      ),
+      children: const [
+        Text('Feel the Music'),
+        SizedBox(height: 8),
+        Text(
+          'A refined music experience with discovery, playback, account sync and private offline listening.',
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
+    final user = controller.account.currentUser;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 25, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 25, 20, 30),
       children: [
-        const Text(
-          'Profile',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 29,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.7,
-          ),
-        ),
-        const SizedBox(height: 22),
         Container(
-          padding: const EdgeInsets.all(21),
+          padding: const EdgeInsets.fromLTRB(18, 20, 18, 19),
           decoration: BoxDecoration(
             color: AurelColors.surface,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AurelColors.champagne.withValues(alpha: 0.18)),
+            border: Border.all(
+              color: AurelColors.champagne.withValues(alpha: 0.16),
+            ),
           ),
-          child: const Column(
+          child: Column(
             children: [
               CircleAvatar(
-                radius: 35,
-                backgroundColor: Color(0xFF3B3025),
-                child: Icon(
-                  Icons.headphones_rounded,
-                  size: 32,
-                  color: AurelColors.champagneLight,
+                radius: 39,
+                backgroundColor: const Color(0xFF3B3025),
+                backgroundImage:
+                    user?.photoURL == null ? null : NetworkImage(user!.photoURL!),
+                child: user?.photoURL == null
+                    ? const Icon(
+                        Icons.person_rounded,
+                        size: 34,
+                        color: AurelColors.champagneLight,
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 13),
+              Text(
+                '${controller.account.userName} 👑',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
                 ),
               ),
-              SizedBox(height: 13),
-              AurelMark(compact: true),
-              SizedBox(height: 9),
-              Text(
-                'Your music space',
+              const SizedBox(height: 5),
+              const Text(
+                'Music Lover ♫',
                 style: TextStyle(color: AurelColors.muted, fontSize: 12),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 19),
+        _ProfileMenuItem(
+          icon: Icons.workspace_premium_rounded,
+          title: 'Premium Features',
+          subtitle: 'Free Forever',
+          onTap: () => _showPremiumFeatures(context),
+        ),
+        _ProfileMenuItem(
+          icon: Icons.settings_outlined,
+          title: 'Settings',
+          subtitle: 'Music, offline mode and lyrics',
+          onTap: () => _openSettings(context),
+        ),
+        _ProfileMenuItem(
+          icon: Icons.palette_outlined,
+          title: 'Appearance',
+          subtitle: 'Champagne Noir',
+          onTap: () => _showAppearance(context),
+        ),
+        _ProfileMenuItem(
+          icon: Icons.notifications_none_rounded,
+          title: 'Notifications',
+          subtitle: 'Playback and lock-screen controls',
+          onTap: () => _showNotifications(context),
+        ),
+        _ProfileMenuItem(
+          icon: Icons.info_outline_rounded,
+          title: 'About AUREL',
+          subtitle: 'Version 1.0.0 • Feel the Music',
+          onTap: () => _showAbout(context),
+        ),
+        const SizedBox(height: 18),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
           decoration: BoxDecoration(
             color: AurelColors.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AurelColors.divider),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             children: [
-              const Icon(
-                Icons.offline_pin_rounded,
-                color: AurelColors.champagne,
-              ),
-              const SizedBox(width: 12),
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Offline mode',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Only show and play music saved inside AUREL.',
-                      style: TextStyle(
-                        color: AurelColors.muted,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Your AUREL collection',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
                 ),
               ),
-              Switch(
-                value: controller.offlineMode,
-                activeThumbColor: AurelColors.champagneLight,
-                onChanged: (value) =>
-                    context.read<AurelController>().setOfflineMode(value),
+              Text(
+                '${controller.favoriteTracks.length} liked • ${controller.downloadedTracks.length} offline',
+                style: const TextStyle(
+                  color: AurelColors.muted,
+                  fontSize: 10,
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 26),
-        const Text(
-          'Music source',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Jamendo provides discovery and streaming from independent artists. You can use your own application client ID.',
-          style: TextStyle(color: AurelColors.muted, fontSize: 12, height: 1.5),
-        ),
-        const SizedBox(height: 13),
-        TextField(
-          controller: _clientController,
-          autocorrect: false,
-          decoration: const InputDecoration(
-            labelText: 'Jamendo client ID',
-            hintText: 'Enter your app client ID',
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: _saving ? null : _saveClientId,
-            child: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Save music settings'),
-          ),
-        ),
-        const SizedBox(height: 28),
-        const Text(
-          'Licensed lyrics',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'AUREL uses Musixmatch’s licensed lyrics API. Add your own developer key to enable lyrics. Your key is stored in encrypted device storage and is never committed to the repository.',
-          style: TextStyle(color: AurelColors.muted, fontSize: 12, height: 1.55),
-        ),
-        const SizedBox(height: 7),
-        Text(
-          controller.hasLyricsApiKey
-              ? 'API key saved on this device'
-              : 'No lyrics API key configured',
-          style: TextStyle(
-            color: controller.hasLyricsApiKey
-                ? AurelColors.champagneLight
-                : AurelColors.muted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _lyricsKeyController,
-          autocorrect: false,
-          enableSuggestions: false,
-          obscureText: !_showLyricsKey,
-          decoration: InputDecoration(
-            labelText: 'Musixmatch API key',
-            hintText: 'Paste your personal API key',
-            suffixIcon: IconButton(
-              tooltip: _showLyricsKey ? 'Hide key' : 'Show key',
-              onPressed: () => setState(() => _showLyricsKey = !_showLyricsKey),
-              icon: Icon(
-                _showLyricsKey
-                    ? Icons.visibility_off_rounded
-                    : Icons.visibility_rounded,
-                color: AurelColors.muted,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: _savingLyrics ? null : _saveLyricsKey,
-            child: _savingLyrics
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Save lyrics key'),
-          ),
-        ),
-        if (controller.hasLyricsApiKey)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _clearLyricsKey,
-              icon: const Icon(Icons.delete_outline_rounded, size: 17),
-              label: const Text('Remove saved lyrics key'),
-              style: TextButton.styleFrom(
-                foregroundColor: AurelColors.muted,
-              ),
-            ),
-          ),
-        const SizedBox(height: 6),
-        const Text(
-          'Get a key through the official Musixmatch Developer Portal. Synchronized subtitles may depend on your API plan. For a public release, route provider requests through a secure server instead of distributing an API key in the app.',
-          style: TextStyle(color: AurelColors.muted, fontSize: 10, height: 1.5),
-        ),
-        const SizedBox(height: 26),
-        const Text(
-          'AUREL',
-          style: TextStyle(
-            color: AurelColors.champagne,
-            fontSize: 11,
-            letterSpacing: 2.4,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        _SettingRow(
-          icon: Icons.favorite_outline_rounded,
-          title: 'Liked tracks',
-          value: '${controller.favoriteTracks.length}',
-        ),
-        _SettingRow(
-          icon: Icons.download_done_rounded,
-          title: 'Offline tracks',
-          value: '${controller.downloadedTracks.length}',
-        ),
-        const SizedBox(height: 18),
-        const Text(
-          'AUREL saves downloads inside its private app storage. It does not scan or import audio from other apps on your phone.',
-          style: TextStyle(color: AurelColors.muted, fontSize: 11, height: 1.55),
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Version 1.0.0 • Feel the Music',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AurelColors.muted, fontSize: 10),
         ),
       ],
     );
   }
 }
 
-class _SettingRow extends StatelessWidget {
-  const _SettingRow({
+class _ProfileMenuItem extends StatelessWidget {
+  const _ProfileMenuItem({
     required this.icon,
     required this.title,
-    required this.value,
+    required this.subtitle,
+    required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String value;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: AurelColors.champagne),
-      title: Text(title,
-          style: const TextStyle(color: Colors.white, fontSize: 13)),
-      trailing: Text(value,
-          style: const TextStyle(color: AurelColors.muted, fontSize: 12)),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Material(
+        color: AurelColors.surface,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(15),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 13,
+              vertical: 13,
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: AurelColors.champagne, size: 21),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: AurelColors.muted,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AurelColors.muted,
+                  size: 21,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

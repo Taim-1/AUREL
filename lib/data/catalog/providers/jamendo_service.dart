@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../models/track.dart';
-import '../repositories/library_repository.dart';
+import '../../models/track.dart';
+import '../../repositories/library_repository.dart';
 
 class JamendoService {
   JamendoService(this._repository)
@@ -19,14 +19,9 @@ class JamendoService {
   final LibraryRepository _repository;
   final Dio _dio;
 
-  // Jamendo documents this ID for read-only testing only.
-  // Replace it with an application ID before a public release.
-  static const _developmentClientId = '709fa152';
-
-  String _clientId = const String.fromEnvironment(
-    'JAMENDO_CLIENT_ID',
-    defaultValue: _developmentClientId,
-  );
+  // A production application ID must be configured through the build.
+  // The public example ID is for testing only and is intentionally not used.
+  String _clientId = const String.fromEnvironment('JAMENDO_CLIENT_ID');
   String get clientId => _clientId;
 
   Future<void> initialize() async {
@@ -39,7 +34,7 @@ class JamendoService {
   Future<void> setClientId(String value) async {
     final normalized = value.trim();
     if (normalized.isEmpty) {
-      throw ArgumentError('Enter a Jamendo client ID.');
+      throw ArgumentError('Enter the AUREL catalogue access ID.');
     }
     _clientId = normalized;
     await _repository.saveClientId(normalized);
@@ -82,6 +77,11 @@ class JamendoService {
   String _safeOffset(int value) => value.clamp(0, 1000000).toString();
 
   Future<List<Track>> _requestTracks(Map<String, String> extra) async {
+    if (_clientId.isEmpty) {
+      throw const JamendoException(
+        'A music collection is not configured for this build yet.',
+      );
+    }
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         'tracks/',
@@ -105,7 +105,7 @@ class JamendoService {
         final message = headers['error_message']?.toString();
         throw JamendoException(
           message == null || message.isEmpty
-              ? 'Jamendo could not complete this request.'
+              ? 'The music catalogue could not complete this request.'
               : message,
         );
       }
@@ -123,10 +123,10 @@ class JamendoService {
     } on DioException catch (error) {
       final status = error.response?.statusCode;
       final detail = status == 401 || status == 403
-          ? 'Jamendo rejected the client ID. Add your own ID in Profile settings.'
+          ? 'The music catalogue access settings need to be checked.'
           : status == 429
               ? 'Music search is temporarily busy. Try again in a moment.'
-              : 'Could not reach Jamendo. Check your connection and try again.';
+              : 'Could not reach the music catalogue. Check your connection and try again.';
       throw JamendoException(detail);
     } on FormatException {
       throw const JamendoException(

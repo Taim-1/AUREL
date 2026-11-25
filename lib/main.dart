@@ -8,10 +8,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'data/repositories/library_repository.dart';
+import 'data/services/aurel_account_service.dart';
 import 'data/services/aurel_controller.dart';
+import 'data/catalog/providers/audius_service.dart';
+import 'data/catalog/providers/apple_music_catalog_service.dart';
+import 'data/services/catalog_token_service.dart';
+import 'data/catalog/music_catalog_service.dart';
+import 'data/catalog/providers/openverse_service.dart';
+import 'data/catalog/providers/soundcloud_service.dart';
+import 'data/catalog/providers/spotify_catalog_service.dart';
 import 'data/services/download_service.dart';
-import 'data/services/jamendo_service.dart';
+import 'data/catalog/providers/jamendo_service.dart';
 import 'data/services/lyrics_service.dart';
+import 'data/catalog/providers/internet_archive_service.dart';
+import 'data/catalog/providers/wikimedia_commons_service.dart';
+import 'data/catalog/providers/music_brainz_service.dart';
 import 'data/services/playback_controller.dart';
 
 Future<void> main() async {
@@ -33,14 +44,35 @@ Future<void> main() async {
 
   final preferences = SharedPreferencesAsync();
   final repository = LibraryRepository(preferences);
+  final account = AurelAccountService();
+  await account.initialize();
+
   final playback = PlaybackController();
   final jamendo = JamendoService(repository);
+  final tokens = CatalogTokenService(account: account);
+  final audius = AudiusService();
+  final soundcloud = SoundCloudService(tokens: tokens);
+  final spotify = SpotifyCatalogService(tokens: tokens);
+  final appleMusic = AppleMusicCatalogService(tokens: tokens);
+  final catalog = MusicCatalogService(
+    jamendo: jamendo,
+    audius: audius,
+    soundcloud: soundcloud,
+    spotify: spotify,
+    appleMusic: appleMusic,
+    openverse: OpenverseService(),
+    internetArchive: InternetArchiveService(),
+    wikimediaCommons: WikimediaCommonsService(),
+    musicBrainz: MusicBrainzService(),
+  );
   final controller = AurelController(
     repository: repository,
     jamendo: jamendo,
     downloads: DownloadService(),
     playback: playback,
     lyrics: LyricsService(),
+    account: account,
+    catalog: catalog,
   );
 
   runApp(

@@ -177,6 +177,7 @@ class PlaybackController extends ChangeNotifier {
     final artUri = Uri.tryParse(track.artworkUrl);
     return AudioSource.uri(
       uri,
+      headers: track.playbackHeaders.isEmpty ? null : track.playbackHeaders,
       tag: MediaItem(
         id: track.id,
         title: track.title,

@@ -20,9 +20,57 @@ class TrackTile extends StatelessWidget {
   final bool showDownload;
   final bool compact;
 
+  void _showTrackInformation(BuildContext context) {
+    final details = <String>[
+      'Artist: ${track.artist}',
+      if (track.album.isNotEmpty) 'Album: ${track.album}',
+      if (track.durationMs > 0)
+        'Duration: ${Duration(milliseconds: track.durationMs).inMinutes}:'
+            '${(Duration(milliseconds: track.durationMs).inSeconds % 60).toString().padLeft(2, '0')}',
+      if (track.licenseName.isNotEmpty) 'Usage license: ${track.licenseName}',
+      if (track.attribution.isNotEmpty) 'Required credit: ${track.attribution}',
+      if (track.sourceUrl.isNotEmpty && track.attribution.isNotEmpty)
+        'Work details: ${track.sourceUrl}',
+      if (track.downloadAllowed) 'Offline download: Available',
+      if (!track.downloadAllowed) 'Offline download: Not available for this recording',
+    ];
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AurelColors.surfaceRaised,
+        title: Text(
+          track.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            details.join('\n\n'),
+            style: const TextStyle(
+              color: AurelColors.muted,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handlePlaylistAction(BuildContext context, String value) async {
     final controller = context.read<AurelController>();
 
+    if (value == '__track_info__') {
+      _showTrackInformation(context);
+      return;
+    }
     if (value == '__play_next__' || value == '__queue__') {
       try {
         if (value == '__play_next__') {
@@ -105,6 +153,17 @@ class TrackTile extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(17),
       onTap: () async {
+        if (!track.canPlay) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'This recording is listed in the AUREL catalogue, but '
+                'an authorized in-app audio stream is not available.',
+              ),
+            ),
+          );
+          return;
+        }
         try {
           await context.read<AurelController>().playTrack(track, queue: queue);
         } catch (error) {
@@ -146,7 +205,7 @@ class TrackTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AurelColors.muted,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ],
@@ -182,6 +241,11 @@ class TrackTile extends StatelessWidget {
                 const PopupMenuItem<String>(
                   value: '__create__',
                   child: Text('Create new playlist'),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: '__track_info__',
+                  child: Text('Track information'),
                 ),
                 if (controller.playlists.isNotEmpty)
                   const PopupMenuDivider(),
