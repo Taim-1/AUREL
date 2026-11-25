@@ -16,14 +16,28 @@ class DownloadsScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 28),
       children: [
-        const Text(
-          'Downloads',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 29,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.7,
-          ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Downloads',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 29,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.7,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Settings',
+              onPressed: () => controller.selectTab(4),
+              icon: const Icon(
+                Icons.settings_outlined,
+                color: AurelColors.champagneLight,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         const Text(
@@ -71,6 +85,28 @@ class DownloadsScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 23),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Downloaded Songs',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
+              ),
+            ),
+            Text(
+              '${tracks.length}',
+              style: const TextStyle(
+                color: AurelColors.muted,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         if (tracks.isEmpty)
           Container(
             padding: const EdgeInsets.all(22),
