@@ -68,6 +68,7 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
         children: [
           _HomeHeader(
+            userName: controller.account.userName,
             onSettings: () =>
                 context.read<AurelController>().selectTab(4),
           ),
@@ -198,8 +199,12 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.onSettings});
+  const _HomeHeader({
+    required this.userName,
+    required this.onSettings,
+  });
 
+  final String userName;
   final VoidCallback onSettings;
 
   @override
@@ -211,7 +216,7 @@ class _HomeHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hello, TAIM 👋',
+                'Hello, $userName 👋',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 21,
