@@ -176,8 +176,8 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
                   ),
                 ),
                 borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 13,
                   ),
