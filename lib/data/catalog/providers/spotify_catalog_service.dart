@@ -66,12 +66,12 @@ class SpotifyCatalogService {
       final status = error.response?.statusCode;
       throw SpotifyCatalogException(
         status == 401
-            ? 'Spotify catalog authorization expired.'
+            ? 'Recording metadata authorization expired.'
             : status == 403
-                ? 'Spotify has not granted this AUREL application API access.'
+                ? 'Recording metadata access is not configured for this build.'
                 : status == 429
-                    ? 'Spotify is rate-limiting catalog searches.'
-                    : 'Spotify catalog search is unavailable.',
+                    ? 'Recording metadata search is busy. Try again shortly.'
+                    : 'Recording metadata search is unavailable.',
       );
     }
   }
