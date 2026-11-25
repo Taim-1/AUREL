@@ -35,7 +35,7 @@ class DownloadService {
     final safeTitle = _safeFilePart(track.title);
     final safeId = _safeFilePart(track.id);
     final file = File(
-      '${folder.path}/${safeArtist}_${safeTitle}_${safeId}.mp3',
+      '${folder.path}/$safeArtist' '_$safeTitle' '_$safeId.mp3',
     );
 
     try {
@@ -87,4 +87,13 @@ class DownloadService {
     final file = File(path);
     if (await file.exists()) await file.delete();
   }
+}
+
+class DownloadException implements Exception {
+  const DownloadException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
