@@ -3,7 +3,7 @@ import 'dart:collection';
 
 import 'package:dio/dio.dart';
 
-import '../../../models/track.dart';
+import '../../models/track.dart';
 
 /// Non-commercial recording metadata lookup.
 ///
