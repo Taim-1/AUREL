@@ -48,7 +48,7 @@ class OpenverseService {
       final raw = body?['results'];
       if (raw is! List) {
         throw const OpenverseException(
-          'Openverse returned an unreadable audio catalogue.',
+          'The open music catalogue returned an unreadable result.',
         );
       }
       return raw
@@ -63,10 +63,10 @@ class OpenverseService {
       final status = error.response?.statusCode;
       throw OpenverseException(
         status == 429
-            ? 'Openverse search is rate-limited. Try again shortly.'
+            ? 'Open music search is busy. Try again shortly.'
             : status == 401 || status == 403
-                ? 'Openverse requires an API access token for this request.'
-                : 'Openverse could not be reached. Check your connection.',
+                ? 'Open music access is not configured for this request.'
+                : 'The open music catalogue could not be reached. Check your connection.',
       );
     }
   }
