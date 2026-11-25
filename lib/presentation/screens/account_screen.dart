@@ -81,15 +81,9 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _afterAuthentication() async {
     final controller = context.read<AurelController>();
     final account = controller.account;
-    final preferredName = account.currentUser?.displayName?.trim();
-    if ((account.userName == 'Music Lover' || account.userName.isEmpty) &&
-        preferredName != null &&
-        preferredName.isNotEmpty) {
-      await account.setUserName(preferredName);
-      _usernameController.text = preferredName;
-    } else {
-      _usernameController.text = await account.loadUserName();
-    }
+    // Never replace the username chosen by the listener with a Google
+    // profile name. New Google users can choose their AUREL name below.
+    _usernameController.text = await account.loadUserName();
     await controller.restoreCloudLibrary();
     controller.notifyAccountChanged();
     if (mounted) {
