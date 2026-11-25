@@ -10,10 +10,15 @@ class DownloadService {
     BaseOptions(
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(minutes: 5),
+      sendTimeout: const Duration(seconds: 20),
     ),
   );
 
-  Future<Track> download(Track track) async {
+  Future<Track> download(
+    Track track, {
+    CancelToken? cancelToken,
+    void Function(int received, int total)? onProgress,
+  }) async {
     if (!track.downloadAllowed || track.downloadUrl.isEmpty) {
       throw const DownloadException(
         'This artist has not enabled downloads for this track.',
@@ -26,32 +31,36 @@ class DownloadService {
       await folder.create(recursive: true);
     }
 
-    final safeTitle = track.title
-        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
-        .trim()
-        .replaceAll(RegExp(r'\\s+'), '_');
-    final safeArtist = track.artist
-        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
-        .trim()
-        .replaceAll(RegExp(r'\\s+'), '_');
-    final file = File('${folder.path}/${safeArtist}_${safeTitle}_${track.id}.mp3');
+    final safeArtist = _safeFilePart(track.artist);
+    final safeTitle = _safeFilePart(track.title);
+    final safeId = _safeFilePart(track.id);
+    final file = File(
+      '${folder.path}/${safeArtist}_${safeTitle}_${safeId}.mp3',
+    );
 
     try {
       await _dio.download(
         track.downloadUrl,
         file.path,
+        cancelToken: cancelToken,
+        onReceiveProgress: onProgress,
         options: Options(
           followRedirects: true,
           validateStatus: (status) =>
               status != null && status >= 200 && status < 300,
         ),
       );
+
       if (!await file.exists() || await file.length() == 0) {
         throw const DownloadException('The downloaded audio file is empty.');
       }
+
       return track.copyWith(localPath: file.path, isDownloaded: true);
     } on DioException catch (error) {
       if (await file.exists()) await file.delete();
+      if (error.type == DioExceptionType.cancel) {
+        throw const DownloadException('Download cancelled.');
+      }
       throw DownloadException(
         error.response?.statusCode == 403
             ? 'The download is no longer available for this track.'
@@ -61,6 +70,15 @@ class DownloadService {
       if (await file.exists()) await file.delete();
       rethrow;
     }
+  }
+
+  String _safeFilePart(String value) {
+    final clean = value
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
+        .trim()
+        .replaceAll(RegExp(r'\s+'), '_');
+    if (clean.isEmpty) return 'track';
+    return clean.length > 64 ? clean.substring(0, 64) : clean;
   }
 
   Future<void> delete(Track track) async {

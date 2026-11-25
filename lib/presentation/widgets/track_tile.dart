@@ -162,30 +162,43 @@ class TrackTile extends StatelessWidget {
             ),
             if (showDownload)
               IconButton(
-                tooltip: track.downloadAllowed ? 'Download' : 'Download not allowed',
-                onPressed: !track.downloadAllowed || downloading
+                tooltip: downloading
+                    ? 'Cancel download'
+                    : track.downloadAllowed
+                        ? 'Download for offline listening'
+                        : 'Download not allowed',
+                onPressed: !track.downloadAllowed
                     ? null
-                    : () async {
-                        final message = await context
+                    : downloading
+                        ? () => context
                             .read<AurelController>()
-                            .downloadTrack(track);
-                        if (context.mounted && message != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(message)),
-                          );
-                        } else if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Saved for offline listening')),
-                          );
-                        }
-                      },
+                            .cancelDownload(track.id)
+                        : () async {
+                            final message = await context
+                                .read<AurelController>()
+                                .downloadTrack(track);
+                            if (!context.mounted) return;
+                            if (message != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(message)),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Saved for offline listening'),
+                                ),
+                              );
+                            }
+                          },
                 icon: downloading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                          value: controller.downloadProgress[track.id],
+                          strokeWidth: 2.2,
                           color: AurelColors.champagne,
+                          backgroundColor: AurelColors.divider,
                         ),
                       )
                     : Icon(
