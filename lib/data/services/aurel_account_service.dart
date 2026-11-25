@@ -52,6 +52,7 @@ class AurelAccountService {
 
   bool get isConfigured => _firebaseReady && _auth != null && _firestore != null;
   bool get isGoogleAvailable => isConfigured && _googleReady;
+  String? get firebaseProjectId => _firestore?.app.options.projectId;
   User? get currentUser => _auth?.currentUser;
   bool get isSignedIn => currentUser != null;
 
