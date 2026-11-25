@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
@@ -102,7 +102,7 @@ class HomeScreen extends StatelessWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: tracks.length > 8 ? 8 : tracks.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 13),
+                separatorBuilder: (_, _) => const SizedBox(width: 13),
                 itemBuilder: (context, index) {
                   final track = tracks[index];
                   return SizedBox(

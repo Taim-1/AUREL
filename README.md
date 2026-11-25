@@ -13,7 +13,7 @@ AUREL uses a deep charcoal canvas with restrained champagne-metallic accents, ge
 
 ## Run locally
 
-Use Flutter **3.50.1 stable** (Dart 3.14).
+Use Flutter **3.50.1 stable** (Dart 3.14). The app uses Flutter's standalone `material_ui` package.
 
 ```bash
 flutter create --platforms=android --org com.aurel --project-name aurel .

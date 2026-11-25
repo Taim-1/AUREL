@@ -41,7 +41,7 @@ jobs:
           cp platform/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           rm -f test/widget_test.dart
 
-      - name: Install Android API 37
+      - name: Install Android API 35
         shell: bash
         run: |
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"

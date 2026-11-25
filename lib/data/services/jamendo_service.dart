@@ -79,7 +79,7 @@ class JamendoService {
           : 'Could not reach Jamendo. Check your connection and try again.';
       throw JamendoException(detail);
     } on FormatException {
-      throw JamendoException('The music service returned an unreadable response.');
+      throw const JamendoException('The music service returned an unreadable response.');
     }
   }
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/aurel_theme.dart';
 
@@ -27,7 +27,7 @@ class AlbumArt extends StatelessWidget {
             : Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _fallback(),
+                errorBuilder: (_, _, _) => _fallback(),
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
                   return _fallback();
