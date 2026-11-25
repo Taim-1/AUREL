@@ -212,7 +212,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
         ] else if (_selectedTab == 2) ...[
-          _LibrarySectionHeading(title: 'Albums', count: 'Saved music'),
+          const _LibrarySectionHeading(title: 'Albums', count: 'Saved music'),
           ..._buildGroups(
             context,
             _groupTracks(
@@ -221,7 +221,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ),
         ] else ...[
-          _LibrarySectionHeading(title: 'Artists', count: 'Saved music'),
+          const _LibrarySectionHeading(title: 'Artists', count: 'Saved music'),
           ..._buildGroups(
             context,
             _groupTracks(saved, (track) => track.artist),
