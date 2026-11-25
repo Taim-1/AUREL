@@ -22,6 +22,34 @@ class TrackTile extends StatelessWidget {
 
   Future<void> _handlePlaylistAction(BuildContext context, String value) async {
     final controller = context.read<AurelController>();
+
+    if (value == '__play_next__' || value == '__queue__') {
+      try {
+        if (value == '__play_next__') {
+          await controller.playNext(track);
+        } else {
+          await controller.addToQueue(track);
+        }
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                value == '__play_next__'
+                    ? 'Added to play next'
+                    : 'Added to the queue',
+              ),
+            ),
+          );
+        }
+      } catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error.toString())),
+          );
+        }
+      }
+      return;
+    }
     if (value == '__create__') {
       final nameController = TextEditingController();
       final name = await showDialog<String>(
@@ -134,7 +162,7 @@ class TrackTile extends StatelessWidget {
               ),
             ),
             PopupMenuButton<String>(
-              tooltip: 'Add to playlist',
+              tooltip: 'Track actions',
               icon: const Icon(
                 Icons.playlist_add_rounded,
                 color: AurelColors.champagne,
@@ -142,6 +170,15 @@ class TrackTile extends StatelessWidget {
               ),
               onSelected: (value) => _handlePlaylistAction(context, value),
               itemBuilder: (_) => [
+                const PopupMenuItem<String>(
+                  value: '__play_next__',
+                  child: Text('Play next'),
+                ),
+                const PopupMenuItem<String>(
+                  value: '__queue__',
+                  child: Text('Add to queue'),
+                ),
+                const PopupMenuDivider(),
                 const PopupMenuItem<String>(
                   value: '__create__',
                   child: Text('Create new playlist'),

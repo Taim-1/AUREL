@@ -12,6 +12,7 @@ class UpNextSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final playback = context.watch<AurelController>().playback;
     final queue = playback.queue;
+    final hasUpcoming = playback.currentIndex + 1 < queue.length;
 
     return SafeArea(
       top: false,
@@ -52,12 +53,19 @@ class UpNextSheet extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (hasUpcoming && !playback.isShuffleEnabled)
+                  TextButton(
+                    onPressed: playback.clearUpcoming,
+                    child: const Text('Clear upcoming'),
+                  ),
               ],
             ),
             const SizedBox(height: 5),
-            const Text(
-              'Tap any track to play it next.',
-              style: TextStyle(color: AurelColors.muted, fontSize: 12),
+            Text(
+              playback.isShuffleEnabled
+                  ? 'Shuffle is on. Turn it off to arrange or remove upcoming tracks.'
+                  : 'Tap a track to play it now. Drag upcoming tracks to rearrange.',
+              style: const TextStyle(color: AurelColors.muted, fontSize: 12),
             ),
             const SizedBox(height: 15),
             if (queue.isEmpty)
@@ -72,91 +80,134 @@ class UpNextSheet extends StatelessWidget {
               )
             else
               Flexible(
-                child: ListView.separated(
+                child: ReorderableListView.builder(
                   shrinkWrap: true,
+                  buildDefaultDragHandles: false,
                   itemCount: queue.length,
-                  separatorBuilder: (_, _) =>
-                      const Divider(color: AurelColors.divider, height: 1),
+                  onReorder: playback.isShuffleEnabled
+                      ? null
+                      : (oldIndex, newIndex) {
+                          var destination = newIndex;
+                          if (destination > oldIndex) destination--;
+                          playback.moveUpcoming(oldIndex, destination);
+                        },
                   itemBuilder: (context, index) {
                     final track = queue[index];
                     final selected = index == playback.currentIndex;
-                    return InkWell(
-                      onTap: () {
-                        playback.jumpTo(index);
-                        Navigator.of(context).pop();
-                      },
-                      borderRadius: BorderRadius.circular(13),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 9,
-                          horizontal: 5,
+                    final upcoming = index > playback.currentIndex;
+                    final canEdit =
+                        upcoming && !playback.isShuffleEnabled;
+
+                    return Container(
+                      key: ValueKey('${track.id}-$index'),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: AurelColors.divider),
                         ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 25,
-                              child: selected
-                                  ? const Icon(
-                                      Icons.equalizer_rounded,
-                                      color: AurelColors.champagne,
-                                      size: 19,
-                                    )
-                                  : Text(
-                                      '${index + 1}',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: AurelColors.muted,
-                                        fontSize: 11,
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          playback.jumpTo(index);
+                          Navigator.of(context).pop();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 3,
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                child: selected
+                                    ? const Icon(
+                                        Icons.equalizer_rounded,
+                                        color: AurelColors.champagne,
+                                        size: 19,
+                                      )
+                                    : Text(
+                                        '${index + 1}',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: AurelColors.muted,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(width: 7),
+                              AlbumArt(
+                                imageUrl: track.artworkUrl,
+                                size: 43,
+                                radius: 10,
+                              ),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      track.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: selected
+                                            ? AurelColors.champagneLight
+                                            : Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
                                       ),
                                     ),
-                            ),
-                            const SizedBox(width: 8),
-                            AlbumArt(
-                              imageUrl: track.artworkUrl,
-                              size: 43,
-                              radius: 10,
-                            ),
-                            const SizedBox(width: 11),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    track.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: selected
-                                          ? AurelColors.champagneLight
-                                          : Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12,
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      track.artist,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AurelColors.muted,
+                                        fontSize: 10,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    track.artist,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AurelColors.muted,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (selected)
-                              const Text(
-                                'PLAYING',
-                                style: TextStyle(
-                                  color: AurelColors.champagne,
-                                  fontSize: 8,
-                                  letterSpacing: 1.2,
-                                  fontWeight: FontWeight.w800,
+                                  ],
                                 ),
                               ),
-                          ],
+                              if (selected)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 6),
+                                  child: Text(
+                                    'PLAYING',
+                                    style: TextStyle(
+                                      color: AurelColors.champagne,
+                                      fontSize: 8,
+                                      letterSpacing: 1.2,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                )
+                              else if (canEdit) ...[
+                                IconButton(
+                                  tooltip: 'Remove from upcoming',
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: () => playback.removeUpcoming(index),
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    color: AurelColors.muted,
+                                    size: 19,
+                                  ),
+                                ),
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 5),
+                                    child: Icon(
+                                      Icons.drag_handle_rounded,
+                                      color: AurelColors.muted,
+                                      size: 21,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     );
