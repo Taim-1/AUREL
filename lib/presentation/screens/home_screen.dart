@@ -217,7 +217,7 @@ class _HomeHeader extends StatelessWidget {
             children: [
               Text(
                 'Hello, $userName 👋',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 21,
                   fontWeight: FontWeight.w700,
