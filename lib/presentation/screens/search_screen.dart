@@ -153,25 +153,12 @@ class _SearchScreenState extends State<SearchScreen> {
                 : null,
           ),
           const SizedBox(height: 5),
-          if (controller.sourceCounts.values.any((count) => count > 0))
-            Text(
-              'Found across: ${controller.sourceCounts.entries.where((entry) => entry.value > 0).map((entry) => entry.key).join(' · ')}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AurelColors.champagne,
-                fontSize: 10,
-                height: 1.3,
-              ),
-            ),
           if (controller.sourceErrors.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
               child: Text(
-                'Temporarily unavailable: ${controller.sourceErrors.keys.join(' · ')}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                'Some music collections are temporarily unavailable.',
+                style: TextStyle(
                   color: AurelColors.muted,
                   fontSize: 10,
                   height: 1.3,
