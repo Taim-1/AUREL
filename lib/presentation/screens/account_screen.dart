@@ -282,7 +282,18 @@ class _AccountScreenState extends State<AccountScreen> {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
         children: [
           if (!account.isConfigured)
-            _ConfigurationNotice(message: account.initializationError)
+            _ConfigurationNotice(
+              message: account.initializationError,
+              usernameController: _usernameController,
+              onSaveUsername: () => _run(() async {
+                await account.setUserName(_usernameController.text);
+                controller.notifyAccountChanged();
+                if (mounted) {
+                  setState(() => _message = 'Your username has been saved on this device.');
+                }
+              }),
+              busy: _busy,
+            )
           else if (user == null)
             _SignedOutCard(
               usernameController: _usernameController,
@@ -365,9 +376,17 @@ class _AccountScreenState extends State<AccountScreen> {
 }
 
 class _ConfigurationNotice extends StatelessWidget {
-  const _ConfigurationNotice({required this.message});
+  const _ConfigurationNotice({
+    required this.message,
+    required this.usernameController,
+    required this.onSaveUsername,
+    required this.busy,
+  });
 
   final String? message;
+  final TextEditingController usernameController;
+  final VoidCallback onSaveUsername;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -404,6 +423,25 @@ class _ConfigurationNotice extends StatelessWidget {
               color: AurelColors.muted,
               fontSize: 12,
               height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: usernameController,
+            maxLength: 24,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Choose your username',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+              counterText: '',
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: busy ? null : onSaveUsername,
+              child: const Text('Save username on this device'),
             ),
           ),
           if (message != null) ...[
