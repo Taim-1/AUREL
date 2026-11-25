@@ -29,7 +29,7 @@ cp platform/android/MainActivity.kt android/app/src/main/kotlin/com/aurel/aurel/
 cp platform/android/AndroidManifest.xml android/app/src/main/
 ```
 
-Set `compileSdk = 35` in `android/app/build.gradle.kts` to satisfy the current permission plugin. The GitHub Actions workflow performs this setup automatically.
+Set `compileSdk = 36` in `android/app/build.gradle.kts` to satisfy the current permission plugin. The GitHub Actions workflow performs this setup automatically.
 
 ## Jamendo API
 
