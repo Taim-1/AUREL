@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dio/dio.dart';
 
 import '../models/track.dart';
@@ -295,8 +293,7 @@ class MusicCatalogService {
 
   String _normalize(String value) => value
       .toLowerCase()
-      .replaceAll(RegExp(r'\([^)]*\)'), ' ')
-      .replaceAll(RegExp(r'\[[^]]*\]'), ' ')
+      // Keep version labels such as (Live), (Remix), and (Acoustic).
       .replaceAll(RegExp(r'[^a-z0-9\u0600-\u06FF]+'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
