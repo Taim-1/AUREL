@@ -27,10 +27,36 @@ class AurelController extends ChangeNotifier {
 
   static const _pageSize = 30;
 
+  String? _lastHistoryTrackId;
+
   void _onPlaybackChanged() {
-    final trackId = playback.currentTrack?.id;
+    final track = playback.currentTrack;
+    final trackId = track?.id;
     if (trackId != _lyricsTrackId) {
       unawaited(loadLyricsForCurrentTrack());
+    }
+    if (track != null && trackId != _lastHistoryTrackId) {
+      unawaited(_recordRecentlyPlayed(track));
+    }
+    notifyListeners();
+  }
+
+  Future<void> _recordRecentlyPlayed(Track track) async {
+    if (_lastHistoryTrackId == track.id &&
+        recentlyPlayed.isNotEmpty &&
+        recentlyPlayed.first.id == track.id) {
+      return;
+    }
+    _lastHistoryTrackId = track.id;
+    recentlyPlayed = [
+      track,
+      ...recentlyPlayed.where((item) => item.id != track.id),
+    ].take(100).toList(growable: false);
+    await repository.saveRecentlyPlayed(recentlyPlayed);
+    try {
+      await syncCloudLibrary();
+    } catch (error) {
+      cloudSyncError = error.toString().replaceFirst('Exception: ', '');
     }
     notifyListeners();
   }
@@ -434,13 +460,7 @@ class AurelController extends ChangeNotifier {
         ? source.where((item) => item.isDownloaded).toList(growable: false)
         : source;
     await playback.playTrack(track, tracks);
-
-    recentlyPlayed = [
-      track,
-      ...recentlyPlayed.where((item) => item.id != track.id),
-    ].take(100).toList(growable: false);
-    await repository.saveRecentlyPlayed(recentlyPlayed);
-    await syncCloudLibrary();
+    await _recordRecentlyPlayed(track);
     notifyListeners();
   }
 
