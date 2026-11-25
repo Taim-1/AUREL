@@ -11,6 +11,42 @@ import '../widgets/up_next_sheet.dart';
 class NowPlayingScreen extends StatelessWidget {
   const NowPlayingScreen({super.key});
 
+  void _showLyrics(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AurelColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => const LyricsSheet(),
+    );
+  }
+
+  void _showQueue(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AurelColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => const UpNextSheet(),
+    );
+  }
+
+  void _showPlaybackSettings(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AurelColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => const PlaybackSettingsSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
@@ -27,11 +63,14 @@ class NowPlayingScreen extends StatelessWidget {
     }
 
     final duration = Duration(milliseconds: track.durationMs);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final artworkSize = (screenWidth * 0.70).clamp(220.0, 310.0).toDouble();
 
     return Scaffold(
       backgroundColor: AurelColors.background,
       appBar: AppBar(
         leading: IconButton(
+          tooltip: 'Collapse player',
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
         ),
@@ -52,68 +91,54 @@ class NowPlayingScreen extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Sound and playback settings',
-            onPressed: () => showModalBottomSheet<void>(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: AurelColors.surface,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-              ),
-              builder: (_) => const PlaybackSettingsSheet(),
-            ),
+            tooltip: 'Up next',
+            onPressed: () => _showQueue(context),
             icon: const Icon(
-              Icons.tune_rounded,
+              Icons.queue_music_rounded,
               color: AurelColors.champagne,
             ),
           ),
           IconButton(
-            tooltip: controller.isFavorite(track)
-                ? 'Remove from favourites'
-                : 'Add to favourites',
-            onPressed: () => context.read<AurelController>().toggleFavorite(track),
-            icon: Icon(
-              controller.isFavorite(track)
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              color: controller.isFavorite(track)
-                  ? const Color(0xFFE58A9C)
-                  : Colors.white,
+            tooltip: 'Sound and playback settings',
+            onPressed: () => _showPlaybackSettings(context),
+            icon: const Icon(
+              Icons.tune_rounded,
+              color: AurelColors.champagne,
             ),
           ),
         ],
       ),
       body: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(25, 8, 25, 26),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(23, 8, 23, 26),
           child: Column(
             children: [
-              const Spacer(),
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(27),
                     border: Border.all(
-                      color: AurelColors.champagne.withValues(alpha: 0.22),
+                      color: AurelColors.champagne.withValues(alpha: 0.20),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AurelColors.champagne.withValues(alpha: 0.10),
-                        blurRadius: 42,
+                        color: AurelColors.champagne.withValues(alpha: 0.09),
+                        blurRadius: 36,
                         spreadRadius: 1,
                       ),
                     ],
                   ),
                   child: AlbumArt(
                     imageUrl: track.artworkUrl,
-                    size: MediaQuery.sizeOf(context).width * 0.68,
-                    radius: 23,
+                    size: artworkSize,
+                    radius: 21,
                   ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 25),
               Row(
                 children: [
                   Expanded(
@@ -122,23 +147,44 @@ class NowPlayingScreen extends StatelessWidget {
                       children: [
                         Text(
                           track.title,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 21,
+                            height: 1.16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.45,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 5),
                         Text(
                           track.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: AurelColors.muted,
                             fontSize: 14,
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  IconButton(
+                    tooltip: controller.isFavorite(track)
+                        ? 'Remove from favourites'
+                        : 'Add to favourites',
+                    onPressed: () =>
+                        context.read<AurelController>().toggleFavorite(track),
+                    icon: Icon(
+                      controller.isFavorite(track)
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color: controller.isFavorite(track)
+                          ? const Color(0xFFE58A9C)
+                          : AurelColors.champagneLight,
+                      size: 27,
                     ),
                   ),
                 ],
@@ -156,14 +202,16 @@ class NowPlayingScreen extends StatelessWidget {
                   final currentMs = position.inMilliseconds
                       .clamp(0, totalMs.toInt())
                       .toDouble();
+
                   return Column(
                     children: [
                       Slider(
                         value: currentMs,
                         min: 0,
                         max: totalMs,
-                        onChanged: (value) =>
-                            playback.seek(Duration(milliseconds: value.round())),
+                        onChanged: (value) => playback.seek(
+                          Duration(milliseconds: value.round()),
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5),
@@ -175,6 +223,7 @@ class NowPlayingScreen extends StatelessWidget {
                               style: const TextStyle(
                                 color: AurelColors.muted,
                                 fontSize: 11,
+                                fontFeatures: [FontFeature.tabularFigures()],
                               ),
                             ),
                             Text(
@@ -182,6 +231,7 @@ class NowPlayingScreen extends StatelessWidget {
                               style: const TextStyle(
                                 color: AurelColors.muted,
                                 fontSize: 11,
+                                fontFeatures: [FontFeature.tabularFigures()],
                               ),
                             ),
                           ],
@@ -191,7 +241,7 @@ class NowPlayingScreen extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -205,14 +255,56 @@ class NowPlayingScreen extends StatelessWidget {
                       color: playback.isShuffleEnabled
                           ? AurelColors.champagneLight
                           : AurelColors.muted,
+                      size: 22,
                     ),
                   ),
-                  Text(
-                    '${playback.currentIndex + 1} / ${playback.queue.length}',
-                    style: const TextStyle(
-                      color: AurelColors.muted,
-                      fontSize: 11,
-                      letterSpacing: 1,
+                  IconButton(
+                    tooltip: 'Previous track',
+                    onPressed: () => playback.previous(),
+                    icon: const Icon(
+                      Icons.skip_previous_rounded,
+                      color: Colors.white,
+                      size: 31,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => playback.togglePlayback(),
+                    borderRadius: BorderRadius.circular(40),
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            AurelColors.champagneLight,
+                            AurelColors.champagne,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x33D9BC91),
+                            blurRadius: 20,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        playback.isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        color: AurelColors.background,
+                        size: 37,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Next track',
+                    onPressed: () => playback.next(),
+                    icon: const Icon(
+                      Icons.skip_next_rounded,
+                      color: Colors.white,
+                      size: 31,
                     ),
                   ),
                   IconButton(
@@ -225,102 +317,51 @@ class NowPlayingScreen extends StatelessWidget {
                       color: playback.isRepeatAll || playback.isRepeatOne
                           ? AurelColors.champagneLight
                           : AurelColors.muted,
+                      size: 22,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 3),
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => showModalBottomSheet<void>(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: AurelColors.background,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(26),
-                        ),
-                      ),
-                      builder: (_) => const LyricsSheet(),
+              const SizedBox(height: 24),
+              Material(
+                color: AurelColors.surfaceRaised,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => _showLyrics(context),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 15,
                     ),
-                    icon: const Icon(Icons.lyrics_rounded, size: 17),
-                    label: const Text('LYRICS'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AurelColors.champagneLight,
-                      textStyle: const TextStyle(
-                        fontSize: 10,
-                        letterSpacing: 1.1,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.lyrics_rounded,
+                          color: AurelColors.champagneLight,
+                          size: 19,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Lyrics',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AurelColors.muted,
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: () => showModalBottomSheet<void>(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: AurelColors.surface,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(26),
-                        ),
-                      ),
-                      builder: (_) => const UpNextSheet(),
-                    ),
-                    icon: const Icon(Icons.queue_music_rounded, size: 17),
-                    label: Text('UP NEXT · ${playback.queue.length}'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AurelColors.champagne,
-                      textStyle: const TextStyle(
-                        fontSize: 10,
-                        letterSpacing: 1,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    tooltip: 'Previous track',
-                    onPressed: () => playback.previous(),
-                    icon: const Icon(Icons.skip_previous_rounded, size: 34),
-                  ),
-                  InkWell(
-                    onTap: () => playback.togglePlayback(),
-                    borderRadius: BorderRadius.circular(40),
-                    child: Container(
-                      width: 70,
-                      height: 70,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            AurelColors.champagneLight,
-                            AurelColors.champagne,
-                          ],
-                        ),
-                      ),
-                      child: Icon(
-                        playback.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        color: AurelColors.background,
-                        size: 38,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Next track',
-                    onPressed: () => playback.next(),
-                    icon: const Icon(Icons.skip_next_rounded, size: 34),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               const Text(
                 'FEEL THE MUSIC',
                 style: TextStyle(
