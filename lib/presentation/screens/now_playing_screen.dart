@@ -5,6 +5,7 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/album_art.dart';
 import '../widgets/playback_settings_sheet.dart';
+import '../widgets/up_next_sheet.dart';
 
 class NowPlayingScreen extends StatelessWidget {
   const NowPlayingScreen({super.key});
@@ -228,6 +229,32 @@ class NowPlayingScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 3),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: AurelColors.surface,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(26),
+                      ),
+                    ),
+                    builder: (_) => const UpNextSheet(),
+                  ),
+                  icon: const Icon(Icons.queue_music_rounded, size: 17),
+                  label: Text('UP NEXT · ${playback.queue.length}'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AurelColors.champagne,
+                    textStyle: const TextStyle(
+                      fontSize: 10,
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [

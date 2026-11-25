@@ -220,6 +220,12 @@ class PlaybackController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> jumpTo(int index) async {
+    if (index < 0 || index >= queue.length) return;
+    await player.seek(Duration.zero, index: index);
+    if (!player.playing) unawaited(player.play());
+  }
+
   Future<void> next() async {
     if (player.hasNext) await player.seekToNext();
   }
