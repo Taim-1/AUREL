@@ -6,6 +6,7 @@ import '../models/track.dart';
 import 'apple_music_catalog_service.dart';
 import 'audius_service.dart';
 import 'jamendo_service.dart';
+import 'openverse_service.dart';
 import 'soundcloud_service.dart';
 import 'spotify_catalog_service.dart';
 
@@ -30,6 +31,7 @@ class MusicCatalogService {
     required this.soundcloud,
     required this.spotify,
     required this.appleMusic,
+    required this.openverse,
   });
 
   final JamendoService jamendo;
@@ -37,6 +39,7 @@ class MusicCatalogService {
   final SoundCloudService soundcloud;
   final SpotifyCatalogService spotify;
   final AppleMusicCatalogService appleMusic;
+  final OpenverseService openverse;
 
   static const pageSize = 30;
 
@@ -44,6 +47,7 @@ class MusicCatalogService {
     'soundcloud': 40,
     'audius': 30,
     'jamendo': 20,
+    'openverse': 18,
     'apple_music': 10,
     'spotify': 5,
   };
@@ -107,6 +111,15 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
+      _SourceRequest(
+        'Openverse',
+        () => openverse.search(
+          normalized,
+          page: page + 1,
+          pageSize: 15,
+          cancelToken: cancelToken,
+        ),
+      ),
     ]);
     return _buildPage(results);
   }
@@ -129,6 +142,15 @@ class MusicCatalogService {
         () => audius.trending(
           limit: pageSize,
           offset: offset,
+          cancelToken: cancelToken,
+        ),
+      ),
+      _SourceRequest(
+        'Openverse',
+        () => openverse.search(
+          'instrumental music',
+          page: page + 1,
+          pageSize: 15,
           cancelToken: cancelToken,
         ),
       ),
@@ -223,8 +245,18 @@ class MusicCatalogService {
     // Playable matches are always preferred. Metadata-only Spotify/Apple
     // results remain discoverable when there is no eligible in-app copy.
     final ordered = [...playable, ...metadataOnly];
-    final hasMore = results.sources.values.any(
-      (result) => result.tracks.length >= pageSize,
+    final pageThresholds = <String, int>{
+      'Jamendo': pageSize,
+      'Audius': pageSize,
+      'SoundCloud': pageSize,
+      'Spotify': 10,
+      'Apple Music': 15,
+      'Openverse': 15,
+    };
+    final hasMore = results.sources.entries.any(
+      (entry) =>
+          entry.value.tracks.length >=
+          (pageThresholds[entry.key] ?? pageSize),
     );
 
     return CatalogPage(
