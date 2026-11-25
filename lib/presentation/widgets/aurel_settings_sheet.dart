@@ -183,13 +183,13 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.cloud_sync_rounded,
                         color: AurelColors.champagneLight,
                         size: 21,
                       ),
-                      const SizedBox(width: 11),
-                      const Expanded(
+                      SizedBox(width: 11),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -212,7 +212,7 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
                           ],
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         Icons.chevron_right_rounded,
                         color: AurelColors.muted,
                       ),
