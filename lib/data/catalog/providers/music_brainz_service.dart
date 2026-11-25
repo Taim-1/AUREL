@@ -69,7 +69,7 @@ class MusicBrainzService {
       final raw = response.data?['recordings'];
       if (raw is! List) {
         throw const MusicBrainzException(
-          'The recording catalogue returned an unreadable result.',
+          'Recording information could not be read.',
         );
       }
 
