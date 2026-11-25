@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/music_playlist.dart';
@@ -29,7 +30,10 @@ class AurelController extends ChangeNotifier {
   List<Track> favoriteTracks = [];
   List<Track> downloadedTracks = [];
   List<MusicPlaylist> playlists = [];
+
   final Set<String> downloadingIds = {};
+  final Map<String, double> downloadProgress = {};
+  final Map<String, CancelToken> _downloadTokens = {};
 
   bool isLoadingDiscover = false;
   bool isLoadingMoreDiscover = false;
@@ -265,19 +269,48 @@ class AurelController extends ChangeNotifier {
     if (downloadedTracks.any((item) => item.id == track.id)) {
       return 'This track is already in your downloads.';
     }
+    if (downloadingIds.contains(track.id)) {
+      return 'This track is already downloading.';
+    }
 
+    final token = CancelToken();
+    _downloadTokens[track.id] = token;
     downloadingIds.add(track.id);
+    downloadProgress[track.id] = 0;
     notifyListeners();
+
     try {
-      final saved = await downloads.download(track);
+      final saved = await downloads.download(
+        track,
+        cancelToken: token,
+        onProgress: (received, total) {
+          if (total <= 0 || token.isCancelled) return;
+          final next = (received / total).clamp(0.0, 1.0).toDouble();
+          final previous = downloadProgress[track.id] ?? 0;
+          if (next >= 1 || next - previous >= 0.03) {
+            downloadProgress[track.id] = next;
+            notifyListeners();
+          }
+        },
+      );
+
       downloadedTracks = [...downloadedTracks, saved];
       await repository.saveDownloads(downloadedTracks);
       return null;
     } catch (error) {
       return error.toString();
     } finally {
+      _downloadTokens.remove(track.id);
       downloadingIds.remove(track.id);
+      downloadProgress.remove(track.id);
       notifyListeners();
+    }
+  }
+
+  void cancelDownload(String trackId) {
+    final token = _downloadTokens[trackId];
+    if (token != null && !token.isCancelled) {
+      token.cancel('Cancelled by user');
     }
   }
 
@@ -305,6 +338,9 @@ class AurelController extends ChangeNotifier {
 
   @override
   void dispose() {
+    for (final token in _downloadTokens.values) {
+      if (!token.isCancelled) token.cancel('AUREL is closing');
+    }
     playback.removeListener(notifyListeners);
     playback.dispose();
     super.dispose();

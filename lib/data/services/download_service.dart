@@ -88,11 +88,3 @@ class DownloadService {
     if (await file.exists()) await file.delete();
   }
 }
-
-class DownloadException implements Exception {
-  const DownloadException(this.message);
-  final String message;
-
-  @override
-  String toString() => message;
-}
