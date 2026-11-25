@@ -233,14 +233,21 @@ class Track {
   factory Track.fromAppleMusic(Map<String, dynamic> json) {
     final attributes = json['attributes'];
     if (attributes is! Map) {
-      return Track(
+      return const Track(
         id: 'apple-music-unknown',
+
         title: 'Unknown track',
+
         artist: 'Unknown artist',
+
         providerId: 'apple_music',
+
         providerName: 'Apple Music',
+
         isPlayable: false,
+
         isMetadataOnly: true,
+
       );
     }
     final artwork = attributes['artwork'];
