@@ -10,6 +10,12 @@ import 'app.dart';
 import 'data/repositories/library_repository.dart';
 import 'data/services/aurel_account_service.dart';
 import 'data/services/aurel_controller.dart';
+import 'data/services/audius_service.dart';
+import 'data/services/apple_music_catalog_service.dart';
+import 'data/services/catalog_token_service.dart';
+import 'data/services/music_catalog_service.dart';
+import 'data/services/soundcloud_service.dart';
+import 'data/services/spotify_catalog_service.dart';
 import 'data/services/download_service.dart';
 import 'data/services/jamendo_service.dart';
 import 'data/services/lyrics_service.dart';
@@ -39,6 +45,18 @@ Future<void> main() async {
 
   final playback = PlaybackController();
   final jamendo = JamendoService(repository);
+  final tokens = CatalogTokenService(account: account);
+  final audius = AudiusService();
+  final soundcloud = SoundCloudService(tokens: tokens);
+  final spotify = SpotifyCatalogService(tokens: tokens);
+  final appleMusic = AppleMusicCatalogService(tokens: tokens);
+  final catalog = MusicCatalogService(
+    jamendo: jamendo,
+    audius: audius,
+    soundcloud: soundcloud,
+    spotify: spotify,
+    appleMusic: appleMusic,
+  );
   final controller = AurelController(
     repository: repository,
     jamendo: jamendo,
@@ -46,6 +64,7 @@ Future<void> main() async {
     playback: playback,
     lyrics: LyricsService(),
     account: account,
+    catalog: catalog,
   );
 
   runApp(
