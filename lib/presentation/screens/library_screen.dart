@@ -659,29 +659,6 @@ class _PlaylistCard extends StatelessWidget {
   }
 }
 
-class _FavoritesPage extends StatelessWidget {
-  const _FavoritesPage();
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<AurelController>();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Liked songs')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-        children: controller.favoriteTracks
-            .map(
-              (track) => TrackTile(
-                track: track,
-                queue: controller.favoriteTracks,
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-}
-
 class _PlaylistDetailPage extends StatelessWidget {
   const _PlaylistDetailPage({required this.playlistId});
 
