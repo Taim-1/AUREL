@@ -17,6 +17,8 @@ class Track {
     this.providerName = 'Jamendo',
     this.sourceUrl = '',
     this.recordingId = '',
+    this.licenseName = '',
+    this.attribution = '',
     this.isPlayable = true,
     this.isPreviewOnly = false,
     this.isMetadataOnly = false,
@@ -46,6 +48,8 @@ class Track {
 
   /// ISRC when the provider exposes one. Used for exact cross-source matches.
   final String recordingId;
+  final String licenseName;
+  final String attribution;
 
   /// Metadata-only results remain visible but cannot be sent to the player.
   final bool isPlayable;
@@ -265,6 +269,38 @@ class Track {
     );
   }
 
+  factory Track.fromOpenverse(Map<String, dynamic> json) {
+    final rawUrl = (json['url'] ?? '').toString();
+    final license = (json['license'] ?? '').toString().toLowerCase();
+    const reusableLicenses = {'by', 'by-sa', 'cc0', 'pdm'};
+    final allowed = reusableLicenses.contains(license);
+    final id = (json['id'] ?? '').toString();
+    final duration = json['duration'];
+    final safeUrl = Uri.tryParse(rawUrl);
+    final playable = safeUrl != null &&
+        (safeUrl.scheme == 'https' || safeUrl.scheme == 'http') &&
+        (json['category'] ?? 'music').toString() == 'music' &&
+        rawUrl.isNotEmpty;
+
+    return Track(
+      id: 'openverse-$id',
+      title: (json['title'] ?? 'Unknown track').toString(),
+      artist: (json['creator'] ?? 'Unknown creator').toString(),
+      artworkUrl: (json['thumbnail'] ?? '').toString(),
+      streamUrl: playable ? rawUrl : '',
+      downloadUrl: playable && allowed ? rawUrl : '',
+      licenseUrl: (json['license_url'] ?? '').toString(),
+      licenseName: license,
+      attribution: (json['attribution'] ?? '').toString(),
+      durationMs: duration is num ? duration.round() : 0,
+      downloadAllowed: playable && allowed,
+      providerId: 'openverse',
+      providerName: 'Openverse',
+      sourceUrl: (json['foreign_landing_url'] ?? '').toString(),
+      isPlayable: playable,
+    );
+  }
+
   factory Track.fromDevice(Map<Object?, Object?> json) {
     final uri = (json['uri'] ?? '').toString();
     final id = (json['id'] ?? uri).toString();
@@ -301,6 +337,8 @@ class Track {
         providerName: (json['providerName'] ?? 'Jamendo').toString(),
         sourceUrl: (json['sourceUrl'] ?? '').toString(),
         recordingId: (json['recordingId'] ?? '').toString(),
+        licenseName: (json['licenseName'] ?? '').toString(),
+        attribution: (json['attribution'] ?? '').toString(),
         isPlayable: json['isPlayable'] != false,
         isPreviewOnly: json['isPreviewOnly'] == true,
         isMetadataOnly: json['isMetadataOnly'] == true,
@@ -328,6 +366,8 @@ class Track {
         'providerName': providerName,
         'sourceUrl': sourceUrl,
         'recordingId': recordingId,
+        'licenseName': licenseName,
+        'attribution': attribution,
         'isPlayable': isPlayable,
         'isPreviewOnly': isPreviewOnly,
         'isMetadataOnly': isMetadataOnly,
@@ -359,6 +399,8 @@ class Track {
         providerName: providerName,
         sourceUrl: sourceUrl,
         recordingId: recordingId,
+        licenseName: licenseName,
+        attribution: attribution,
         isPlayable: isPlayable,
         isPreviewOnly: isPreviewOnly,
         isMetadataOnly: isMetadataOnly,
