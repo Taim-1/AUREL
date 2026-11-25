@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
-import '../widgets/aurel_mark.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
