@@ -336,13 +336,13 @@ class NowPlayingScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.lyrics_rounded,
                           color: AurelColors.champagneLight,
                           size: 19,
                         ),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        SizedBox(width: 12),
+                        Expanded(
                           child: Text(
                             'Lyrics',
                             style: TextStyle(
