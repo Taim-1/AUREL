@@ -8,6 +8,7 @@ import 'providers/internet_archive_service.dart';
 import 'providers/openverse_service.dart';
 import 'providers/soundcloud_service.dart';
 import 'providers/spotify_catalog_service.dart';
+import 'providers/wikimedia_commons_service.dart';
 
 class CatalogPage {
   const CatalogPage({
@@ -32,6 +33,7 @@ class MusicCatalogService {
     required this.appleMusic,
     required this.openverse,
     required this.internetArchive,
+    required this.wikimediaCommons,
   });
 
   final JamendoService jamendo;
@@ -41,6 +43,7 @@ class MusicCatalogService {
   final AppleMusicCatalogService appleMusic;
   final OpenverseService openverse;
   final InternetArchiveService internetArchive;
+  final WikimediaCommonsService wikimediaCommons;
 
   static const pageSize = 30;
 
@@ -50,6 +53,7 @@ class MusicCatalogService {
     'jamendo': 20,
     'internet_archive': 19,
     'openverse': 18,
+    'wikimedia_commons': 17,
     'apple_music': 10,
     'spotify': 5,
   };
@@ -69,7 +73,7 @@ class MusicCatalogService {
       );
     }
     final offset = page * pageSize;
-    final results = await _collect([
+    final collected = await _collect([
       _SourceRequest(
         'Jamendo',
         () => jamendo.search(
@@ -132,7 +136,14 @@ class MusicCatalogService {
         ),
       ),
     ]);
-    return _buildPage(results);
+    final commons = await _collectCommons(
+      normalized,
+      page: page,
+      cancelToken: cancelToken,
+    );
+    return _buildPage(
+      _CollectedSources({...collected.sources, 'Open audio': commons}),
+    );
   }
 
   Future<CatalogPage> discover({
@@ -140,7 +151,7 @@ class MusicCatalogService {
     CancelToken? cancelToken,
   }) async {
     final offset = page * pageSize;
-    final results = await _collect([
+    final collected = await _collect([
       _SourceRequest(
         'Jamendo',
         () => jamendo.popular(
@@ -184,7 +195,39 @@ class MusicCatalogService {
         ),
       ),
     ]);
-    return _buildPage(results);
+    final commons = await _collectCommons(
+      'instrumental music',
+      page: page,
+      cancelToken: cancelToken,
+    );
+    return _buildPage(
+      _CollectedSources({...collected.sources, 'Open audio': commons}),
+    );
+  }
+
+  Future<_SourceResult> _collectCommons(
+    String query, {
+    required int page,
+    CancelToken? cancelToken,
+  }) async {
+    if (cancelToken?.isCancelled ?? false) {
+      return _SourceResult.success(const []);
+    }
+    try {
+      final tracks = await wikimediaCommons.search(
+        query,
+        page: page,
+        cancelToken: cancelToken,
+      );
+      return _SourceResult.success(tracks);
+    } catch (error) {
+      if (error is DioException && error.type == DioExceptionType.cancel) {
+        rethrow;
+      }
+      return _SourceResult.failure(
+        error.toString().replaceFirst('Exception: ', ''),
+      );
+    }
   }
 
   Future<List<Track>> prepareQueue(
@@ -291,6 +334,7 @@ class MusicCatalogService {
       'Apple Music': 15,
       'Openverse': 15,
       'Internet Archive': 12,
+      'Open audio': 20,
     };
     final hasMore = results.sources.entries.any(
       (entry) =>
