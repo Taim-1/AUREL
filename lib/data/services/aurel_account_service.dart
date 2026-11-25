@@ -241,7 +241,9 @@ class AurelAccountService {
       }
 
       final displayName = user.displayName?.trim();
-      if (displayName != null && displayName.isNotEmpty) {
+      if ((userName == 'Music Lover' || userName.isEmpty) &&
+          displayName != null &&
+          displayName.isNotEmpty) {
         userName = displayName;
         await _preferences.setString(_usernameKey, displayName);
       }
