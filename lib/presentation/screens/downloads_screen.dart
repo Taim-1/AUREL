@@ -477,7 +477,7 @@ class _StorageRingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(ringRect, -math.pi / 2, math.pi * 2, false, background);
-    final safeFraction = fraction.clamp(0.0, 1.0);
+    final safeFraction = fraction.clamp(0.0, 1.0).toDouble();
     canvas.drawArc(
       ringRect,
       -math.pi / 2,
