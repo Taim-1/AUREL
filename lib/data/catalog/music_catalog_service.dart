@@ -9,6 +9,7 @@ import 'providers/openverse_service.dart';
 import 'providers/soundcloud_service.dart';
 import 'providers/spotify_catalog_service.dart';
 import 'providers/wikimedia_commons_service.dart';
+import 'providers/music_brainz_service.dart';
 
 class CatalogPage {
   const CatalogPage({
@@ -34,6 +35,7 @@ class MusicCatalogService {
     required this.openverse,
     required this.internetArchive,
     required this.wikimediaCommons,
+    required this.musicBrainz,
   });
 
   final JamendoService jamendo;
@@ -44,6 +46,7 @@ class MusicCatalogService {
   final OpenverseService openverse;
   final InternetArchiveService internetArchive;
   final WikimediaCommonsService wikimediaCommons;
+  final MusicBrainzService musicBrainz;
 
   static const pageSize = 30;
 
@@ -56,6 +59,7 @@ class MusicCatalogService {
     'wikimedia_commons': 17,
     'apple_music': 10,
     'spotify': 5,
+    'musicbrainz': 4,
   };
 
   Future<CatalogPage> search(
@@ -132,6 +136,15 @@ class MusicCatalogService {
           normalized,
           page: page,
           pageSize: 12,
+          cancelToken: cancelToken,
+        ),
+      ),
+      _SourceRequest(
+        'Recording metadata',
+        () => musicBrainz.search(
+          normalized,
+          limit: 25,
+          offset: page * 25,
           cancelToken: cancelToken,
         ),
       ),
@@ -335,6 +348,7 @@ class MusicCatalogService {
       'Openverse': 15,
       'Internet Archive': 12,
       'Open audio': 20,
+      'Recording metadata': 25,
     };
     final hasMore = results.sources.entries.any(
       (entry) =>
