@@ -165,6 +165,24 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
+      _SourceRequest(
+        'Internet Archive',
+        () => internetArchive.search(
+          'music',
+          page: page,
+          pageSize: 12,
+          cancelToken: cancelToken,
+        ),
+      ),
+      _SourceRequest(
+        'SoundCloud',
+        () => soundcloud.search(
+          'trending music',
+          limit: pageSize,
+          offset: offset,
+          cancelToken: cancelToken,
+        ),
+      ),
     ]);
     return _buildPage(results);
   }
@@ -189,9 +207,9 @@ class MusicCatalogService {
 
   Future<Track> prepareTrack(Track track) async {
     if (!track.canPlay) {
-      throw CatalogPlaybackException(
-        '${track.providerName} provides catalog details for this track, '
-        'but no authorized in-app audio stream is available.',
+      throw const CatalogPlaybackException(
+        'This recording is listed in the AUREL catalogue, but an '
+        'authorized in-app audio stream is not available.',
       );
     }
     if (track.providerId == 'soundcloud') {
