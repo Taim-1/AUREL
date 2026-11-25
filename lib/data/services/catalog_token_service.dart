@@ -52,8 +52,8 @@ class CatalogTokenService {
       return cached.value;
     }
 
-    final projectId = user == null ? null : account.firebaseProjectId;
-    if (user == null || projectId == null || projectId.isEmpty) {
+    final projectId = account.firebaseProjectId;
+    if (projectId == null || projectId.isEmpty) {
       throw CatalogTokenException(
         '$provider catalog access requires a connected AUREL account.',
       );
