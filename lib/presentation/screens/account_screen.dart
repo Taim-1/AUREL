@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
-import '../../data/services/aurel_account_service.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -175,7 +174,11 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _linkGoogle() => _run(() async {
         await context.read<AurelController>().account.linkGoogle();
-        if (mounted) setState(() => _message = 'Google is now linked to your AUREL account.');
+        if (mounted) {
+        setState(() {
+          _message = 'Google is now linked to your AUREL account.';
+        });
+      }
       });
 
   Future<void> _linkEmail() async {
