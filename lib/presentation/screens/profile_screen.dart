@@ -120,8 +120,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Switch(
                           value: controller.offlineMode,
                           activeThumbColor: AurelColors.champagneLight,
-                          onChanged: (value) =>
-                              controller.setOfflineMode(value),
+                          onChanged: (value) {
+                            controller.setOfflineMode(value);
+                            setSheetState(() {});
+                          },
                         ),
                       ],
                     ),
