@@ -36,6 +36,41 @@ These are Firebase client configuration values and the OAuth client ID. Do not p
 
 The Android workflow passes these values to Flutter with `--dart-define`. Without the required Firebase values, AUREL continues to work locally and the Account screen explains that cloud sign-in is not configured. Email and Google buttons are not represented as working when the project configuration is absent.
 
+## Music provider credentials and deployment
+
+AUREL can search and play public audio only where the provider's API and rights allow it. Spotify and Apple Music catalog results are metadata-only in this custom player; their APIs do not provide a reusable full-track audio URL for AUREL's player. SoundCloud, Audius, Jamendo, Openverse and Internet Archive can provide in-app audio for eligible tracks, subject to provider access, territory and licensing.
+
+### Optional Audius API key
+
+Add `AUDIUS_API_KEY` under GitHub Actions secrets to increase API access limits. The app can attempt read-only API requests without it where Audius permits anonymous access. The key is passed as a build-time public API credential; never use an Audius API secret in the mobile app.
+
+### Server-side Spotify, SoundCloud and Apple catalog credentials
+
+These credentials belong in Firebase Functions Secret Manager, not GitHub Actions and not the APK:
+
+- `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET`
+- `SOUNDCLOUD_CLIENT_ID` and `SOUNDCLOUD_CLIENT_SECRET`
+- `APPLE_TEAM_ID`, `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY`
+
+Register only apps for which you have the required developer access and approvals. Then set the secrets with the Firebase CLI, for example:
+
+```bash
+firebase functions:secrets:set SPOTIFY_CLIENT_ID
+firebase functions:secrets:set SPOTIFY_CLIENT_SECRET
+firebase functions:secrets:set SOUNDCLOUD_CLIENT_ID
+firebase functions:secrets:set SOUNDCLOUD_CLIENT_SECRET
+firebase functions:secrets:set APPLE_TEAM_ID
+firebase functions:secrets:set APPLE_KEY_ID
+firebase functions:secrets:set APPLE_PRIVATE_KEY
+firebase deploy --only functions:catalogTokens
+```
+
+The SoundCloud developer API currently requires approved app credentials; Apple Music requires a developer token generated from an Apple developer key. AUREL must not claim these catalogues are live until credentials are configured and the deployed token endpoint returns a valid token.
+
+### Jamendo production ID
+
+Replace the documented read-only development ID with your own registered Jamendo application ID by setting the `JAMENDO_CLIENT_ID` GitHub Actions secret.
+
 ## Firestore layout
 
 ```text
