@@ -41,3 +41,15 @@ Do not redesign, reinterpret, recolor, or replace the identity with a different 
 ## Change control
 
 A visual change that materially departs from the supplied reference requires explicit owner approval. Prefer implementation corrections, spacing refinements, responsive layout fixes, and functional completion over new design ideas.
+
+## Owner-approved refinements (2026-11-25)
+
+These refinements extend the screen reference without changing its composition:
+
+- The Downloads storage ring reports the whole phone's primary shared storage volume: used, available and total capacity. It must not show only AUREL's private app size.
+- The player progress control is a champagne waveform/equalizer-style scrubber with a moving playhead and soft animated glow. It replaces a plain straight progress line while remaining seekable.
+- The Android launcher icon must use the same approved ribbon-A app artwork, not a generic music icon.
+- The display name is user-selected. The sample “TAIM” in the reference is placeholder copy, not a hard-coded account name.
+- Google and email/password sign-in are provided inside AUREL Settings → Account & Sync. The Profile main screen keeps the reference layout.
+- Account sync restores listening-history metadata, favourites and playlists after reinstall. App-private downloaded audio bytes are not cloud-restored; AUREL offers a new download only if the original provider allows it.
+- If cloud credentials are not configured for a build, show an honest setup state and retain local account-name selection; never display fake successful sign-in.
