@@ -1,0 +1,27 @@
+name: aurel
+description: AUREL — a refined music experience for Android.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  audio_service: ^0.18.19
+  dio: ^5.11.1
+  just_audio: ^0.10.6
+  just_audio_background: ^0.0.1-beta.17
+  path_provider: ^2.1.6
+  permission_handler: ^13.0.2
+  provider: ^6.1.5+1
+  shared_preferences: ^2.5.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

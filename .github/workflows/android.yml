@@ -1,0 +1,82 @@
+name: AUREL Android Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-build:
+    name: Verify Flutter app and build APK
+    runs-on: ubuntu-latest
+    env:
+      JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID != '' && secrets.JAMENDO_CLIENT_ID || '709fa152' }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.1'
+          channel: stable
+          cache: true
+
+      - name: Generate Android project scaffold
+        run: |
+          flutter create --platforms=android --org com.aurel --project-name aurel .
+          mkdir -p android/app/src/main/kotlin/com/aurel/aurel
+          cp platform/android/MainActivity.kt android/app/src/main/kotlin/com/aurel/aurel/MainActivity.kt
+          cp platform/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+
+      - name: Install Android API 37
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+
+      - name: Set Android compile SDK
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('android/app/build.gradle.kts')
+          content = path.read_text()
+          content = content.replace(
+              'compileSdk = flutter.compileSdkVersion',
+              'compileSdk = 37'
+          )
+          path.write_text(content)
+          PY
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build release APK
+        run: flutter build apk --release --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AUREL-android-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
