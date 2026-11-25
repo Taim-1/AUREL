@@ -14,6 +14,7 @@ import 'data/services/audius_service.dart';
 import 'data/services/apple_music_catalog_service.dart';
 import 'data/services/catalog_token_service.dart';
 import 'data/services/music_catalog_service.dart';
+import 'data/services/openverse_service.dart';
 import 'data/services/soundcloud_service.dart';
 import 'data/services/spotify_catalog_service.dart';
 import 'data/services/download_service.dart';
@@ -56,6 +57,7 @@ Future<void> main() async {
     soundcloud: soundcloud,
     spotify: spotify,
     appleMusic: appleMusic,
+    openverse: OpenverseService(),
   );
   final controller = AurelController(
     repository: repository,
