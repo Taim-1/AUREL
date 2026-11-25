@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-37" "build-tools;37.0.0"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set Android compile SDK
         run: |
@@ -64,7 +64,7 @@ jobs:
           content = path.read_text()
           content = content.replace(
               'compileSdk = flutter.compileSdkVersion',
-              'compileSdk = 37'
+              'compileSdk = 35'
           )
           path.write_text(content)
           PY
