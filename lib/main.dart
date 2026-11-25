@@ -22,6 +22,7 @@ import 'data/catalog/providers/jamendo_service.dart';
 import 'data/services/lyrics_service.dart';
 import 'data/catalog/providers/internet_archive_service.dart';
 import 'data/catalog/providers/wikimedia_commons_service.dart';
+import 'data/catalog/providers/music_brainz_service.dart';
 import 'data/services/playback_controller.dart';
 
 Future<void> main() async {
@@ -62,6 +63,7 @@ Future<void> main() async {
     openverse: OpenverseService(),
     internetArchive: InternetArchiveService(),
     wikimediaCommons: WikimediaCommonsService(),
+    musicBrainz: MusicBrainzService(),
   );
   final controller = AurelController(
     repository: repository,
