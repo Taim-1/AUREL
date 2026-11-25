@@ -41,7 +41,7 @@ jobs:
           cp platform/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           rm -f test/widget_test.dart
 
-      - name: Install Android API 35
+      - name: Install Android API 36
         shell: bash
         run: |
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set Android compile SDK
         run: |
@@ -64,7 +64,7 @@ jobs:
           content = path.read_text()
           content = content.replace(
               'compileSdk = flutter.compileSdkVersion',
-              'compileSdk = 35'
+              'compileSdk = 36'
           )
           path.write_text(content)
           PY
