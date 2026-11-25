@@ -105,7 +105,9 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> loadMoreDiscover() async {
-    if (offlineMode || !hasMoreDiscover || isLoadingDiscover || isLoadingMoreDiscover) return;
+    if (offlineMode || !hasMoreDiscover || isLoadingDiscover || isLoadingMoreDiscover) {
+      return;
+    }
     final generation = _discoverGeneration;
     isLoadingMoreDiscover = true;
     discoverError = null;
@@ -194,7 +196,9 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> loadMoreSearch() async {
-    if (offlineMode || !hasMoreSearch || isSearching || isLoadingMoreSearch) return;
+    if (offlineMode || !hasMoreSearch || isSearching || isLoadingMoreSearch) {
+      return;
+    }
     final generation = _searchGeneration;
     final query = searchQuery;
     final tag = _activeTag;
