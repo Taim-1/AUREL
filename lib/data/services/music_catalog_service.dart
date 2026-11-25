@@ -261,7 +261,6 @@ class MusicCatalogService {
       'Audius': pageSize,
       'SoundCloud': pageSize,
       'Spotify': 10,
-      'Apple Music': 15,
       'Openverse': 15,
       'Internet Archive': 12,
     };
