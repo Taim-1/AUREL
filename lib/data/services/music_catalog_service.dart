@@ -6,6 +6,7 @@ import '../models/track.dart';
 import 'apple_music_catalog_service.dart';
 import 'audius_service.dart';
 import 'jamendo_service.dart';
+import 'internet_archive_service.dart';
 import 'openverse_service.dart';
 import 'soundcloud_service.dart';
 import 'spotify_catalog_service.dart';
@@ -32,6 +33,7 @@ class MusicCatalogService {
     required this.spotify,
     required this.appleMusic,
     required this.openverse,
+    required this.internetArchive,
   });
 
   final JamendoService jamendo;
@@ -40,6 +42,7 @@ class MusicCatalogService {
   final SpotifyCatalogService spotify;
   final AppleMusicCatalogService appleMusic;
   final OpenverseService openverse;
+  final InternetArchiveService internetArchive;
 
   static const pageSize = 30;
 
@@ -47,6 +50,7 @@ class MusicCatalogService {
     'soundcloud': 40,
     'audius': 30,
     'jamendo': 20,
+    'internet_archive': 19,
     'openverse': 18,
     'apple_music': 10,
     'spotify': 5,
@@ -117,6 +121,15 @@ class MusicCatalogService {
           normalized,
           page: page + 1,
           pageSize: 15,
+          cancelToken: cancelToken,
+        ),
+      ),
+      _SourceRequest(
+        'Internet Archive',
+        () => internetArchive.search(
+          normalized,
+          page: page,
+          pageSize: 12,
           cancelToken: cancelToken,
         ),
       ),
@@ -252,6 +265,7 @@ class MusicCatalogService {
       'Spotify': 10,
       'Apple Music': 15,
       'Openverse': 15,
+      'Internet Archive': 12,
     };
     final hasMore = results.sources.entries.any(
       (entry) =>
