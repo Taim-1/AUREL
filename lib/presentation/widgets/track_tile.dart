@@ -20,6 +20,54 @@ class TrackTile extends StatelessWidget {
   final bool showDownload;
   final bool compact;
 
+  Future<void> _handlePlaylistAction(BuildContext context, String value) async {
+    final controller = context.read<AurelController>();
+    if (value == '__create__') {
+      final nameController = TextEditingController();
+      final name = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AurelColors.surfaceRaised,
+          title: const Text('New playlist'),
+          content: TextField(
+            controller: nameController,
+            autofocus: true,
+            maxLength: 32,
+            decoration: const InputDecoration(hintText: 'Playlist name'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, nameController.text.trim()),
+              child: const Text('Create'),
+            ),
+          ],
+        ),
+      );
+      nameController.dispose();
+      if (name != null && name.trim().isNotEmpty) {
+        await controller.createPlaylist(name, initialTrack: track);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Playlist created and track added')),
+          );
+        }
+      }
+      return;
+    }
+
+    await controller.addTrackToPlaylist(value, track);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Added to playlist')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
@@ -84,6 +132,33 @@ class TrackTile extends StatelessWidget {
                 color: favorite ? const Color(0xFFE58A9C) : AurelColors.muted,
                 size: 20,
               ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Add to playlist',
+              icon: const Icon(
+                Icons.playlist_add_rounded,
+                color: AurelColors.champagne,
+                size: 21,
+              ),
+              onSelected: (value) => _handlePlaylistAction(context, value),
+              itemBuilder: (_) => [
+                const PopupMenuItem<String>(
+                  value: '__create__',
+                  child: Text('Create new playlist'),
+                ),
+                if (controller.playlists.isNotEmpty)
+                  const PopupMenuDivider(),
+                ...controller.playlists.map(
+                  (playlist) => PopupMenuItem<String>(
+                    value: playlist.id,
+                    child: Text(
+                      playlist.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
             ),
             if (showDownload)
               IconButton(

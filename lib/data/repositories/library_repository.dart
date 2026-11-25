@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/music_playlist.dart';
 import '../models/track.dart';
 
 class LibraryRepository {
@@ -11,11 +12,29 @@ class LibraryRepository {
 
   static const _favoritesKey = 'aurel.favorites.v1';
   static const _downloadsKey = 'aurel.downloads.v1';
+  static const _playlistsKey = 'aurel.playlists.v1';
   static const _clientIdKey = 'aurel.jamendo.client_id';
 
   Future<List<Track>> loadFavorites() => _readTracks(_favoritesKey);
 
   Future<List<Track>> loadDownloads() => _readTracks(_downloadsKey);
+
+  Future<List<MusicPlaylist>> loadPlaylists() async {
+    final raw = await _preferences.getStringList(_playlistsKey) ?? const <String>[];
+    final playlists = <MusicPlaylist>[];
+    for (final item in raw) {
+      try {
+        playlists.add(
+          MusicPlaylist.fromJson(jsonDecode(item) as Map<String, dynamic>),
+        );
+      } on FormatException {
+        // Ignore one corrupted playlist without losing the rest.
+      } on TypeError {
+        // Ignore data from an incompatible older schema.
+      }
+    }
+    return playlists;
+  }
 
   Future<List<Track>> _readTracks(String key) async {
     final raw = await _preferences.getStringList(key) ?? const <String>[];
@@ -37,6 +56,12 @@ class LibraryRepository {
 
   Future<void> saveDownloads(List<Track> tracks) =>
       _writeTracks(_downloadsKey, tracks);
+
+  Future<void> savePlaylists(List<MusicPlaylist> playlists) =>
+      _preferences.setStringList(
+        _playlistsKey,
+        playlists.map((playlist) => jsonEncode(playlist.toJson())).toList(),
+      );
 
   Future<void> _writeTracks(String key, List<Track> tracks) =>
       _preferences.setStringList(
