@@ -232,7 +232,7 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
             ),
             const SizedBox(height: 7),
             const Text(
-              'Jamendo currently powers independent music discovery and streaming. Use your own application client ID when you have one.',
+              'AUREL searches multiple music collections together. Add a catalogue access ID only when one is supplied in your AUREL setup instructions.',
               style: TextStyle(
                 color: AurelColors.muted,
                 fontSize: 12,
@@ -244,8 +244,8 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
               controller: _jamendoController,
               autocorrect: false,
               decoration: const InputDecoration(
-                labelText: 'Jamendo client ID',
-                hintText: 'Enter your app client ID',
+                labelText: 'Music catalogue access ID',
+                hintText: 'Enter your access ID',
               ),
             ),
             const SizedBox(height: 9),
@@ -273,7 +273,7 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
             ),
             const SizedBox(height: 7),
             const Text(
-              'AUREL uses Musixmatch licensed lyrics. Availability and synchronization depend on the provider plan.',
+              'Licensed lyrics and timed synchronization appear whenever they are available for the current recording.',
               style: TextStyle(
                 color: AurelColors.muted,
                 fontSize: 12,
@@ -300,7 +300,7 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
               enableSuggestions: false,
               obscureText: !_showLyricsKey,
               decoration: InputDecoration(
-                labelText: 'Musixmatch API key',
+                labelText: 'Licensed lyrics access key',
                 suffixIcon: IconButton(
                   onPressed: () =>
                       setState(() => _showLyricsKey = !_showLyricsKey),
