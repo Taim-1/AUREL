@@ -80,9 +80,11 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Find a sound, an artist, or a new favourite.',
-          style: TextStyle(color: AurelColors.muted, fontSize: 13),
+        Text(
+          controller.offlineMode
+              ? 'Search music saved inside AUREL.'
+              : 'Find a sound, an artist, or a new favourite.',
+          style: const TextStyle(color: AurelColors.muted, fontSize: 13),
         ),
         const SizedBox(height: 22),
         TextField(
@@ -202,6 +204,28 @@ class _SearchScreenState extends State<SearchScreen> {
                   side: const BorderSide(color: AurelColors.divider),
                   padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
+              ),
+            ),
+        ] else if (controller.offlineMode) ...[
+          const Text(
+            'Your saved music',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+            ),
+          ),
+          const SizedBox(height: 9),
+          if (controller.downloadedTracks.isEmpty)
+            const _SearchMessage(
+              'No AUREL downloads yet. Turn off Offline mode when connected to discover and download music.',
+            )
+          else
+            ...controller.downloadedTracks.map(
+              (track) => TrackTile(
+                track: track,
+                queue: controller.downloadedTracks,
+                showDownload: false,
               ),
             ),
         ] else ...[

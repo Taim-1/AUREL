@@ -97,6 +97,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 22),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AurelColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AurelColors.divider),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.offline_pin_rounded,
+                color: AurelColors.champagne,
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Offline mode',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Only show and play music saved inside AUREL.',
+                      style: TextStyle(
+                        color: AurelColors.muted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: controller.offlineMode,
+                activeThumbColor: AurelColors.champagneLight,
+                onChanged: (value) =>
+                    context.read<AurelController>().setOfflineMode(value),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 26),
         const Text(
           'Music source',

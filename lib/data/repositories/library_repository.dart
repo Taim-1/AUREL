@@ -13,11 +13,21 @@ class LibraryRepository {
   static const _favoritesKey = 'aurel.favorites.v1';
   static const _downloadsKey = 'aurel.downloads.v1';
   static const _playlistsKey = 'aurel.playlists.v1';
+  static const _recentKey = 'aurel.recent.v1';
   static const _clientIdKey = 'aurel.jamendo.client_id';
+  static const _offlineModeKey = 'aurel.offline_mode.v1';
 
   Future<List<Track>> loadFavorites() => _readTracks(_favoritesKey);
 
   Future<List<Track>> loadDownloads() => _readTracks(_downloadsKey);
+
+  Future<List<Track>> loadRecentlyPlayed() => _readTracks(_recentKey);
+
+  Future<bool> loadOfflineMode() async =>
+      await _preferences.getBool(_offlineModeKey) ?? false;
+
+  Future<void> saveOfflineMode(bool enabled) =>
+      _preferences.setBool(_offlineModeKey, enabled);
 
   Future<List<MusicPlaylist>> loadPlaylists() async {
     final raw = await _preferences.getStringList(_playlistsKey) ?? const <String>[];
@@ -56,6 +66,9 @@ class LibraryRepository {
 
   Future<void> saveDownloads(List<Track> tracks) =>
       _writeTracks(_downloadsKey, tracks);
+
+  Future<void> saveRecentlyPlayed(List<Track> tracks) =>
+      _writeTracks(_recentKey, tracks);
 
   Future<void> savePlaylists(List<MusicPlaylist> playlists) =>
       _preferences.setStringList(

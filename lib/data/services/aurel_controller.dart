@@ -29,7 +29,9 @@ class AurelController extends ChangeNotifier {
   List<Track> searchResults = [];
   List<Track> favoriteTracks = [];
   List<Track> downloadedTracks = [];
+  List<Track> recentlyPlayed = [];
   List<MusicPlaylist> playlists = [];
+  bool offlineMode = false;
 
   final Set<String> downloadingIds = {};
   final Map<String, double> downloadProgress = {};
@@ -57,9 +59,11 @@ class AurelController extends ChangeNotifier {
     await jamendo.initialize();
     favoriteTracks = await repository.loadFavorites();
     downloadedTracks = await repository.loadDownloads();
+    recentlyPlayed = await repository.loadRecentlyPlayed();
     playlists = await repository.loadPlaylists();
+    offlineMode = await repository.loadOfflineMode();
     notifyListeners();
-    await refreshDiscover();
+    if (!offlineMode) await refreshDiscover();
   }
 
   List<Track> _appendUnique(List<Track> current, List<Track> incoming) {
@@ -71,6 +75,7 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> refreshDiscover() async {
+    if (offlineMode) return;
     final generation = ++_discoverGeneration;
     isLoadingDiscover = true;
     isLoadingMoreDiscover = false;
@@ -98,7 +103,7 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> loadMoreDiscover() async {
-    if (!hasMoreDiscover || isLoadingDiscover || isLoadingMoreDiscover) return;
+    if (offlineMode || !hasMoreDiscover || isLoadingDiscover || isLoadingMoreDiscover) return;
     final generation = _discoverGeneration;
     isLoadingMoreDiscover = true;
     discoverError = null;
@@ -142,6 +147,21 @@ class AurelController extends ChangeNotifier {
     searchError = null;
     searchMoreError = null;
 
+    if (offlineMode) {
+      final term = normalized.toLowerCase();
+      searchResults = term.isEmpty
+          ? List<Track>.of(downloadedTracks)
+          : downloadedTracks.where((track) {
+              final searchable =
+                  '${track.title} ${track.artist} ${track.album}'.toLowerCase();
+              return searchable.contains(term);
+            }).toList(growable: false);
+      hasMoreSearch = false;
+      isSearching = false;
+      notifyListeners();
+      return;
+    }
+
     if (normalized.isEmpty) {
       isSearching = false;
       notifyListeners();
@@ -172,7 +192,7 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> loadMoreSearch() async {
-    if (!hasMoreSearch || isSearching || isLoadingMoreSearch) return;
+    if (offlineMode || !hasMoreSearch || isSearching || isLoadingMoreSearch) return;
     final generation = _searchGeneration;
     final query = searchQuery;
     final tag = _activeTag;
@@ -257,12 +277,59 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
-    final tracks = queue ??
+    if (offlineMode && !track.isDownloaded) {
+      throw const PlaybackException(
+        'This track is not saved for offline listening yet.',
+      );
+    }
+    final source = queue ??
         (track.isDownloaded ? downloadedTracks : discoverTracks);
+    final tracks = offlineMode
+        ? source.where((item) => item.isDownloaded).toList(growable: false)
+        : source;
     await playback.playTrack(track, tracks);
+
+    recentlyPlayed = [
+      track,
+      ...recentlyPlayed.where((item) => item.id != track.id),
+    ].take(20).toList(growable: false);
+    await repository.saveRecentlyPlayed(recentlyPlayed);
+    notifyListeners();
+  }
+
+  Future<void> setOfflineMode(bool enabled) async {
+    if (offlineMode == enabled) return;
+    offlineMode = enabled;
+    await repository.saveOfflineMode(enabled);
+
+    if (enabled) {
+      _discoverGeneration++;
+      _searchGeneration++;
+      isLoadingDiscover = false;
+      isLoadingMoreDiscover = false;
+      hasMoreDiscover = false;
+      isSearching = false;
+      isLoadingMoreSearch = false;
+      hasMoreSearch = false;
+      searchResults = [];
+      searchError = null;
+      searchMoreError = null;
+      discoverError = null;
+
+      // Never leave an online stream playing after entering offline mode.
+      if (playback.currentTrack?.isDownloaded != true) {
+        await playback.player.stop();
+        playback.queue = const [];
+        playback.currentIndex = -1;
+      }
+    }
+
+    notifyListeners();
+    if (!enabled) await refreshDiscover();
   }
 
   Future<String?> downloadTrack(Track track) async {
+    if (offlineMode) return 'Turn off Offline mode to download more music.';
     if (!track.downloadAllowed) {
       return 'Downloads are not enabled for this track.';
     }

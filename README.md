@@ -12,6 +12,8 @@ AUREL is a carefully designed Android music player built with Flutter. It combin
 - Background playback, media notification, lock-screen controls, and headset media buttons.
 - Favourites and user-created playlists, saved locally.
 - Offline downloads stored in AUREL's private app storage, only for tracks whose artist/API setting explicitly permits downloading.
+- A one-tap Offline mode that filters browsing and playback to AUREL downloads only.
+- A locally saved Continue Listening row that remembers the last 20 tracks.
 
 AUREL intentionally does **not** scan the phone or import tracks from other apps. Music downloaded through AUREL stays in AUREL's private collection.
 

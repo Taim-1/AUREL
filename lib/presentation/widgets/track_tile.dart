@@ -164,10 +164,12 @@ class TrackTile extends StatelessWidget {
               IconButton(
                 tooltip: downloading
                     ? 'Cancel download'
-                    : track.downloadAllowed
-                        ? 'Download for offline listening'
-                        : 'Download not allowed',
-                onPressed: !track.downloadAllowed
+                    : controller.offlineMode
+                        ? 'Turn off Offline mode to download'
+                        : track.downloadAllowed
+                            ? 'Download for offline listening'
+                            : 'Download not allowed',
+                onPressed: !track.downloadAllowed || controller.offlineMode
                     ? null
                     : downloading
                         ? () => context
