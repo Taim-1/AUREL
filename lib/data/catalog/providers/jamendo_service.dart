@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../../../models/track.dart';
-import '../../../repositories/library_repository.dart';
+import '../../models/track.dart';
+import '../../repositories/library_repository.dart';
 
 class JamendoService {
   JamendoService(this._repository)
