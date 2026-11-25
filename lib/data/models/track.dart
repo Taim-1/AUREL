@@ -183,6 +183,10 @@ class Track {
       providerId: 'soundcloud',
       providerName: 'SoundCloud',
       sourceUrl: (json['permalink_url'] ?? '').toString(),
+      attribution:
+          '"${(json['title'] ?? 'Untitled track').toString()}" by '
+          '${mediaArtist.isNotEmpty ? mediaArtist : userArtist}. '
+          'SoundCloud creator/source credit.',
       recordingId: (json['publisher_metadata'] is Map
               ? (json['publisher_metadata']['isrc'] ?? '')
               : '')
