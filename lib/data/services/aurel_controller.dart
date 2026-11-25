@@ -63,7 +63,9 @@ class AurelController extends ChangeNotifier {
     playlists = await repository.loadPlaylists();
     offlineMode = await repository.loadOfflineMode();
     notifyListeners();
-    if (!offlineMode) await refreshDiscover();
+    if (!offlineMode) {
+      await refreshDiscover();
+    }
   }
 
   List<Track> _appendUnique(List<Track> current, List<Track> incoming) {
@@ -325,7 +327,9 @@ class AurelController extends ChangeNotifier {
     }
 
     notifyListeners();
-    if (!enabled) await refreshDiscover();
+    if (!enabled) {
+      await refreshDiscover();
+    }
   }
 
   Future<String?> downloadTrack(Track track) async {
