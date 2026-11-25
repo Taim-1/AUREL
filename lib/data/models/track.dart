@@ -367,6 +367,50 @@ class Track {
         isPlayable: mediaUrl.isNotEmpty,
       );
 
+  factory Track.fromMusicBrainz(Map<String, dynamic> json) {
+    final rawCredit = json['artist-credit'];
+    final artists = <String>[];
+    if (rawCredit is List) {
+      for (final entry in rawCredit) {
+        if (entry is String) {
+          if (entry.trim().isNotEmpty) artists.add(entry.trim());
+          continue;
+        }
+        if (entry is! Map) continue;
+        final directName = (entry['name'] ?? '').toString().trim();
+        final artist = entry['artist'];
+        final nestedName = artist is Map
+            ? (artist['name'] ?? '').toString().trim()
+            : '';
+        final name = directName.isNotEmpty ? directName : nestedName;
+        if (name.isNotEmpty) artists.add(name);
+        final joinPhrase = (entry['joinphrase'] ?? '').toString();
+        if (joinPhrase.trim().isNotEmpty) {
+          artists.add(joinPhrase.trim());
+        }
+      }
+    }
+    final isrcs = json['isrcs'];
+    final recordingId = isrcs is List && isrcs.isNotEmpty
+        ? isrcs.first.toString()
+        : '';
+    final length = (json['length'] as num?)?.round() ?? 0;
+    final id = (json['id'] ?? '').toString();
+
+    return Track(
+      id: 'musicbrainz-$id',
+      title: (json['title'] ?? 'Unknown recording').toString(),
+      artist: artists.isEmpty ? 'Unknown artist' : artists.join(' '),
+      durationMs: length,
+      providerId: 'musicbrainz',
+      providerName: 'Recording metadata',
+      sourceUrl: id.isEmpty ? '' : 'https://musicbrainz.org/recording/$id',
+      recordingId: recordingId,
+      isPlayable: false,
+      isMetadataOnly: true,
+    );
+  }
+
   factory Track.fromDevice(Map<Object?, Object?> json) {
     final uri = (json['uri'] ?? '').toString();
     final id = (json['id'] ?? uri).toString();
