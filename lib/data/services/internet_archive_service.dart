@@ -28,12 +28,15 @@ class InternetArchiveService {
 
     var safeQuery = normalized;
     for (final marker in const [
-      '"', ':', '/', r'\\', '+', '-', '!', '(', ')', '{', '}', '[', ']',
+      '"', ':', '/', '+', '-', '!', '(', ')', '{', '}', '[', ']',
       '^', '~', '*', '?',
     ]) {
       safeQuery = safeQuery.replaceAll(marker, ' ');
     }
-    safeQuery = safeQuery.replaceAll(RegExp(r'\\s+'), ' ').trim();
+    safeQuery = safeQuery
+        .replaceAll(String.fromCharCode(92), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
     if (safeQuery.isEmpty) return const [];
 
     try {
