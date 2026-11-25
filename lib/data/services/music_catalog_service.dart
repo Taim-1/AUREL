@@ -169,11 +169,20 @@ class MusicCatalogService {
     return _buildPage(results);
   }
 
-  Future<List<Track>> prepareQueue(List<Track> tracks) async {
+  Future<List<Track>> prepareQueue(
+    List<Track> tracks, {
+    String? requiredTrackId,
+  }) async {
     final output = <Track>[];
     for (final track in tracks) {
       if (!track.canPlay) continue;
-      output.add(await prepareTrack(track));
+      try {
+        output.add(await prepareTrack(track));
+      } catch (_) {
+        // An unavailable provider entry must not block other playable
+        // providers in the queue. The specifically selected track is strict.
+        if (track.id == requiredTrackId) rethrow;
+      }
     }
     return output;
   }
@@ -261,6 +270,7 @@ class MusicCatalogService {
       'Audius': pageSize,
       'SoundCloud': pageSize,
       'Spotify': 10,
+      'Apple Music': 15,
       'Openverse': 15,
       'Internet Archive': 12,
     };
@@ -287,7 +297,10 @@ class MusicCatalogService {
 
     final title = _normalize(track.title);
     final artist = _normalize(track.artist);
-    return 'title:$title|artist:$artist';
+    final durationBucket = track.durationMs > 0
+        ? (track.durationMs / 10000).round().toString()
+        : 'unknown';
+    return 'title:$title|artist:$artist|duration:$durationBucket';
   }
 
   String _normalize(String value) => value
