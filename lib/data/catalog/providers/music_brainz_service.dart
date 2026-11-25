@@ -53,6 +53,7 @@ class MusicBrainzService {
     }
 
     return _serialized(() async {
+      if (cancelToken?.isCancelled ?? false) return const <Track>[];
       final queryText = _escapeLucene(normalized);
       final response = await _dio.get<Map<String, dynamic>>(
         'recording/',
