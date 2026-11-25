@@ -19,14 +19,9 @@ class JamendoService {
   final LibraryRepository _repository;
   final Dio _dio;
 
-  // Jamendo documents this ID for read-only testing only.
-  // Replace it with an application ID before a public release.
-  static const _developmentClientId = '709fa152';
-
-  String _clientId = const String.fromEnvironment(
-    'JAMENDO_CLIENT_ID',
-    defaultValue: _developmentClientId,
-  );
+  // A production application ID must be configured through the build.
+  // The public example ID is for testing only and is intentionally not used.
+  String _clientId = const String.fromEnvironment('JAMENDO_CLIENT_ID');
   String get clientId => _clientId;
 
   Future<void> initialize() async {
@@ -82,6 +77,11 @@ class JamendoService {
   String _safeOffset(int value) => value.clamp(0, 1000000).toString();
 
   Future<List<Track>> _requestTracks(Map<String, String> extra) async {
+    if (_clientId.isEmpty) {
+      throw const JamendoException(
+        'The AUREL music catalogue is not configured for this build yet.',
+      );
+    }
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         'tracks/',
