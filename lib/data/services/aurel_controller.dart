@@ -378,7 +378,7 @@ class AurelController extends ChangeNotifier {
 
   String _normalizeTrackIdentity(String value) => value
       .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9\u0600-\u06FF]+'), ' ')
+      .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 
