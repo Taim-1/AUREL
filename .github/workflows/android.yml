@@ -16,6 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID != '' && secrets.JAMENDO_CLIENT_ID || '709fa152' }}
+      AUREL_FIREBASE_API_KEY: ${{ secrets.AUREL_FIREBASE_API_KEY }}
+      AUREL_FIREBASE_APP_ID: ${{ secrets.AUREL_FIREBASE_APP_ID }}
+      AUREL_FIREBASE_PROJECT_ID: ${{ secrets.AUREL_FIREBASE_PROJECT_ID }}
+      AUREL_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.AUREL_FIREBASE_MESSAGING_SENDER_ID }}
+      AUREL_GOOGLE_SERVER_CLIENT_ID: ${{ secrets.AUREL_GOOGLE_SERVER_CLIENT_ID }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -77,6 +82,9 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
+      - name: Generate AUREL launcher icon
+        run: dart run flutter_launcher_icons
+
       - name: Format Dart sources
         run: dart format lib test
 
@@ -87,7 +95,14 @@ jobs:
         run: flutter test
 
       - name: Build release APK
-        run: flutter build apk --release --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
+        run: |
+          flutter build apk --release \
+            --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID" \
+            --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY" \
+            --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID" \
+            --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID" \
+            --dart-define=AUREL_FIREBASE_MESSAGING_SENDER_ID="$AUREL_FIREBASE_MESSAGING_SENDER_ID" \
+            --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
