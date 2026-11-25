@@ -4,7 +4,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
+import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
+import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -15,6 +17,15 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  static const _trendingSearches = <String>[
+    'The Weeknd',
+    'Billie Eilish',
+    'Coldplay',
+    'Drake',
+    'Taylor Swift',
+    'Arabic Hits',
+  ];
+
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   Timer? _debounce;
@@ -32,11 +43,11 @@ class _SearchScreenState extends State<SearchScreen> {
     await context.read<AurelController>().searchMusic(_searchController.text);
   }
 
-  void _searchTag(String tag) {
+  void _searchFor(String query) {
     _debounce?.cancel();
+    _searchController.text = query;
     _searchFocus.unfocus();
-    _searchController.text = tag;
-    context.read<AurelController>().searchByTag(tag.toLowerCase());
+    context.read<AurelController>().searchMusic(query);
   }
 
   void _onChanged(String value) {
@@ -47,13 +58,23 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
+  List<Track> _popularArtists(List<Track> tracks) {
+    final artists = <String, Track>{};
+    for (final track in tracks) {
+      final name = track.artist.trim();
+      if (name.isEmpty) continue;
+      artists.putIfAbsent(name.toLowerCase(), () => track);
+      if (artists.length == 8) break;
+    }
+    return artists.values.toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
     final hasQuery = controller.searchQuery.isNotEmpty;
+    final artists = _popularArtists(controller.discoverTracks);
 
-    // Mood shortcuts and Home recommendations can start a search from another
-    // screen. Reflect that query here without stealing the keyboard from users.
     if (!_searchFocus.hasFocus &&
         _searchController.text != controller.searchQuery) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -68,25 +89,8 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 25, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
       children: [
-        const Text(
-          'Search',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 29,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.7,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          controller.offlineMode
-              ? 'Search music saved inside AUREL.'
-              : 'Find a sound, an artist, or a new favourite.',
-          style: const TextStyle(color: AurelColors.muted, fontSize: 13),
-        ),
-        const SizedBox(height: 22),
         TextField(
           controller: _searchController,
           focusNode: _searchFocus,
@@ -94,7 +98,9 @@ class _SearchScreenState extends State<SearchScreen> {
           onChanged: _onChanged,
           onSubmitted: (_) => _submit(),
           decoration: InputDecoration(
-            hintText: 'What do you want to hear?',
+            hintText: controller.offlineMode
+                ? 'Search downloaded music...'
+                : 'Search artists, songs...',
             prefixIcon: const Icon(
               Icons.search_rounded,
               color: AurelColors.champagne,
@@ -114,56 +120,50 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 25),
         if (controller.isSearching && controller.searchResults.isEmpty)
           const Padding(
-            padding: EdgeInsets.all(40),
+            padding: EdgeInsets.symmetric(vertical: 44),
             child: Center(
-              child: CircularProgressIndicator(color: AurelColors.champagne),
+              child: CircularProgressIndicator(
+                color: AurelColors.champagne,
+              ),
             ),
           )
         else if (controller.searchError != null &&
-            controller.searchResults.isEmpty)
+            controller.searchResults.isEmpty &&
+            hasQuery)
           _SearchMessage(
             controller.searchError!,
             action: 'Try again',
             onTap: _submit,
           )
-        else if (hasQuery && controller.searchResults.isEmpty)
-          const _SearchMessage(
-            'No matches yet. Try another artist, title, or mood.',
-          )
         else if (hasQuery) ...[
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Results for “${controller.searchQuery}”',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                  ),
-                ),
-              ),
-              if (controller.isSearching)
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AurelColors.champagne,
-                  ),
-                ),
-            ],
+          _SectionHeading(
+            title: 'Results for “${controller.searchQuery}”',
+            trailing: controller.isSearching
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AurelColors.champagne,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: 9),
-          ...controller.searchResults.map(
-            (track) => TrackTile(
-              track: track,
-              queue: controller.searchResults,
+          if (controller.searchResults.isEmpty)
+            const _SearchMessage(
+              'No matches were found. Try another song, artist, or genre.',
+            )
+          else
+            ...controller.searchResults.map(
+              (track) => TrackTile(
+                track: track,
+                queue: controller.searchResults,
+              ),
             ),
-          ),
           if (controller.searchMoreError != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -207,18 +207,10 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
         ] else if (controller.offlineMode) ...[
-          const Text(
-            'Your saved music',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 17,
-            ),
-          ),
-          const SizedBox(height: 9),
+          const _SectionHeading(title: 'Your Downloaded Music'),
           if (controller.downloadedTracks.isEmpty)
             const _SearchMessage(
-              'No AUREL downloads yet. Turn off Offline mode when connected to discover and download music.',
+              'No AUREL downloads yet. Your saved music will appear here.',
             )
           else
             ...controller.downloadedTracks.map(
@@ -229,64 +221,326 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
         ] else ...[
-          const Text(
-            'Explore by sound',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 17,
-            ),
-          ),
-          const SizedBox(height: 14),
+          const _SectionHeading(title: 'Trending Searches'),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 9,
+            spacing: 8,
             runSpacing: 9,
-            children: [
-              'Electronic',
-              'Chill',
-              'Ambient',
-              'Jazz',
-              'Indie',
-              'Piano',
-              'Hip Hop',
-              'Acoustic',
-            ].map((term) {
+            children: _trendingSearches.map((term) {
               return ActionChip(
+                onPressed: () => _searchFor(term),
+                avatar: const Icon(
+                  Icons.trending_up_rounded,
+                  color: AurelColors.champagne,
+                  size: 15,
+                ),
                 label: Text(term),
-                onPressed: () => _searchTag(term),
                 backgroundColor: AurelColors.surface,
                 side: const BorderSide(color: AurelColors.divider),
                 labelStyle: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(22),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 28),
-          const Text(
-            'A little inspiration',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 17,
+          if (artists.isNotEmpty) ...[
+            const SizedBox(height: 27),
+            const _SectionHeading(title: 'Popular Artists'),
+            const SizedBox(height: 13),
+            SizedBox(
+              height: 112,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: artists.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 15),
+                itemBuilder: (context, index) {
+                  final track = artists[index];
+                  return _ArtistBubble(
+                    artist: track.artist,
+                    artworkUrl: track.artworkUrl,
+                    onTap: () => _searchFor(track.artist),
+                  );
+                },
+              ),
             ),
+          ],
+          if (controller.playlists.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _SectionHeading(
+              title: 'Your Playlists',
+              action: 'See All',
+              onAction: () => controller.selectTab(2),
+            ),
+            const SizedBox(height: 11),
+            SizedBox(
+              height: 146,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: controller.playlists.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final playlist = controller.playlists[index];
+                  final firstTrack = playlist.tracks.isEmpty
+                      ? null
+                      : playlist.tracks.first;
+                  return _PlaylistPoster(
+                    title: playlist.name,
+                    subtitle: '${playlist.tracks.length} songs',
+                    artworkUrl: firstTrack?.artworkUrl ?? '',
+                    onTap: () => controller.selectTab(2),
+                  );
+                },
+              ),
+            ),
+          ],
+          const SizedBox(height: 26),
+          _SectionHeading(
+            title: 'Popular Music',
+            action: 'See All',
+            onAction: () => controller.selectTab(0),
           ),
-          const SizedBox(height: 9),
-          ...controller.discoverTracks.take(5).map(
-                (track) => TrackTile(
-                  track: track,
-                  queue: controller.discoverTracks,
+          const SizedBox(height: 6),
+          if (controller.isLoadingDiscover &&
+              controller.discoverTracks.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(30),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: AurelColors.champagne,
                 ),
               ),
+            )
+          else if (controller.discoverError != null &&
+              controller.discoverTracks.isEmpty)
+            _SearchMessage(
+              controller.discoverError!,
+              action: 'Try again',
+              onTap: () =>
+                  context.read<AurelController>().refreshDiscover(),
+            )
+          else if (controller.discoverTracks.isEmpty)
+            const _SearchMessage(
+              'New music will appear here when the catalogue is available.',
+            )
+          else
+            ...controller.discoverTracks.take(5).map(
+                  (track) => TrackTile(
+                    track: track,
+                    queue: controller.discoverTracks,
+                  ),
+                ),
         ],
       ],
     );
   }
 }
 
+class _ArtistBubble extends StatelessWidget {
+  const _ArtistBubble({
+    required this.artist,
+    required this.artworkUrl,
+    required this.onTap,
+  });
+
+  final String artist;
+  final String artworkUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 72,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(15),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AurelColors.champagne.withValues(alpha: 0.35),
+                ),
+              ),
+              child: ClipOval(
+                child: artworkUrl.isEmpty
+                    ? Container(
+                        width: 59,
+                        height: 59,
+                        color: AurelColors.surfaceRaised,
+                        child: const Icon(
+                          Icons.person_rounded,
+                          color: AurelColors.champagne,
+                          size: 29,
+                        ),
+                      )
+                    : Image.network(
+                        artworkUrl,
+                        width: 59,
+                        height: 59,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 59,
+                          height: 59,
+                          color: AurelColors.surfaceRaised,
+                          child: const Icon(
+                            Icons.person_rounded,
+                            color: AurelColors.champagne,
+                            size: 29,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              artist,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaylistPoster extends StatelessWidget {
+  const _PlaylistPoster({
+    required this.title,
+    required this.subtitle,
+    required this.artworkUrl,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final String artworkUrl;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 116,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: artworkUrl.isEmpty
+                  ? Container(
+                      width: 116,
+                      height: 94,
+                      color: AurelColors.surfaceRaised,
+                      child: const Icon(
+                        Icons.queue_music_rounded,
+                        color: AurelColors.champagne,
+                        size: 32,
+                      ),
+                    )
+                  : AlbumArt(
+                      imageUrl: artworkUrl,
+                      size: 116,
+                      radius: 14,
+                    ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                color: AurelColors.muted,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({
+    required this.title,
+    this.action,
+    this.onAction,
+    this.trailing,
+  });
+
+  final String title;
+  final String? action;
+  final VoidCallback? onAction;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing!,
+        if (action != null)
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(
+              minimumSize: Size.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              action!,
+              style: const TextStyle(
+                color: AurelColors.champagne,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _SearchMessage extends StatelessWidget {
-  const _SearchMessage(this.message, {this.action, this.onTap});
+  const _SearchMessage(
+    this.message, {
+    this.action,
+    this.onTap,
+  });
 
   final String message;
   final String? action;
@@ -299,13 +553,23 @@ class _SearchMessage extends StatelessWidget {
       decoration: BoxDecoration(
         color: AurelColors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AurelColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(message, style: const TextStyle(color: AurelColors.muted)),
-          if (action != null)
+          Text(
+            message,
+            style: const TextStyle(
+              color: AurelColors.muted,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 9),
             TextButton(onPressed: onTap, child: Text(action!)),
+          ],
         ],
       ),
     );
