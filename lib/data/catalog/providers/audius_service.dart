@@ -78,11 +78,11 @@ class AudiusService {
       );
       final body = response.data;
       if (body == null) {
-        throw const AudiusException('Audius returned an empty response.');
+        throw const AudiusException('The music catalogue returned an empty response.');
       }
       if (response.statusCode == 429) {
         throw const AudiusException(
-          'Audius is rate-limiting requests. Try again shortly.',
+          'Music search is busy. Try again shortly.',
         );
       }
       return body;
@@ -91,10 +91,10 @@ class AudiusService {
       final status = error.response?.statusCode;
       throw AudiusException(
         status == 429
-            ? 'Audius is busy. Try again shortly.'
+            ? 'Music search is busy. Try again shortly.'
             : status == 401 || status == 403
-                ? 'Audius rejected its API credentials.'
-                : 'Audius could not be reached. Check your connection.',
+                ? 'Music catalogue access is unavailable.'
+                : 'A music collection could not be reached. Check your connection.',
       );
     }
   }
@@ -102,7 +102,7 @@ class AudiusService {
   List<Track> _parseTracks(Map<String, dynamic> body) {
     final raw = body['data'];
     if (raw is! List) {
-      throw const AudiusException('Audius returned an unreadable track list.');
+      throw const AudiusException('The music catalogue returned an unreadable track list.');
     }
     return raw
         .whereType<Map>()
