@@ -9,8 +9,8 @@ import '../models/track.dart';
 import '../repositories/library_repository.dart';
 import 'aurel_account_service.dart';
 import 'download_service.dart';
-import 'jamendo_service.dart';
-import 'music_catalog_service.dart';
+import '../catalog/providers/jamendo_service.dart';
+import '../catalog/music_catalog_service.dart';
 import 'lyrics_service.dart';
 import 'playback_controller.dart';
 
