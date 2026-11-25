@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../../../models/track.dart';
-import '../../../services/catalog_token_service.dart';
+import '../../models/track.dart';
+import '../../services/catalog_token_service.dart';
 
 class SoundCloudService {
   SoundCloudService({
