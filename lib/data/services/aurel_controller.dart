@@ -122,7 +122,6 @@ class AurelController extends ChangeNotifier {
   int selectedTab = 0;
 
   Future<void> initialize() async {
-    await account.initialize();
     await jamendo.initialize();
     await lyrics.initialize();
     favoriteTracks = await repository.loadFavorites();
@@ -439,7 +438,7 @@ class AurelController extends ChangeNotifier {
     recentlyPlayed = [
       track,
       ...recentlyPlayed.where((item) => item.id != track.id),
-    ].take(20).toList(growable: false);
+    ].take(100).toList(growable: false);
     await repository.saveRecentlyPlayed(recentlyPlayed);
     await syncCloudLibrary();
     notifyListeners();
