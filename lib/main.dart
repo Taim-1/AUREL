@@ -10,17 +10,17 @@ import 'app.dart';
 import 'data/repositories/library_repository.dart';
 import 'data/services/aurel_account_service.dart';
 import 'data/services/aurel_controller.dart';
-import 'data/services/audius_service.dart';
-import 'data/services/apple_music_catalog_service.dart';
+import 'data/catalog/providers/audius_service.dart';
+import 'data/catalog/providers/apple_music_catalog_service.dart';
 import 'data/services/catalog_token_service.dart';
-import 'data/services/music_catalog_service.dart';
-import 'data/services/openverse_service.dart';
-import 'data/services/soundcloud_service.dart';
-import 'data/services/spotify_catalog_service.dart';
+import 'data/catalog/music_catalog_service.dart';
+import 'data/catalog/providers/openverse_service.dart';
+import 'data/catalog/providers/soundcloud_service.dart';
+import 'data/catalog/providers/spotify_catalog_service.dart';
 import 'data/services/download_service.dart';
-import 'data/services/jamendo_service.dart';
+import 'data/catalog/providers/jamendo_service.dart';
 import 'data/services/lyrics_service.dart';
-import 'data/services/internet_archive_service.dart';
+import 'data/catalog/providers/internet_archive_service.dart';
 import 'data/services/playback_controller.dart';
 
 Future<void> main() async {
