@@ -301,6 +301,37 @@ class Track {
     );
   }
 
+  factory Track.fromInternetArchive({
+    required String identifier,
+    required String title,
+    required String artist,
+    required String album,
+    required String artworkUrl,
+    required String mediaUrl,
+    required String sourceUrl,
+    required String licenseUrl,
+    required String licenseName,
+    required int durationMs,
+  }) =>
+      Track(
+        id: 'internet-archive-$identifier',
+        title: title.isEmpty ? 'Untitled audio' : title,
+        artist: artist.isEmpty ? 'Internet Archive contributor' : artist,
+        album: album,
+        artworkUrl: artworkUrl,
+        streamUrl: mediaUrl,
+        downloadUrl: mediaUrl,
+        licenseUrl: licenseUrl,
+        licenseName: licenseName,
+        attribution: '$title by $artist — Internet Archive. $licenseUrl',
+        durationMs: durationMs,
+        downloadAllowed: true,
+        providerId: 'internet_archive',
+        providerName: 'Internet Archive',
+        sourceUrl: sourceUrl,
+        isPlayable: mediaUrl.isNotEmpty,
+      );
+
   factory Track.fromDevice(Map<Object?, Object?> json) {
     final uri = (json['uri'] ?? '').toString();
     final id = (json['id'] ?? uri).toString();
