@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -321,7 +320,7 @@ class AurelAccountService {
     final remotePlaylists = playlists.map((playlist) {
       final tracks = playlist.tracks
           .where((track) => !track.isDeviceTrack && track.streamUrl.isNotEmpty)
-          .map(_trackForCloud)
+          .map(_trackForCloudModel)
           .toList(growable: false);
       return MusicPlaylist(
         id: playlist.id,
@@ -417,6 +416,13 @@ class AurelAccountService {
       await batch.commit();
     }
   }
+
+  Track _trackForCloudModel(Track track) => Track.fromJson({
+        ...track.toJson(),
+        'localPath': null,
+        'isDownloaded': false,
+        'isDeviceTrack': false,
+      });
 
   Map<String, dynamic> _trackForCloud(Track track) {
     final json = track.toJson();
