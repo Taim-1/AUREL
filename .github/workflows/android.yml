@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify-and-build:
@@ -103,6 +103,18 @@ jobs:
             --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID" \
             --dart-define=AUREL_FIREBASE_MESSAGING_SENDER_ID="$AUREL_FIREBASE_MESSAGING_SENDER_ID" \
             --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Publish APK at repository root
+        if: github.event_name != 'pull_request'
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk AUREL.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add AUREL.apk
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: publish AUREL Android APK [skip ci]"
+            git push
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
