@@ -388,10 +388,17 @@ class AurelController extends ChangeNotifier {
   ) {
     final merged = <String, Track>{};
     for (final track in [...current, ...incoming]) {
-      final isrc = track.recordingId.trim().toUpperCase();
+      final isrc = track.recordingId
+          .trim()
+          .toUpperCase()
+          .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      final durationBucket = track.durationMs > 0
+          ? (track.durationMs / 10000).round().toString()
+          : 'unknown';
       final key = isrc.isNotEmpty
           ? 'isrc:$isrc'
-          : '${_normalizeTrackIdentity(track.title)}|${_normalizeTrackIdentity(track.artist)}';
+          : '${_normalizeTrackIdentity(track.title)}|'
+              '${_normalizeTrackIdentity(track.artist)}|$durationBucket';
       final previous = merged[key];
       if (previous == null) {
         merged[key] = track;
