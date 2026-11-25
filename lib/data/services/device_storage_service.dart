@@ -10,7 +10,7 @@ class DeviceStorageSnapshot {
   final int availableBytes;
 
   int get usedBytes =>
-      (totalBytes - availableBytes).clamp(0, totalBytes);
+      (totalBytes - availableBytes).clamp(0, totalBytes).toInt();
 
   double get usedFraction =>
       totalBytes <= 0 ? 0 : usedBytes / totalBytes;
@@ -23,7 +23,7 @@ class DeviceStorageSnapshot {
     }
     return DeviceStorageSnapshot(
       totalBytes: total,
-      availableBytes: available.clamp(0, total),
+      availableBytes: available.clamp(0, total).toInt(),
     );
   }
 
