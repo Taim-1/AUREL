@@ -20,7 +20,6 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
   @override
   void initState() {
     super.initState();
-    final controller = context.read<AurelController>();
     _lyricsController = TextEditingController();
   }
 
