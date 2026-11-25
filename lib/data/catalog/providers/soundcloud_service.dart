@@ -53,7 +53,7 @@ class SoundCloudService {
           : body;
       if (raw is! List) {
         throw const SoundCloudException(
-          'SoundCloud returned an unreadable track list.',
+          'The music catalogue returned an unreadable track list.',
         );
       }
       return raw
@@ -68,12 +68,12 @@ class SoundCloudService {
       final status = error.response?.statusCode;
       throw SoundCloudException(
         status == 401
-            ? 'SoundCloud authorization expired. Try again.'
+            ? 'Music catalogue authorization expired. Try again.'
             : status == 403
-                ? 'SoundCloud did not allow this app to access the track.'
+                ? 'This recording is not available for in-app playback.'
                 : status == 429
-                    ? 'SoundCloud is busy. Try again shortly.'
-                    : 'SoundCloud could not be reached.',
+                    ? 'Music search is busy. Try again shortly.'
+                    : 'A music collection could not be reached.',
       );
     }
   }
@@ -84,7 +84,7 @@ class SoundCloudService {
     if (track.providerId != 'soundcloud') return track;
     if (!track.isPlayable || track.streamUrl.isEmpty) {
       throw const SoundCloudException(
-        'This SoundCloud track is not available for in-app playback.',
+        'This recording is not available for in-app playback.',
       );
     }
     final accessToken = await tokens.tokenFor('soundcloud');
