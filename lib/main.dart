@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:audio_session/audio_session.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,11 +24,6 @@ Future<void> main() async {
     notificationColor: const Color(0xFFD9BC91),
     androidNotificationOngoing: true,
   );
-
-  // Apply the music-player audio policy after the media service is ready.
-  // just_audio then handles focus interruptions and unplugged-headphone events.
-  final audioSession = await AudioSession.instance;
-  await audioSession.configure(const AudioSessionConfiguration.music());
 
   final preferences = SharedPreferencesAsync();
   final repository = LibraryRepository(preferences);

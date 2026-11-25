@@ -344,24 +344,6 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addToQueue(Track track) async {
-    if (offlineMode && !track.isDownloaded) {
-      throw const PlaybackException(
-        'Only tracks saved inside AUREL can be queued in Offline mode.',
-      );
-    }
-    await playback.addToQueue(track);
-  }
-
-  Future<void> playNext(Track track) async {
-    if (offlineMode && !track.isDownloaded) {
-      throw const PlaybackException(
-        'Only tracks saved inside AUREL can be played next in Offline mode.',
-      );
-    }
-    await playback.playNext(track);
-  }
-
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
     if (offlineMode && !track.isDownloaded) {
       throw const PlaybackException(

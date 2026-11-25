@@ -11,7 +11,6 @@ dependencies:
     sdk: flutter
   material_ui: ^1.11.1
   audio_service: ^0.18.19
-  audio_session: ^0.2.2
   dio: ^5.11.1
   just_audio: ^0.10.6
   just_audio_background: ^0.0.1-beta.17

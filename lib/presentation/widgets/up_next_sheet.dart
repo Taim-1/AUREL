@@ -84,13 +84,11 @@ class UpNextSheet extends StatelessWidget {
                   shrinkWrap: true,
                   buildDefaultDragHandles: false,
                   itemCount: queue.length,
-                  onReorder: playback.isShuffleEnabled
-                      ? null
-                      : (oldIndex, newIndex) {
-                          var destination = newIndex;
-                          if (destination > oldIndex) destination--;
-                          playback.moveUpcoming(oldIndex, destination);
-                        },
+                  onReorderItem: (oldIndex, newIndex) {
+                    if (!playback.isShuffleEnabled) {
+                      playback.moveUpcoming(oldIndex, newIndex);
+                    }
+                  },
                   itemBuilder: (context, index) {
                     final track = queue[index];
                     final selected = index == playback.currentIndex;

@@ -32,7 +32,6 @@ class PlaybackController extends ChangeNotifier {
   final AndroidEqualizer equalizer = AndroidEqualizer();
   late final AudioPlayer player = AudioPlayer(
     audioPipeline: AudioPipeline(androidAudioEffects: [equalizer]),
-    handleInterruptions: true,
     useLazyPreparation: true,
     maxSkipsOnError: 2,
   );
@@ -86,90 +85,6 @@ class PlaybackController extends ChangeNotifier {
     } on PlayerInterruptedException {
       throw const PlaybackException('Playback was interrupted. Try again.');
     }
-  }
-
-  /// Appends a track to the active queue without interrupting playback.
-  Future<void> addToQueue(Track track) async {
-    if (queue.isEmpty || currentIndex < 0) {
-      await playTrack(track, [track]);
-      return;
-    }
-
-    await player.addAudioSource(_audioSource(track));
-    queue = [...queue, track];
-    notifyListeners();
-  }
-
-  /// Places a track immediately after the currently playing item.
-  /// Queue reordering is disabled while shuffle is active because the visible
-  /// sequence and the original playlist indices are different in that mode.
-  Future<void> playNext(Track track) async {
-    if (isShuffleEnabled) {
-      throw const PlaybackException(
-        'Turn off shuffle before choosing a track to play next.',
-      );
-    }
-    if (queue.isEmpty || currentIndex < 0) {
-      await playTrack(track, [track]);
-      return;
-    }
-
-    final insertionIndex = currentIndex + 1;
-    await player.insertAudioSource(insertionIndex, _audioSource(track));
-    queue = [
-      ...queue.take(insertionIndex),
-      track,
-      ...queue.skip(insertionIndex),
-    ];
-    notifyListeners();
-  }
-
-  /// Removes an upcoming item. The current and already played items stay put.
-  Future<void> removeUpcoming(int index) async {
-    if (isShuffleEnabled) {
-      throw const PlaybackException(
-        'Turn off shuffle before editing the queue.',
-      );
-    }
-    if (index <= currentIndex || index < 0 || index >= queue.length) return;
-
-    await player.removeAudioSourceAt(index);
-    queue = [
-      ...queue.take(index),
-      ...queue.skip(index + 1),
-    ];
-    notifyListeners();
-  }
-
-  /// Moves an upcoming item without allowing the current item to be displaced.
-  Future<void> moveUpcoming(int oldIndex, int newIndex) async {
-    if (isShuffleEnabled ||
-        oldIndex <= currentIndex ||
-        newIndex <= currentIndex ||
-        oldIndex < 0 ||
-        newIndex < 0 ||
-        oldIndex >= queue.length ||
-        newIndex >= queue.length ||
-        oldIndex == newIndex) {
-      return;
-    }
-
-    await player.moveAudioSource(oldIndex, newIndex);
-    final updated = List<Track>.of(queue);
-    final moved = updated.removeAt(oldIndex);
-    updated.insert(newIndex, moved);
-    queue = updated;
-    notifyListeners();
-  }
-
-  /// Clears only the upcoming items, preserving the current track.
-  Future<void> clearUpcoming() async {
-    final firstUpcoming = currentIndex + 1;
-    if (firstUpcoming < 0 || firstUpcoming >= queue.length) return;
-
-    await player.removeAudioSourceRange(firstUpcoming, queue.length);
-    queue = queue.take(firstUpcoming).toList(growable: false);
-    notifyListeners();
   }
 
   AudioSource _audioSource(Track track) {
