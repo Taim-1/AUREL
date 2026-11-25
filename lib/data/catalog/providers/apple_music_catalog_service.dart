@@ -64,10 +64,10 @@ class AppleMusicCatalogService {
       final status = error.response?.statusCode;
       throw AppleMusicCatalogException(
         status == 401 || status == 403
-            ? 'Apple Music developer token is missing or expired.'
+            ? 'Music catalogue authorization is unavailable.'
             : status == 429
-                ? 'Apple Music catalog is rate-limiting searches.'
-                : 'Apple Music catalog search is unavailable.',
+                ? 'Music search is busy. Try again shortly.'
+                : 'Music catalogue search is unavailable.',
       );
     }
   }
