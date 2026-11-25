@@ -25,6 +25,20 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          token: ${{ github.token }}
+
+      - name: Set up Node for Firebase Functions
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Firebase token broker
+        run: |
+          npm install --prefix functions --no-audit --no-fund
+          npm --prefix functions run build
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -107,16 +121,20 @@ jobs:
             --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
 
       - name: Publish APK at repository root
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          PUBLISH_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk AUREL.apk
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add AUREL.apk
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: publish AUREL Android APK [skip ci]"
-            git push
+          if git diff --cached --quiet; then
+            echo "The root APK is already up to date."
+            exit 0
           fi
+          git commit -m "chore: publish AUREL Android APK [skip ci]"
+          git push origin "HEAD:${PUBLISH_BRANCH}"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
