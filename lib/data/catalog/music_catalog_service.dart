@@ -373,9 +373,16 @@ class MusicCatalogService {
 
     final title = _normalize(track.title);
     final artist = _normalize(track.artist);
-    final durationBucket = track.durationMs > 0
-        ? (track.durationMs / 10000).round().toString()
-        : 'unknown';
+    if (track.durationMs <= 0) {
+      final album = _normalize(track.album);
+      if (album.isNotEmpty) {
+        return 'title:$title|artist:$artist|album:$album';
+      }
+      // Without an ISRC or duration, avoid merging different recordings that
+      // happen to share the same title and artist.
+      return 'unverified:${track.providerId}:${track.id}';
+    }
+    final durationBucket = (track.durationMs / 10000).round().toString();
     return 'title:$title|artist:$artist|duration:$durationBucket';
   }
 
