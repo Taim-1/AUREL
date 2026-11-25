@@ -2,7 +2,7 @@ import 'dart:collection';
 
 import 'package:dio/dio.dart';
 
-import '../../../models/track.dart';
+import '../../models/track.dart';
 
 /// Openly licensed audio search through the MediaWiki Action API.
 ///
