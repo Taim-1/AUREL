@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../models/track.dart';
+import '../../models/track.dart';
 
 class OpenverseService {
   OpenverseService({Dio? dio})
