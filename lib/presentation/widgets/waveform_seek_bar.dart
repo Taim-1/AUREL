@@ -5,13 +5,13 @@ import 'package:material_ui/material_ui.dart';
 class WaveformSeekBar extends StatefulWidget {
   const WaveformSeekBar({
     super.key,
-    required this.positionStream,
+    required this.position,
     required this.duration,
     required this.isPlaying,
     required this.onSeek,
   });
 
-  final Stream<Duration> positionStream;
+  final Duration position;
   final Duration duration;
   final bool isPlaying;
   final ValueChanged<Duration> onSeek;
@@ -68,42 +68,33 @@ class _WaveformSeekBarState extends State<WaveformSeekBar>
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<Duration>(
-      stream: widget.positionStream,
-      initialData: Duration.zero,
-      builder: (context, snapshot) {
-        final durationMs = math.max(1, widget.duration.inMilliseconds);
-        final positionMs =
-            (snapshot.data ?? Duration.zero).inMilliseconds.clamp(0, durationMs);
-        final progress = positionMs / durationMs;
+    final durationMs = math.max(1, widget.duration.inMilliseconds);
+    final positionMs = widget.position.inMilliseconds.clamp(0, durationMs);
+    final progress = positionMs / durationMs;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapDown: (details) =>
-                  _seekAt(details.localPosition.dx, constraints.maxWidth),
-              onHorizontalDragUpdate: (details) => _seekAt(
-                details.localPosition.dx,
-                constraints.maxWidth,
-              ),
-              child: SizedBox(
-                height: 52,
-                width: double.infinity,
-                child: AnimatedBuilder(
-                  animation: _glowController,
-                  builder: (context, _) => CustomPaint(
-                    painter: _WaveformPainter(
-                      progress: progress,
-                      glow: widget.isPlaying
-                          ? _glowController.value
-                          : 0.28,
-                    ),
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (details) =>
+              _seekAt(details.localPosition.dx, constraints.maxWidth),
+          onHorizontalDragUpdate: (details) => _seekAt(
+            details.localPosition.dx,
+            constraints.maxWidth,
+          ),
+          child: SizedBox(
+            height: 52,
+            width: double.infinity,
+            child: AnimatedBuilder(
+              animation: _glowController,
+              builder: (context, _) => CustomPaint(
+                painter: _WaveformPainter(
+                  progress: progress,
+                  glow: widget.isPlaying ? _glowController.value : 0.28,
                 ),
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
