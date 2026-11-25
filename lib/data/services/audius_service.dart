@@ -21,9 +21,8 @@ class AudiusService {
   final Dio _dio;
   final String _apiKey;
 
-  Map<String, String> get _headers => _apiKey.isEmpty
-      ? const {}
-      : {'Authorization': 'Bearer $_apiKey'};
+  Map<String, String> get _headers =>
+      _apiKey.isEmpty ? const {} : {'x-api-key': _apiKey};
 
   Future<List<Track>> search(
     String query, {
@@ -38,6 +37,7 @@ class AudiusService {
       'tracks/search',
       {
         'query': normalized,
+        'app_name': 'AUREL',
         'limit': _safeLimit(limit),
         'offset': _safeOffset(offset),
       },
@@ -55,6 +55,7 @@ class AudiusService {
       'tracks/trending',
       {
         'time': 'week',
+        'app_name': 'AUREL',
         'limit': _safeLimit(limit),
         'offset': _safeOffset(offset),
       },
