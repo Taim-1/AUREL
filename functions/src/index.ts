@@ -2,7 +2,6 @@ import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { defineSecret } from "firebase-functions/params";
 import { onRequest } from "firebase-functions/v2/https";
-import type { Response } from "express";
 import { importPKCS8, SignJWT } from "jose";
 
 const spotifyClientId = defineSecret("SPOTIFY_CLIENT_ID");
@@ -25,8 +24,14 @@ type TokenResult = {
 const tokenCache = new Map<Provider, TokenResult>();
 const requestWindows = new Map<string, { start: number; count: number }>();
 
+type JsonErrorResponse = {
+  status(code: number): {
+    json(body: { error: string; message: string }): unknown;
+  };
+};
+
 function jsonError(
-  response: Response,
+  response: JsonErrorResponse,
   status: number,
   message: string,
 ): void {
