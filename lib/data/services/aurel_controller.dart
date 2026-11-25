@@ -27,7 +27,6 @@ class AurelController extends ChangeNotifier {
     playback.addListener(_onPlaybackChanged);
   }
 
-  static const _pageSize = 30;
 
   String? _lastHistoryTrackId;
 
@@ -146,7 +145,6 @@ class AurelController extends ChangeNotifier {
   String? searchError;
   String? searchMoreError;
   String searchQuery = '';
-  String? _activeTag;
   int _discoverOffset = 0;
   int _searchOffset = 0;
   int _discoverGeneration = 0;
@@ -287,13 +285,11 @@ class AurelController extends ChangeNotifier {
 
   Future<void> searchMusic(String query) => _startSearch(query);
 
-  Future<void> searchByTag(String tag) =>
-      _startSearch(tag, tag: tag.trim());
+  Future<void> searchByTag(String tag) => _startSearch(tag);
 
-  Future<void> _startSearch(String query, {String? tag}) async {
+  Future<void> _startSearch(String query) async {
     final normalized = query.trim();
     final generation = ++_searchGeneration;
-    _activeTag = tag;
     searchQuery = normalized;
     searchResults = [];
     _searchOffset = 0;
@@ -356,7 +352,6 @@ class AurelController extends ChangeNotifier {
     }
     final generation = _searchGeneration;
     final query = searchQuery;
-    final tag = _activeTag;
     isLoadingMoreSearch = true;
     searchMoreError = null;
     notifyListeners();
@@ -381,6 +376,12 @@ class AurelController extends ChangeNotifier {
     }
   }
 
+  String _normalizeTrackIdentity(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9\u0600-\u06FF]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
   List<Track> _mergeCatalogResults(
     List<Track> current,
     List<Track> incoming,
@@ -388,14 +389,9 @@ class AurelController extends ChangeNotifier {
     final merged = <String, Track>{};
     for (final track in [...current, ...incoming]) {
       final isrc = track.recordingId.trim().toUpperCase();
-      final normalized = (value) => value
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9\\u0600-\\u06FF]+'), ' ')
-          .replaceAll(RegExp(r'\\s+'), ' ')
-          .trim();
       final key = isrc.isNotEmpty
           ? 'isrc:$isrc'
-          : '${normalized(track.title)}|${normalized(track.artist)}';
+          : '${_normalizeTrackIdentity(track.title)}|${_normalizeTrackIdentity(track.artist)}';
       final previous = merged[key];
       if (previous == null) {
         merged[key] = track;
