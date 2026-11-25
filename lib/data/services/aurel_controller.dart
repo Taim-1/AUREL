@@ -10,6 +10,7 @@ import '../repositories/library_repository.dart';
 import 'aurel_account_service.dart';
 import 'download_service.dart';
 import 'jamendo_service.dart';
+import 'music_catalog_service.dart';
 import 'lyrics_service.dart';
 import 'playback_controller.dart';
 
@@ -21,6 +22,7 @@ class AurelController extends ChangeNotifier {
     required this.playback,
     required this.lyrics,
     required this.account,
+    required this.catalog,
   }) {
     playback.addListener(_onPlaybackChanged);
   }
@@ -108,6 +110,10 @@ class AurelController extends ChangeNotifier {
   final PlaybackController playback;
   final LyricsService lyrics;
   final AurelAccountService account;
+  final MusicCatalogService catalog;
+
+  Map<String, String> sourceErrors = const {};
+  Map<String, int> sourceCounts = const {};
 
   String? cloudSyncError;
 
@@ -231,11 +237,13 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final page = await jamendo.popular(limit: _pageSize, offset: 0);
+      final page = await catalog.discover(page: 0);
       if (generation != _discoverGeneration) return;
-      discoverTracks = page;
-      _discoverOffset = page.length;
-      hasMoreDiscover = page.length == _pageSize;
+      discoverTracks = page.tracks;
+      sourceErrors = page.sourceErrors;
+      sourceCounts = page.sourceCounts;
+      _discoverOffset = 1;
+      hasMoreDiscover = page.hasMore;
     } catch (error) {
       if (generation == _discoverGeneration) {
         discoverError = error.toString();
@@ -258,14 +266,13 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final page = await jamendo.popular(
-        limit: _pageSize,
-        offset: _discoverOffset,
-      );
+      final page = await catalog.discover(page: _discoverOffset);
       if (generation != _discoverGeneration) return;
-      discoverTracks = _appendUnique(discoverTracks, page);
-      _discoverOffset += page.length;
-      hasMoreDiscover = page.length == _pageSize;
+      discoverTracks = _mergeCatalogResults(discoverTracks, page.tracks);
+      sourceErrors = page.sourceErrors;
+      sourceCounts = page.sourceCounts;
+      _discoverOffset++;
+      hasMoreDiscover = page.hasMore;
     } catch (error) {
       if (generation == _discoverGeneration) {
         discoverError = error.toString();
@@ -320,13 +327,17 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final page = tag == null
-          ? await jamendo.search(normalized, limit: _pageSize, offset: 0)
-          : await jamendo.byTag(tag, limit: _pageSize, offset: 0);
+      final page = await catalog.search(normalized, page: 0);
       if (generation != _searchGeneration) return;
-      searchResults = page;
-      _searchOffset = page.length;
-      hasMoreSearch = page.length == _pageSize;
+      searchResults = page.tracks;
+      sourceErrors = page.sourceErrors;
+      sourceCounts = page.sourceCounts;
+      _searchOffset = 1;
+      hasMoreSearch = page.hasMore;
+      if (searchResults.isEmpty && page.sourceErrors.length == 5) {
+        searchError =
+            'Music sources are unavailable. Check your connection or account setup.';
+      }
     } catch (error) {
       if (generation == _searchGeneration) {
         searchError = error.toString();
@@ -351,21 +362,13 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final page = tag == null
-          ? await jamendo.search(
-              query,
-              limit: _pageSize,
-              offset: _searchOffset,
-            )
-          : await jamendo.byTag(
-              tag,
-              limit: _pageSize,
-              offset: _searchOffset,
-            );
+      final page = await catalog.search(query, page: _searchOffset);
       if (generation != _searchGeneration) return;
-      searchResults = _appendUnique(searchResults, page);
-      _searchOffset += page.length;
-      hasMoreSearch = page.length == _pageSize;
+      searchResults = _mergeCatalogResults(searchResults, page.tracks);
+      sourceErrors = page.sourceErrors;
+      sourceCounts = page.sourceCounts;
+      _searchOffset++;
+      hasMoreSearch = page.hasMore;
     } catch (error) {
       if (generation == _searchGeneration) {
         searchMoreError = error.toString();
@@ -376,6 +379,38 @@ class AurelController extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  List<Track> _mergeCatalogResults(
+    List<Track> current,
+    List<Track> incoming,
+  ) {
+    final merged = <String, Track>{};
+    for (final track in [...current, ...incoming]) {
+      final isrc = track.recordingId.trim().toUpperCase();
+      final normalized = (value) => value
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9\\u0600-\\u06FF]+'), ' ')
+          .replaceAll(RegExp(r'\\s+'), ' ')
+          .trim();
+      final key = isrc.isNotEmpty
+          ? 'isrc:$isrc'
+          : '${normalized(track.title)}|${normalized(track.artist)}';
+      final previous = merged[key];
+      if (previous == null) {
+        merged[key] = track;
+        continue;
+      }
+      final sources = {
+        ...previous.matchedSources,
+        previous.providerName,
+        ...track.matchedSources,
+        track.providerName,
+      }.toList(growable: false);
+      final selected = track.canPlay && !previous.canPlay ? track : previous;
+      merged[key] = selected.copyWith(matchedSources: sources);
+    }
+    return merged.values.toList(growable: false);
   }
 
   Future<void> toggleFavorite(Track track) async {
@@ -436,7 +471,7 @@ class AurelController extends ChangeNotifier {
         'Only tracks saved inside AUREL can be queued in Offline mode.',
       );
     }
-    await playback.addToQueue(track);
+    await playback.addToQueue(await catalog.prepareTrack(track));
   }
 
   Future<void> playNext(Track track) async {
@@ -445,7 +480,7 @@ class AurelController extends ChangeNotifier {
         'Only tracks saved inside AUREL can be played next in Offline mode.',
       );
     }
-    await playback.playNext(track);
+    await playback.playNext(await catalog.prepareTrack(track));
   }
 
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
@@ -459,8 +494,16 @@ class AurelController extends ChangeNotifier {
     final tracks = offlineMode
         ? source.where((item) => item.isDownloaded).toList(growable: false)
         : source;
-    await playback.playTrack(track, tracks);
-    await _recordRecentlyPlayed(track);
+    final prepared = await catalog.prepareQueue(tracks);
+    final selected = prepared.where((item) => item.id == track.id);
+    if (selected.isEmpty) {
+      throw const PlaybackException(
+        'This track has no authorized in-app playback source.',
+      );
+    }
+    final playableTrack = selected.first;
+    await playback.playTrack(playableTrack, prepared);
+    await _recordRecentlyPlayed(playableTrack);
     notifyListeners();
   }
 
@@ -516,8 +559,9 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final preparedTrack = await catalog.prepareTrack(track);
       final saved = await downloads.download(
-        track,
+        preparedTrack,
         cancelToken: token,
         onProgress: (received, total) {
           if (total <= 0 || token.isCancelled) return;
