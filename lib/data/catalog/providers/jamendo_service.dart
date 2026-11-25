@@ -34,7 +34,7 @@ class JamendoService {
   Future<void> setClientId(String value) async {
     final normalized = value.trim();
     if (normalized.isEmpty) {
-      throw ArgumentError('Enter a Jamendo client ID.');
+      throw ArgumentError('Enter the AUREL catalogue access ID.');
     }
     _clientId = normalized;
     await _repository.saveClientId(normalized);
@@ -79,7 +79,7 @@ class JamendoService {
   Future<List<Track>> _requestTracks(Map<String, String> extra) async {
     if (_clientId.isEmpty) {
       throw const JamendoException(
-        'The AUREL music catalogue is not configured for this build yet.',
+        'A music collection is not configured for this build yet.',
       );
     }
     try {
@@ -105,7 +105,7 @@ class JamendoService {
         final message = headers['error_message']?.toString();
         throw JamendoException(
           message == null || message.isEmpty
-              ? 'Jamendo could not complete this request.'
+              ? 'The music catalogue could not complete this request.'
               : message,
         );
       }
@@ -123,10 +123,10 @@ class JamendoService {
     } on DioException catch (error) {
       final status = error.response?.statusCode;
       final detail = status == 401 || status == 403
-          ? 'Jamendo rejected the client ID. Add your own ID in Profile settings.'
+          ? 'The music catalogue access settings need to be checked.'
           : status == 429
               ? 'Music search is temporarily busy. Try again in a moment.'
-              : 'Could not reach Jamendo. Check your connection and try again.';
+              : 'Could not reach the music catalogue. Check your connection and try again.';
       throw JamendoException(detail);
     } on FormatException {
       throw const JamendoException(
