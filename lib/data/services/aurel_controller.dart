@@ -497,7 +497,10 @@ class AurelController extends ChangeNotifier {
     final tracks = offlineMode
         ? source.where((item) => item.isDownloaded).toList(growable: false)
         : source;
-    final prepared = await catalog.prepareQueue(tracks);
+    final prepared = await catalog.prepareQueue(
+      tracks,
+      requiredTrackId: track.id,
+    );
     final selected = prepared.where((item) => item.id == track.id);
     if (selected.isEmpty) {
       throw const PlaybackException(
