@@ -3,11 +3,19 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/models/music_playlist.dart';
+import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/track_tile.dart';
 
-class LibraryScreen extends StatelessWidget {
+class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
+
+  @override
+  State<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends State<LibraryScreen> {
+  int _selectedTab = 0;
 
   Future<void> _createPlaylist(BuildContext context) async {
     final controller = TextEditingController();
@@ -28,7 +36,8 @@ class LibraryScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
             child: const Text('Create'),
           ),
         ],
@@ -48,87 +57,470 @@ class LibraryScreen extends StatelessWidget {
     );
   }
 
+  List<Track> _savedTracks(AurelController controller) {
+    final unique = <String, Track>{};
+    for (final track in [
+      ...controller.favoriteTracks,
+      ...controller.downloadedTracks,
+      ...controller.recentlyPlayed,
+    ]) {
+      unique.putIfAbsent(track.id, () => track);
+    }
+    return unique.values.toList(growable: false);
+  }
+
+  List<_TrackGroup> _groupTracks(
+    List<Track> tracks,
+    String Function(Track) groupName,
+  ) {
+    final groups = <String, List<Track>>{};
+    for (final track in tracks) {
+      final name = groupName(track).trim();
+      if (name.isEmpty) continue;
+      groups.putIfAbsent(name, () => <Track>[]).add(track);
+    }
+    final result = groups.entries
+        .map((entry) => _TrackGroup(entry.key, entry.value))
+        .toList();
+    result.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
+    final saved = _savedTracks(controller);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 28),
       children: [
-        const Text(
-          'Your library',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 29,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.7,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Your favourites and your own collections.',
-          style: TextStyle(color: AurelColors.muted, fontSize: 13),
-        ),
-        const SizedBox(height: 24),
-        _LibrarySummary(
-          title: 'Liked songs',
-          subtitle: '${controller.favoriteTracks.length} saved tracks',
-          icon: Icons.favorite_rounded,
-          tint: const Color(0xFF70445E),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const _FavoritesPage()),
-          ),
-        ),
-        const SizedBox(height: 27),
         Row(
           children: [
             const Expanded(
               child: Text(
-                'Your playlists',
+                'Your Library',
                 style: TextStyle(
                   color: Colors.white,
+                  fontSize: 28,
                   fontWeight: FontWeight.w700,
-                  fontSize: 18,
+                  letterSpacing: -0.7,
                 ),
               ),
             ),
-            TextButton.icon(
+            IconButton(
+              tooltip: 'Search music',
+              onPressed: () => controller.selectTab(1),
+              icon: const Icon(
+                Icons.search_rounded,
+                color: AurelColors.champagneLight,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Create playlist',
               onPressed: () => _createPlaylist(context),
-              icon: const Icon(Icons.add_rounded, size: 19),
-              label: const Text('New'),
+              icon: const Icon(
+                Icons.add_rounded,
+                color: AurelColors.champagneLight,
+                size: 27,
+              ),
             ),
           ],
         ),
-        if (controller.playlists.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AurelColors.surface,
-              borderRadius: BorderRadius.circular(17),
+        const SizedBox(height: 15),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _LibraryTab(
+                label: 'Playlists',
+                selected: _selectedTab == 0,
+                onTap: () => setState(() => _selectedTab = 0),
+              ),
+              _LibraryTab(
+                label: 'Liked Songs',
+                selected: _selectedTab == 1,
+                onTap: () => setState(() => _selectedTab = 1),
+              ),
+              _LibraryTab(
+                label: 'Albums',
+                selected: _selectedTab == 2,
+                onTap: () => setState(() => _selectedTab = 2),
+              ),
+              _LibraryTab(
+                label: 'Artists',
+                selected: _selectedTab == 3,
+                onTap: () => setState(() => _selectedTab = 3),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        if (_selectedTab == 0) ...[
+          _LibrarySummary(
+            title: 'Favorites',
+            subtitle: '${controller.favoriteTracks.length} songs',
+            icon: Icons.favorite_rounded,
+            tint: const Color(0xFF70445E),
+            onTap: () => setState(() => _selectedTab = 1),
+          ),
+          const SizedBox(height: 13),
+          if (controller.playlists.isEmpty)
+            _LibraryEmptyState(
+              title: 'Your playlists',
+              message:
+                  'Create your first playlist and keep every mood in one place.',
+              action: 'Create playlist',
+              onTap: () => _createPlaylist(context),
+            )
+          else ...[
+            ...controller.playlists.map(
+              (playlist) => _PlaylistCard(
+                playlist: playlist,
+                onTap: () => _openPlaylist(context, playlist.id),
+              ),
             ),
-            child: const Text(
-              'Create collections for every mood. Add songs from Search or Discover.',
-              style: TextStyle(color: AurelColors.muted, fontSize: 12, height: 1.5),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _createPlaylist(context),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Create playlist'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AurelColors.champagne,
+                side: const BorderSide(color: AurelColors.divider),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+              ),
             ),
-          )
-        else
-          ...controller.playlists.map(
-            (playlist) => _PlaylistCard(
-              playlist: playlist,
-              onTap: () => _openPlaylist(context, playlist.id),
+          ],
+        ] else if (_selectedTab == 1) ...[
+          _LibrarySectionHeading(
+            title: 'Liked Songs',
+            count: '${controller.favoriteTracks.length} songs',
+          ),
+          if (controller.favoriteTracks.isEmpty)
+            const _LibraryEmptyState(
+              title: 'No liked songs yet',
+              message:
+                  'Tap the heart on any track to save it to your collection.',
+            )
+          else
+            ...controller.favoriteTracks.map(
+              (track) => TrackTile(
+                track: track,
+                queue: controller.favoriteTracks,
+              ),
+            ),
+        ] else if (_selectedTab == 2) ...[
+          _LibrarySectionHeading(title: 'Albums', count: 'Saved music'),
+          ..._buildGroups(
+            context,
+            _groupTracks(
+              saved,
+              (track) => track.album.isEmpty ? 'Singles' : track.album,
             ),
           ),
-        const SizedBox(height: 28),
-        const Text(
-          'Made to feel like yours',
-          style: TextStyle(color: AurelColors.champagne, fontSize: 11, letterSpacing: 2),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Your AUREL library keeps the music you save inside the app, ready for your next listen.',
-          style: TextStyle(color: AurelColors.muted, fontSize: 12, height: 1.5),
-        ),
+        ] else ...[
+          _LibrarySectionHeading(title: 'Artists', count: 'Saved music'),
+          ..._buildGroups(
+            context,
+            _groupTracks(saved, (track) => track.artist),
+          ),
+        ],
       ],
+    );
+  }
+
+  List<Widget> _buildGroups(
+    BuildContext context,
+    List<_TrackGroup> groups,
+  ) {
+    if (groups.isEmpty) {
+      return const [
+        _LibraryEmptyState(
+          title: 'Your collection is growing',
+          message:
+              'Albums and artists from your saved music will appear here.',
+        ),
+      ];
+    }
+
+    return groups
+        .map(
+          (group) => _CollectionRow(
+            group: group,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => _CollectionDetailPage(
+                  title: group.name,
+                  tracks: group.tracks,
+                ),
+              ),
+            ),
+          ),
+        )
+        .toList(growable: false);
+  }
+}
+
+class _LibraryTab extends StatelessWidget {
+  const _LibraryTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: selected ? AurelColors.champagneLight : AurelColors.surface,
+        borderRadius: BorderRadius.circular(30),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(30),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 9,
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? AurelColors.background : Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LibrarySectionHeading extends StatelessWidget {
+  const _LibrarySectionHeading({
+    required this.title,
+    required this.count,
+  });
+
+  final String title;
+  final String count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            count,
+            style: const TextStyle(
+              color: AurelColors.muted,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LibraryEmptyState extends StatelessWidget {
+  const _LibraryEmptyState({
+    required this.title,
+    required this.message,
+    this.action,
+    this.onTap,
+  });
+
+  final String title;
+  final String message;
+  final String? action;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AurelColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AurelColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AurelColors.muted,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+          if (action != null) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onTap,
+              child: Text(action!),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackGroup {
+  const _TrackGroup(this.name, this.tracks);
+
+  final String name;
+  final List<Track> tracks;
+}
+
+class _CollectionRow extends StatelessWidget {
+  const _CollectionRow({
+    required this.group,
+    required this.onTap,
+  });
+
+  final _TrackGroup group;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = group.tracks.first;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Material(
+        color: AurelColors.surface,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(15),
+          child: Padding(
+            padding: const EdgeInsets.all(9),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: first.artworkUrl.isEmpty
+                      ? Container(
+                          width: 52,
+                          height: 52,
+                          color: AurelColors.surfaceRaised,
+                          child: const Icon(
+                            Icons.album_rounded,
+                            color: AurelColors.champagne,
+                          ),
+                        )
+                      : Image.network(
+                          first.artworkUrl,
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            width: 52,
+                            height: 52,
+                            color: AurelColors.surfaceRaised,
+                            child: const Icon(
+                              Icons.album_rounded,
+                              color: AurelColors.champagne,
+                            ),
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${group.tracks.length} songs • ${first.artist}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AurelColors.muted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AurelColors.muted,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CollectionDetailPage extends StatelessWidget {
+  const _CollectionDetailPage({
+    required this.title,
+    required this.tracks,
+  });
+
+  final String title;
+  final List<Track> tracks;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+        children: tracks
+            .map(
+              (track) => TrackTile(
+                track: track,
+                queue: tracks,
+              ),
+            )
+            .toList(),
+      ),
     );
   }
 }
