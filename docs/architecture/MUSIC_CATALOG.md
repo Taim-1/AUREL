@@ -71,7 +71,22 @@ Ranking must be configurable, not a hard-coded promise that one brand always win
 
 ## Current repository baseline
 
-The repository currently contains a Jamendo discovery/streaming adapter, Musixmatch licensed-lyrics integration, just_audio playback, just_audio_background Android media controls, persistent local library metadata and a permission-aware download service. Keep these working while the catalogue expands.
+The repository currently contains these adapters and capability boundaries:
+
+| Provider | Current AUREL role | Playback in AUREL |
+|---|---|---|
+| SoundCloud | Search public playable tracks through the official API | Full in-app stream only when the API marks the track playable; approved app credentials required |
+| Audius | Search and trending discovery | In-app stream for streamable tracks; API key improves permitted access |
+| Jamendo | Search, popular and tag discovery | In-app stream; downloads only when `audiodownload_allowed` is true |
+| Internet Archive | Search and resolve audio files with an explicitly recognized CC/Public Domain license | In-app stream and download only for accepted license metadata |
+| Openverse | Search openly licensed audio and preserve attribution | In-app stream; download only for accepted reusable licenses |
+| Apple Music | Catalog metadata and artwork | Metadata-only in the current Flutter player; no full-track URL |
+| Spotify | Catalog metadata, ISRC and artwork | Metadata-only in the current Flutter player; no full-track URL |
+| Musixmatch | Licensed lyrics lookup and timed subtitles | Lyrics only; separate from audio playback |
+
+SoundCloud, Spotify and Apple Music server credentials are brokered by the Firebase callable HTTP endpoint in `functions/src/index.ts`; they must be configured in Firebase Secret Manager and the function must be deployed. Jamendo and Audius have separate build-time public API credentials. A source that is not configured must report an unavailable state rather than fabricate results.
+
+Keep these capabilities distinct. Do not label metadata-only entries as playable or downloadable. Do not use Spotify or Apple Music metadata as evidence that AUREL can stream the recording. Keep all eligible playback, queueing, lyrics, and downloads inside AUREL.
 
 ## Provider onboarding checklist
 
