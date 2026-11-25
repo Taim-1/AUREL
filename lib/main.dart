@@ -20,6 +20,7 @@ import 'data/services/spotify_catalog_service.dart';
 import 'data/services/download_service.dart';
 import 'data/services/jamendo_service.dart';
 import 'data/services/lyrics_service.dart';
+import 'data/services/internet_archive_service.dart';
 import 'data/services/playback_controller.dart';
 
 Future<void> main() async {
@@ -58,6 +59,7 @@ Future<void> main() async {
     spotify: spotify,
     appleMusic: appleMusic,
     openverse: OpenverseService(),
+    internetArchive: InternetArchiveService(),
   );
   final controller = AurelController(
     repository: repository,
