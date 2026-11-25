@@ -115,7 +115,7 @@ class _PlaybackSettingsSheetState extends State<PlaybackSettingsSheet> {
                 children: [0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((speed) {
                   final selected = (playback.speed - speed).abs() < 0.01;
                   return ChoiceChip(
-                    label: Text('${speed}×'),
+                    label: Text('$speed×'),
                     selected: selected,
                     onSelected: (_) => playback.setSpeed(speed),
                     selectedColor: AurelColors.champagne,

@@ -75,7 +75,6 @@ class PlaybackController extends ChangeNotifier {
       await player.setAudioSources(
         sources,
         initialIndex: currentIndex,
-        useLazyPreparation: true,
       );
       unawaited(player.play());
       notifyListeners();
