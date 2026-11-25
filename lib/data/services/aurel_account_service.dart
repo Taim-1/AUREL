@@ -366,7 +366,7 @@ class AurelAccountService {
     }
 
     for (var start = 0; start < tracks.length; start += 400) {
-      final end = (start + 400).clamp(0, tracks.length);
+      final end = (start + 400).clamp(0, tracks.length).toInt();
       final batch = _firestore!.batch();
       for (var index = start; index < end; index++) {
         final track = tracks[index];
@@ -401,7 +401,7 @@ class AurelAccountService {
     }
 
     for (var start = 0; start < playlists.length; start += 400) {
-      final end = (start + 400).clamp(0, playlists.length);
+      final end = (start + 400).clamp(0, playlists.length).toInt();
       final batch = _firestore!.batch();
       for (var index = start; index < end; index++) {
         final playlist = playlists[index];
@@ -434,7 +434,7 @@ class AurelAccountService {
   List<List<T>> _chunks<T>(List<T> values, int size) {
     final result = <List<T>>[];
     for (var start = 0; start < values.length; start += size) {
-      final end = (start + size).clamp(0, values.length);
+      final end = (start + size).clamp(0, values.length).toInt();
       result.add(values.sublist(start, end));
     }
     return result;
