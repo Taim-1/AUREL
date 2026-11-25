@@ -55,7 +55,7 @@ class InternetArchiveService {
       final rawItems = docs is Map ? docs['docs'] : null;
       if (rawItems is! List) {
         throw const InternetArchiveException(
-          'Internet Archive returned an unreadable search result.',
+          'The open audio catalogue returned an unreadable search result.',
         );
       }
 
@@ -84,8 +84,8 @@ class InternetArchiveService {
       final status = error.response?.statusCode;
       throw InternetArchiveException(
         status == 429
-            ? 'Internet Archive is temporarily rate-limiting requests.'
-            : 'Internet Archive could not be reached. Check your connection.',
+            ? 'The open audio catalogue is busy. Try again shortly.'
+            : 'The open audio catalogue could not be reached. Check your connection.',
       );
     }
   }
