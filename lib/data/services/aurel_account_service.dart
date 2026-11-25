@@ -447,7 +447,7 @@ class AurelAccountService {
     await _auth?.signOut();
   }
 
-  Future<void> _requireConfigured() async {
+  void _requireConfigured() {
     if (!isConfigured) {
       throw StateError(
         initializationError ??
