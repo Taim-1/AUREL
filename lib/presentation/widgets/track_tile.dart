@@ -5,6 +5,7 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
 import 'album_art.dart';
+import '../screens/source_webview_page.dart';
 
 class TrackTile extends StatelessWidget {
   const TrackTile({
@@ -20,9 +21,69 @@ class TrackTile extends StatelessWidget {
   final bool showDownload;
   final bool compact;
 
+  void _showSourceInformation(BuildContext context) {
+    final lines = <String>[
+      'Provider: ${track.providerName}',
+      'Creator: ${track.artist}',
+      if (track.matchedSources.length > 1)
+        'Also matched in: ${track.matchedSources.join(', ')}',
+      if (track.licenseName.isNotEmpty) 'License: ${track.licenseName}',
+      if (track.attribution.isNotEmpty) track.attribution,
+      if (track.licenseUrl.isNotEmpty) 'License terms: ${track.licenseUrl}',
+      if (track.sourceUrl.isNotEmpty) 'Original source: ${track.sourceUrl}',
+    ];
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AurelColors.surfaceRaised,
+        title: Text(
+          track.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            lines.join('\n\n'),
+            style: const TextStyle(
+              color: AurelColors.muted,
+              fontSize: 12,
+              height: 1.5,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+          if (track.sourceUrl.startsWith('https://'))
+            FilledButton.tonal(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => SourceWebViewPage(
+                      title: track.providerName,
+                      url: track.sourceUrl,
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Open inside AUREL'),
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handlePlaylistAction(BuildContext context, String value) async {
     final controller = context.read<AurelController>();
 
+    if (value == '__source_info__') {
+      _showSourceInformation(context);
+      return;
+    }
     if (value == '__play_next__' || value == '__queue__') {
       try {
         if (value == '__play_next__') {
@@ -105,6 +166,17 @@ class TrackTile extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(17),
       onTap: () async {
+        if (!track.canPlay) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${track.providerName} has catalog information only. '
+                'AUREL could not find an authorized in-app audio stream.',
+              ),
+            ),
+          );
+          return;
+        }
         try {
           await context.read<AurelController>().playTrack(track, queue: queue);
         } catch (error) {
@@ -141,14 +213,24 @@ class TrackTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    track.artist,
+                    '${track.artist} · ${track.providerName}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AurelColors.muted,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
+                  if (track.matchedSources.length > 1)
+                    Text(
+                      'Also in ${track.matchedSources.where((source) => source != track.providerName).join(' · ')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AurelColors.champagne,
+                        fontSize: 9,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -182,6 +264,11 @@ class TrackTile extends StatelessWidget {
                 const PopupMenuItem<String>(
                   value: '__create__',
                   child: Text('Create new playlist'),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: '__source_info__',
+                  child: Text('Source & license information'),
                 ),
                 if (controller.playlists.isNotEmpty)
                   const PopupMenuDivider(),
