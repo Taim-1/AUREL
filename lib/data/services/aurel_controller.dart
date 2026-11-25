@@ -334,7 +334,7 @@ class AurelController extends ChangeNotifier {
       sourceCounts = page.sourceCounts;
       _searchOffset = 1;
       hasMoreSearch = page.hasMore;
-      if (searchResults.isEmpty && page.sourceErrors.length == 5) {
+      if (searchResults.isEmpty && page.sourceErrors.length >= 7) {
         searchError =
             'Music sources are unavailable. Check your connection or account setup.';
       }
