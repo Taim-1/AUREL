@@ -43,7 +43,7 @@ class TrackTile extends StatelessWidget {
         ),
         content: SingleChildScrollView(
           child: SelectableText(
-            details.join('\\n\\n'),
+            details.join('\n\n'),
             style: const TextStyle(
               color: AurelColors.muted,
               fontSize: 12,
