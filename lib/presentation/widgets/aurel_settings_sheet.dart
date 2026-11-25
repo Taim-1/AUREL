@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
+import '../screens/account_screen.dart';
 
 class AurelSettingsSheet extends StatefulWidget {
   const AurelSettingsSheet({super.key});
@@ -163,6 +164,61 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
                     onChanged: controller.setOfflineMode,
                   ),
                 ],
+              ),
+            ),
+            Material(
+              color: AurelColors.surfaceRaised,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const AccountScreen(),
+                  ),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 13,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.cloud_sync_rounded,
+                        color: AurelColors.champagneLight,
+                        size: 21,
+                      ),
+                      const SizedBox(width: 11),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Account & Sync',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(height: 3),
+                            Text(
+                              'Google, email and listening history',
+                              style: TextStyle(
+                                color: AurelColors.muted,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AurelColors.muted,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 25),
