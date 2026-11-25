@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID != '' && secrets.JAMENDO_CLIENT_ID || '709fa152' }}
+      AUDIUS_API_KEY: ${{ secrets.AUDIUS_API_KEY }}
       AUREL_FIREBASE_API_KEY: ${{ secrets.AUREL_FIREBASE_API_KEY }}
       AUREL_FIREBASE_APP_ID: ${{ secrets.AUREL_FIREBASE_APP_ID }}
       AUREL_FIREBASE_PROJECT_ID: ${{ secrets.AUREL_FIREBASE_PROJECT_ID }}
@@ -98,6 +99,7 @@ jobs:
         run: |
           flutter build apk --release \
             --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID" \
+            --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY" \
             --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY" \
             --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID" \
             --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID" \
