@@ -339,6 +339,34 @@ class Track {
         isPlayable: mediaUrl.isNotEmpty,
       );
 
+  factory Track.fromWikimediaCommons({
+    required String pageId,
+    required String title,
+    required String artist,
+    required String mediaUrl,
+    required String sourceUrl,
+    required String licenseName,
+    required String licenseUrl,
+    required String attribution,
+    required int durationMs,
+  }) =>
+      Track(
+        id: 'wikimedia-commons-$pageId',
+        title: title.isEmpty ? 'Untitled audio' : title,
+        artist: artist.isEmpty ? 'Open audio contributor' : artist,
+        streamUrl: mediaUrl,
+        downloadUrl: mediaUrl,
+        licenseUrl: licenseUrl,
+        licenseName: licenseName,
+        attribution: attribution,
+        durationMs: durationMs,
+        downloadAllowed: mediaUrl.isNotEmpty && licenseUrl.isNotEmpty,
+        providerId: 'wikimedia_commons',
+        providerName: 'Open audio collection',
+        sourceUrl: sourceUrl,
+        isPlayable: mediaUrl.isNotEmpty,
+      );
+
   factory Track.fromDevice(Map<Object?, Object?> json) {
     final uri = (json['uri'] ?? '').toString();
     final id = (json['id'] ?? uri).toString();
