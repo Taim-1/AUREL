@@ -456,7 +456,7 @@ class _PlaylistPoster extends StatelessWidget {
                     )
                   : AlbumArt(
                       imageUrl: artworkUrl,
-                      size: 116,
+                      size: 94,
                       radius: 14,
                     ),
             ),
