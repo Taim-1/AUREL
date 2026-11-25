@@ -7,6 +7,7 @@ import '../widgets/album_art.dart';
 import '../widgets/lyrics_sheet.dart';
 import '../widgets/playback_settings_sheet.dart';
 import '../widgets/up_next_sheet.dart';
+import '../widgets/waveform_seek_bar.dart';
 
 class NowPlayingScreen extends StatelessWidget {
   const NowPlayingScreen({super.key});
@@ -195,23 +196,16 @@ class NowPlayingScreen extends StatelessWidget {
                 initialData: playback.player.position,
                 builder: (context, snapshot) {
                   final position = snapshot.data ?? Duration.zero;
-                  final totalMs = (duration.inMilliseconds > 0
-                          ? duration.inMilliseconds
-                          : 1)
-                      .toDouble();
-                  final currentMs = position.inMilliseconds
-                      .clamp(0, totalMs.toInt())
-                      .toDouble();
-
+                  final totalDuration = duration > Duration.zero
+                      ? duration
+                      : playback.player.duration ?? Duration.zero;
                   return Column(
                     children: [
-                      Slider(
-                        value: currentMs,
-                        min: 0,
-                        max: totalMs,
-                        onChanged: (value) => playback.seek(
-                          Duration(milliseconds: value.round()),
-                        ),
+                      WaveformSeekBar(
+                        position: position,
+                        duration: totalDuration,
+                        isPlaying: playback.isPlaying,
+                        onSeek: playback.seek,
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5),
@@ -227,7 +221,7 @@ class NowPlayingScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              _format(duration),
+                              _format(totalDuration),
                               style: const TextStyle(
                                 color: AurelColors.muted,
                                 fontSize: 11,
