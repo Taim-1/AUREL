@@ -211,7 +211,7 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -224,8 +224,8 @@ class _HomeHeader extends StatelessWidget {
                   letterSpacing: -0.35,
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
+              const SizedBox(height: 4),
+              const Text(
                 "Let's enjoy the music",
                 style: TextStyle(
                   color: AurelColors.muted,
