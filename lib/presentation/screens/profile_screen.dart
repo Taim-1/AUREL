@@ -124,19 +124,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: const Column(
             children: [
               CircleAvatar(
-                radius: 35,
+                radius: 39,
                 backgroundColor: Color(0xFF3B3025),
                 child: Icon(
-                  Icons.headphones_rounded,
-                  size: 32,
+                  Icons.nightlight_round,
+                  size: 34,
                   color: AurelColors.champagneLight,
                 ),
               ),
               SizedBox(height: 13),
-              AurelMark(compact: true),
-              SizedBox(height: 9),
               Text(
-                'Your music space',
+                'TAIM 👑',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              SizedBox(height: 5),
+              Text(
+                'Music Lover ♫',
                 style: TextStyle(color: AurelColors.muted, fontSize: 12),
               ),
             ],
