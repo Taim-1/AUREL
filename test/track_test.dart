@@ -159,8 +159,10 @@ void main() {
         'title': 'Open Piece',
         'creator': 'Composer',
         'url': 'https://example.com/open.mp3',
+        'filetype': 'mp3',
         'license': 'by',
         'license_url': 'https://creativecommons.org/licenses/by/4.0/',
+        'foreign_landing_url': 'https://example.com/open-piece',
         'attribution': 'Open Piece by Composer',
         'category': 'music',
       });
@@ -168,7 +170,9 @@ void main() {
         'id': 'open-nc',
         'title': 'Non-commercial Piece',
         'url': 'https://example.com/nc.mp3',
+        'filetype': 'mp3',
         'license': 'by-nc',
+        'license_url': 'https://creativecommons.org/licenses/by-nc/4.0/',
         'category': 'music',
       });
 
@@ -178,6 +182,38 @@ void main() {
       expect(by.attribution, contains('Composer'));
       expect(nc.canPlay, isTrue);
       expect(nc.downloadAllowed, isFalse);
+    });
+
+    test('Openverse rejects landing pages and unknown media file types', () {
+      final landingPage = Track.fromOpenverse({
+        'id': 'landing-page',
+        'title': 'Not a direct file',
+        'url': 'https://example.com/listen',
+        'filetype': 'html',
+        'license': 'by',
+        'license_url': 'https://creativecommons.org/licenses/by/4.0/',
+        'category': 'music',
+      });
+      final insecureUrl = Track.fromOpenverse({
+        'id': 'insecure-url',
+        'url': 'http://example.com/audio.mp3',
+        'filetype': 'mp3',
+        'license': 'by',
+        'license_url': 'https://creativecommons.org/licenses/by/4.0/',
+        'category': 'music',
+      });
+      final missingIdentity = Track.fromOpenverse({
+        'url': 'https://example.com/audio.mp3',
+        'filetype': 'mp3',
+        'license': 'by',
+        'license_url': 'https://creativecommons.org/licenses/by/4.0/',
+        'category': 'music',
+      });
+
+      expect(landingPage.canPlay, isFalse);
+      expect(landingPage.downloadAllowed, isFalse);
+      expect(insecureUrl.canPlay, isFalse);
+      expect(missingIdentity.canPlay, isFalse);
     });
   });
 
