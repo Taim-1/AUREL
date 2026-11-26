@@ -146,14 +146,15 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
-      _SourceRequest(
-        'Last.fm artist catalogue',
-        () => lastFm.artistTopTracks(
-          normalized,
-          limit: pageSize,
-          cancelToken: cancelToken,
+      if (page == 0)
+        _SourceRequest(
+          'Last.fm artist catalogue',
+          () => lastFm.artistTopTracks(
+            normalized,
+            limit: pageSize,
+            cancelToken: cancelToken,
+          ),
         ),
-      ),
       _SourceRequest(
         'Recording metadata',
         () => musicBrainz.search(
@@ -477,7 +478,6 @@ class MusicCatalogService {
       'Open audio': 20,
       'Recording metadata': 25,
       'Last.fm discovery': pageSize,
-      'Last.fm artist catalogue': pageSize,
       'Last.fm charts': pageSize,
       'ListenBrainz global charts': pageSize,
     };
