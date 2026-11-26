@@ -744,7 +744,8 @@ class AurelController extends ChangeNotifier {
     if (!track.downloadAllowed) {
       return 'Downloads are not enabled for this track.';
     }
-    if (hasLocalPlayableCopy(track)) {
+    if (downloadedTracks.any((item) => item.id == track.id) ||
+        hasLocalPlayableCopy(track)) {
       return 'This track is already in your downloads.';
     }
     if (downloadingIds.contains(track.id)) {
