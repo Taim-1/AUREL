@@ -443,6 +443,44 @@ void main() {
     });
   });
 
+  group('Device library tracks', () {
+    test('maps a MediaStore content URI to a playable local track', () {
+      final track = Track.fromDevice({
+        'id': '42',
+        'uri': 'content://media/external/audio/media/42',
+        'title': 'Local Song',
+        'artist': 'Local Artist',
+        'album': 'Local Album',
+        'duration': 187000,
+      });
+
+      expect(track.id, 'device-42');
+      expect(track.providerId, 'device');
+      expect(track.title, 'Local Song');
+      expect(track.artist, 'Local Artist');
+      expect(track.album, 'Local Album');
+      expect(track.durationMs, 187000);
+      expect(track.isDeviceTrack, isTrue);
+      expect(track.isLocal, isTrue);
+      expect(track.canPlay, isTrue);
+      expect(track.playbackUri, 'content://media/external/audio/media/42');
+      expect(track.downloadAllowed, isFalse);
+    });
+
+    test('does not make untrusted or malformed device URIs playable', () {
+      final track = Track.fromDevice({
+        'id': '43',
+        'uri': 'https://example.com/audio.mp3',
+        'title': 'Not a local content URI',
+        'artist': 'Unknown artist',
+      });
+
+      expect(track.isDeviceTrack, isTrue);
+      expect(track.localPath, isNull);
+      expect(track.canPlay, isFalse);
+    });
+  });
+
   group('MusicBrainz recording identity', () {
     test('keeps recording MBID separate from ISRC for MusicBrainz', () {
       final track = Track.fromMusicBrainz({
