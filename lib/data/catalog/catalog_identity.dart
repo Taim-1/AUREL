@@ -11,6 +11,12 @@ class CatalogIdentity {
   static const int durationToleranceMs = 5000;
 
   static bool matches(Track a, Track b) {
+    final aMbid = a.recordingMbid.trim().toLowerCase();
+    final bMbid = b.recordingMbid.trim().toLowerCase();
+    if (aMbid.isNotEmpty && bMbid.isNotEmpty) {
+      return aMbid == bMbid;
+    }
+
     final aIsrc = _normalizeIsrc(a.recordingId);
     final bIsrc = _normalizeIsrc(b.recordingId);
 
