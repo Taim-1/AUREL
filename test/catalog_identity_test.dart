@@ -7,6 +7,7 @@ Track recording({
   String title = 'Blue Hour',
   String artist = 'Aurel Artist',
   String isrc = '',
+  String mbid = '',
   int duration = 200000,
 }) =>
     Track(
@@ -14,6 +15,7 @@ Track recording({
       title: title,
       artist: artist,
       recordingId: isrc,
+      recordingMbid: mbid,
       durationMs: duration,
       streamUrl: 'https://example.com/audio.mp3',
     );
@@ -138,4 +140,33 @@ void main() {
       );
     });
   });
+
+    test('matches exact MusicBrainz recording MBID across catalogues', () {
+      expect(
+        CatalogIdentity.matches(
+          recording(mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411'),
+          recording(
+            id: 'lastfm',
+            title: 'Different title formatting',
+            artist: 'Different artist formatting',
+            mbid: '13DD61C7-CE73-4E97-9F0C-9F0E53144411',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not merge conflicting verified recording MBIDs', () {
+      expect(
+        CatalogIdentity.matches(
+          recording(mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411'),
+          recording(
+            id: 'different-recording',
+            mbid: 'ba8701ba-dc7c-4bca-9c83-846ee8c3d576',
+          ),
+        ),
+        isFalse,
+      );
+    });
+
 }
