@@ -18,7 +18,7 @@ class PlaybackController extends ChangeNotifier {
   PlaybackController() {
     _subscriptions.addAll([
       player.errorStream.listen((error) {
-        unawaited(_recoverFromSourceError(error));
+        unawaited(_recoverFromSourceError(error).then<void>((_) {}));
       }),
       player.playerStateStream.listen((_) => notifyListeners()),
       player.shuffleModeEnabledStream.listen((_) => notifyListeners()),
@@ -48,7 +48,7 @@ class PlaybackController extends ChangeNotifier {
   List<Track> queue = const [];
   int currentIndex = -1;
   Future<Track> Function(Track)? _fallbackResolver;
-  bool _recoveringSource = false;
+  Future<bool>? _activeRecovery;
   final Set<String> _attemptedFallbackIds = {};
 
   void setFallbackResolver(Future<Track> Function(Track) resolver) {
@@ -96,6 +96,8 @@ class PlaybackController extends ChangeNotifier {
       unawaited(player.play());
       notifyListeners();
     } on PlayerException catch (error) {
+      final recovered = await _recoverFromSourceError(error);
+      if (recovered) return;
       throw PlaybackException(
         error.message ?? 'AUREL could not play this audio source.',
       );
@@ -104,55 +106,68 @@ class PlaybackController extends ChangeNotifier {
     }
   }
 
-  Future<void> _recoverFromSourceError(PlayerException error) async {
-    if (_recoveringSource || queue.isEmpty) return;
+  Future<bool> _recoverFromSourceError(PlayerException error) async {
+    final active = _activeRecovery;
+    if (active != null) return active;
+
+    final operation = _performSourceRecovery(error);
+    _activeRecovery = operation;
+    try {
+      return await operation;
+    } finally {
+      if (identical(_activeRecovery, operation)) {
+        _activeRecovery = null;
+      }
+    }
+  }
+
+  Future<bool> _performSourceRecovery(PlayerException error) async {
+    if (queue.isEmpty) return false;
     final index = error.index ?? currentIndex;
-    if (index != currentIndex || index < 0 || index >= queue.length) return;
+    if (index != currentIndex || index < 0 || index >= queue.length) {
+      return false;
+    }
 
     final failed = queue[index];
     final resolver = _fallbackResolver;
-    if (resolver == null) return;
+    if (resolver == null) return false;
 
     final candidates = failed.alternatives.where(
       (candidate) =>
           candidate.canPlay && !_attemptedFallbackIds.contains(candidate.id),
     );
-    if (candidates.isEmpty) return;
+    if (candidates.isEmpty) return false;
 
-    _recoveringSource = true;
-    try {
-      for (final candidate in candidates) {
-        _attemptedFallbackIds.add(candidate.id);
-        try {
-          final prepared = await resolver(candidate);
-          final remaining = failed.alternatives
-              .where((item) => item.id != candidate.id)
-              .toList(growable: false);
-          final replacement = prepared.copyWith(
-            id: failed.id,
-            alternatives: remaining,
-          );
-          final updatedQueue = List<Track>.of(queue);
-          updatedQueue[index] = replacement;
+    for (final candidate in candidates) {
+      _attemptedFallbackIds.add(candidate.id);
+      try {
+        final prepared = await resolver(candidate);
+        final remaining = failed.alternatives
+            .where((item) => item.id != candidate.id)
+            .toList(growable: false);
+        final replacement = prepared.copyWith(
+          id: failed.id,
+          alternatives: remaining,
+        );
+        final updatedQueue = List<Track>.of(queue);
+        updatedQueue[index] = replacement;
 
-          // Replace only the failed source while retaining the visible queue.
-          // The fallback is the same recording/version, not a different song.
-          await player.setAudioSources(
-            updatedQueue.map(_audioSource).toList(growable: false),
-            initialIndex: index,
-          );
-          queue = updatedQueue;
-          currentIndex = index;
-          unawaited(player.play());
-          notifyListeners();
-          return;
-        } catch (_) {
-          // Try the next same-recording source in the agreed priority order.
-        }
+        // Replace only the failed source while retaining the visible queue.
+        // The fallback is the same recording/version, not a different song.
+        await player.setAudioSources(
+          updatedQueue.map(_audioSource).toList(growable: false),
+          initialIndex: index,
+        );
+        queue = updatedQueue;
+        currentIndex = index;
+        unawaited(player.play());
+        notifyListeners();
+        return true;
+      } catch (_) {
+        // Try the next same-recording source in the agreed priority order.
       }
-    } finally {
-      _recoveringSource = false;
     }
+    return false;
   }
 
   /// Appends a track to the active queue without interrupting playback.
