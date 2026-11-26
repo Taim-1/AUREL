@@ -29,8 +29,9 @@ class TrackTile extends StatelessWidget {
             '${(Duration(milliseconds: track.durationMs).inSeconds % 60).toString().padLeft(2, '0')}',
       if (track.licenseName.isNotEmpty) 'Usage license: ${track.licenseName}',
       if (track.attribution.isNotEmpty) 'Required credit: ${track.attribution}',
+      if (track.providerId == 'lastfm') 'Catalogue source: Last.fm',
       if (track.sourceUrl.isNotEmpty && track.attribution.isNotEmpty)
-        'Work details: ${track.sourceUrl}',
+        'Source page: ${track.sourceUrl}',
       if (track.downloadAllowed) 'Offline download: Available',
       if (!track.downloadAllowed) 'Offline download: Not available for this recording',
     ];
