@@ -40,7 +40,9 @@ class PlaybackController extends ChangeNotifier {
     audioPipeline: AudioPipeline(androidAudioEffects: [equalizer]),
     handleInterruptions: true,
     useLazyPreparation: true,
-    maxSkipsOnError: 2,
+    // AUREL handles provider fallback itself so just_audio must not skip to
+    // the next visible song when one source fails.
+    maxSkipsOnError: 0,
   );
 
   List<Track> queue = const [];
