@@ -60,15 +60,16 @@ class LyricsService {
         ),
       );
     }
+    // Offline mode may reuse a result already held in this session, even
+    // when the user taps refresh. It never opens a network request or stores
+    // copyrighted lyrics persistently without rights.
+    if (!allowNetwork) return Future.value(_cache[track.id]);
     if (!forceRefresh && _cache.containsKey(track.id)) {
       return Future.value(_cache[track.id]);
     }
     if (!forceRefresh && _inFlight.containsKey(track.id)) {
       return _inFlight[track.id]!;
     }
-    // Offline mode may use a result already held in this session, but never
-    // opens a network request or persists copyrighted lyrics without rights.
-    if (!allowNetwork) return Future.value(null);
     final request = _fetch(track);
     _inFlight[track.id] = request;
     return request.whenComplete(() {
