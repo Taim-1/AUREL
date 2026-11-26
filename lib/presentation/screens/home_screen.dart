@@ -55,7 +55,13 @@ class HomeScreen extends StatelessWidget {
     final tracks = controller.offlineMode
         ? controller.downloadedTracks
         : controller.discoverTracks;
-    final featured = tracks.isNotEmpty ? tracks.first : null;
+    Track? featured;
+    for (final track in tracks) {
+      if (track.canPlay) {
+        featured = track;
+        break;
+      }
+    }
     final downloadedById = {
       for (final track in controller.downloadedTracks) track.id: track,
     };
