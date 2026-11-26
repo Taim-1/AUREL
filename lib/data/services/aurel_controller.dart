@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/lyrics_document.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
+import '../catalog/catalog_identity.dart';
 import '../repositories/library_repository.dart';
 import 'aurel_account_service.dart';
 import 'download_service.dart';
@@ -376,44 +377,35 @@ class AurelController extends ChangeNotifier {
     }
   }
 
-  String _normalizeTrackIdentity(String value) => value
-      .toLowerCase()
-      .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-
   List<Track> _mergeCatalogResults(
     List<Track> current,
     List<Track> incoming,
   ) {
-    final merged = <String, Track>{};
-    for (final track in [...current, ...incoming]) {
-      final isrc = track.recordingId
-          .trim()
-          .toUpperCase()
-          .replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      final durationBucket = track.durationMs > 0
-          ? (track.durationMs / 10000).round().toString()
-          : 'unknown';
-      final key = isrc.isNotEmpty
-          ? 'isrc:$isrc'
-          : '${_normalizeTrackIdentity(track.title)}|'
-              '${_normalizeTrackIdentity(track.artist)}|$durationBucket';
-      final previous = merged[key];
-      if (previous == null) {
-        merged[key] = track;
-        continue;
-      }
-      final sources = {
-        ...previous.matchedSources,
-        previous.providerName,
-        ...track.matchedSources,
-        track.providerName,
-      }.toList(growable: false);
-      final selected = track.canPlay && !previous.canPlay ? track : previous;
-      merged[key] = selected.copyWith(matchedSources: sources);
-    }
-    return merged.values.toList(growable: false);
+    final groups = CatalogIdentity.group([...current, ...incoming]);
+    return groups.map((group) {
+      final ranked = [...group]..sort((a, b) {
+          final playable = (b.canPlay ? 1 : 0).compareTo(a.canPlay ? 1 : 0);
+          if (playable != 0) return playable;
+          final identity = (b.recordingId.trim().isNotEmpty ? 1 : 0)
+              .compareTo(a.recordingId.trim().isNotEmpty ? 1 : 0);
+          if (identity != 0) return identity;
+          final artwork = (b.artworkUrl.trim().isNotEmpty ? 1 : 0)
+              .compareTo(a.artworkUrl.trim().isNotEmpty ? 1 : 0);
+          if (artwork != 0) return artwork;
+          return (b.durationMs > 0 ? 1 : 0)
+              .compareTo(a.durationMs > 0 ? 1 : 0);
+        });
+      final selected = ranked.first;
+      final sources = group
+          .expand((track) => [
+                ...track.matchedSources,
+                track.providerName,
+              ])
+          .where((source) => source.trim().isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+      return selected.copyWith(matchedSources: sources);
+    }).toList(growable: false);
   }
 
   Future<void> toggleFavorite(Track track) async {
