@@ -26,7 +26,14 @@ class AurelController extends ChangeNotifier {
     required this.account,
     required this.catalog,
   }) {
-    playback.setFallbackResolver(catalog.prepareTrack);
+    playback.setFallbackResolver((candidate) {
+      if (offlineMode && !candidate.isDownloaded) {
+        throw const PlaybackException(
+          'Online audio sources are disabled in Offline mode.',
+        );
+      }
+      return catalog.prepareTrack(candidate);
+    });
     playback.addListener(_onPlaybackChanged);
   }
 
