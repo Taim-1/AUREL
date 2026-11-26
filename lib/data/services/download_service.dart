@@ -143,7 +143,7 @@ bool isAllowedAudioContentType(String? contentType) {
       mime == 'application/mp4' ||
       mime == 'application/x-ogg' ||
       mime == 'application/x-flac' ||
-      mime == 'video/mp4';
+      mime == 'application/x-flac';
 }
 
 /// Returns the audio extension identified from a file's leading bytes.
