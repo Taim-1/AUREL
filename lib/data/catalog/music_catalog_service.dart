@@ -11,6 +11,7 @@ import 'providers/soundcloud_service.dart';
 import 'providers/spotify_catalog_service.dart';
 import 'providers/wikimedia_commons_service.dart';
 import 'providers/music_brainz_service.dart';
+import 'providers/lastfm_catalog_service.dart';
 
 class CatalogPage {
   const CatalogPage({
@@ -37,6 +38,7 @@ class MusicCatalogService {
     required this.internetArchive,
     required this.wikimediaCommons,
     required this.musicBrainz,
+    required this.lastFm,
   });
 
   final JamendoService jamendo;
@@ -48,6 +50,7 @@ class MusicCatalogService {
   final InternetArchiveService internetArchive;
   final WikimediaCommonsService wikimediaCommons;
   final MusicBrainzService musicBrainz;
+  final LastFmCatalogService lastFm;
 
   static const pageSize = 30;
 
@@ -65,6 +68,7 @@ class MusicCatalogService {
     'openverse': 55,
     'apple_music': 20,
     'spotify': 15,
+    'lastfm': 12,
     'musicbrainz': 5,
   };
 
@@ -148,6 +152,15 @@ class MusicCatalogService {
         ),
       ),
       _SourceRequest(
+        'Last.fm discovery',
+        () => lastFm.search(
+          normalized,
+          limit: pageSize,
+          page: page + 1,
+          cancelToken: cancelToken,
+        ),
+      ),
+      _SourceRequest(
         'Recording metadata',
         () => musicBrainz.search(
           normalized,
@@ -213,6 +226,14 @@ class MusicCatalogService {
           'trending music',
           limit: pageSize,
           offset: offset,
+          cancelToken: cancelToken,
+        ),
+      ),
+      _SourceRequest(
+        'Last.fm charts',
+        () => lastFm.topTracks(
+          limit: pageSize,
+          page: page + 1,
           cancelToken: cancelToken,
         ),
       ),
@@ -402,8 +423,8 @@ class MusicCatalogService {
     final playable = ranked.where((track) => track.canPlay).toList();
     final metadataOnly = ranked.where((track) => !track.canPlay).toList();
 
-    // Playable matches are always preferred. Metadata-only Spotify/Apple
-    // results remain discoverable when there is no eligible in-app copy.
+    // Playable matches are always preferred. Commercial and community
+    // metadata indexes remain discoverable without inventing an audio stream.
     final ordered = [...playable, ...metadataOnly];
     final pageThresholds = <String, int>{
       'Jamendo': pageSize,
@@ -415,6 +436,8 @@ class MusicCatalogService {
       'Internet Archive': 12,
       'Open audio': 20,
       'Recording metadata': 25,
+      'Last.fm discovery': pageSize,
+      'Last.fm charts': pageSize,
     };
     final hasMore = results.sources.entries.any(
       (entry) =>
