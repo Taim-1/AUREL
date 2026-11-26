@@ -126,9 +126,14 @@ class _WaveformPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const topInset = 7.0;
     const bottomInset = 7.0;
-    const gap = 3.0;
-    const barWidth = 2.3;
     const maxBarHeight = 34.0;
+    const nominalGap = 3.0;
+    const nominalBarWidth = 2.3;
+    final nominalWidth =
+        sixtyBars * nominalBarWidth + (sixtyBars - 1) * nominalGap;
+    final scale = math.min(1.0, size.width / nominalWidth);
+    final gap = nominalGap * scale;
+    final barWidth = nominalBarWidth * scale;
     final totalWidth = sixtyBars * barWidth + (sixtyBars - 1) * gap;
     final left = math.max(0.0, (size.width - totalWidth) / 2).toDouble();
     final usableHeight = size.height - topInset - bottomInset;
