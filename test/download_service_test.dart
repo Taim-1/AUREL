@@ -42,6 +42,7 @@ void main() {
       expect(isAllowedAudioContentType('text/html; charset=utf-8'), isFalse);
       expect(isAllowedAudioContentType('application/json'), isFalse);
       expect(isAllowedAudioContentType('text/plain'), isFalse);
+      expect(isAllowedAudioContentType('video/mp4'), isFalse);
     });
 
     test('recognizes supported audio file signatures', () {
