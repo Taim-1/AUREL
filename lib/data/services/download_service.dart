@@ -326,4 +326,4 @@ Uri resolveSecureDownloadRedirect(Uri source, String? location) {
 
 /// Confirms that the final resolved download URL remains HTTPS after redirects.
 bool isSecureDownloadUri(Uri uri) =>
-    uri.scheme == 'https' && uri.host.isNotEmpty;
+    uri.scheme == 'https' && uri.host.isNotEmpty && uri.userInfo.isEmpty;
