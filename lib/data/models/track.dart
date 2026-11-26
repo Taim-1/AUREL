@@ -600,24 +600,6 @@ class Track {
     );
   }
 
-  factory Track.fromDevice(Map<Object?, Object?> json) {
-    final uri = (json['uri'] ?? '').toString();
-    final id = (json['id'] ?? uri).toString();
-    final duration = json['duration'];
-    return Track(
-      id: 'device-$id',
-      title: (json['title'] ?? 'Unknown track').toString(),
-      artist: (json['artist'] ?? 'Unknown artist').toString(),
-      album: (json['album'] ?? '').toString(),
-      durationMs: duration is num ? duration.round() : 0,
-      isDeviceTrack: true,
-      localPath: uri,
-      providerId: 'device',
-      providerName: 'On this device',
-      isPlayable: true,
-    );
-  }
-
   factory Track.fromJson(Map<String, dynamic> json) => Track(
         id: (json['id'] ?? '').toString(),
         title: (json['title'] ?? '').toString(),
