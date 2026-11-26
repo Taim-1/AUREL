@@ -19,7 +19,11 @@ class DownloadService {
     CancelToken? cancelToken,
     void Function(int received, int total)? onProgress,
   }) async {
-    if (!track.downloadAllowed || track.downloadUrl.isEmpty) {
+    final downloadUri = Uri.tryParse(track.downloadUrl.trim());
+    if (!track.downloadAllowed ||
+        downloadUri == null ||
+        downloadUri.scheme != 'https' ||
+        downloadUri.host.isEmpty) {
       throw const DownloadException(
         'Offline download is not permitted for this recording.',
       );
