@@ -419,11 +419,11 @@ class Track {
 
   factory Track.fromMusicBrainz(Map<String, dynamic> json) {
     final rawCredit = json['artist-credit'];
-    final artists = <String>[];
+    final artistCredit = StringBuffer();
     if (rawCredit is List) {
       for (final entry in rawCredit) {
         if (entry is String) {
-          if (entry.trim().isNotEmpty) artists.add(entry.trim());
+          artistCredit.write(entry);
           continue;
         }
         if (entry is! Map) continue;
@@ -433,13 +433,13 @@ class Track {
             ? (artist['name'] ?? '').toString().trim()
             : '';
         final name = directName.isNotEmpty ? directName : nestedName;
-        if (name.isNotEmpty) artists.add(name);
-        final joinPhrase = (entry['joinphrase'] ?? '').toString();
-        if (joinPhrase.isNotEmpty) {
-          artists.add(joinPhrase);
-        }
+        if (name.isNotEmpty) artistCredit.write(name);
+        // MusicBrainz join phrases already contain their intended spacing.
+        // Append directly instead of joining fragments with an extra space.
+        artistCredit.write((entry['joinphrase'] ?? '').toString());
       }
     }
+    final artistName = artistCredit.toString().trim();
     final isrcs = json['isrcs'];
     final recordingId = isrcs is List && isrcs.isNotEmpty
         ? isrcs.first.toString()
@@ -450,7 +450,7 @@ class Track {
     return Track(
       id: 'musicbrainz-$id',
       title: (json['title'] ?? 'Unknown recording').toString(),
-      artist: artists.isEmpty ? 'Unknown artist' : artists.join(' '),
+      artist: artistName.isEmpty ? 'Unknown artist' : artistName,
       durationMs: length,
       providerId: 'musicbrainz',
       providerName: 'Recording metadata',
