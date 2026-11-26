@@ -331,16 +331,12 @@ class MusicCatalogService {
         }
       }
 
-      if (matchingGroups.isEmpty) {
-        groups.add([track]);
+      if (matchingGroups.length == 1) {
+        groups[matchingGroups.single].add(track);
       } else {
-        final targetIndex = matchingGroups.first;
-        groups[targetIndex].add(track);
-        // A newly arrived bridge match may connect groups that were separate
-        // before this track supplied stronger identity information.
-        for (final index in matchingGroups.skip(1).toList().reversed) {
-          groups[targetIndex].addAll(groups.removeAt(index));
-        }
+        // An entry without an ISRC can resemble more than one known recording.
+        // Do not let that ambiguous entry bridge two distinct ISRC groups.
+        groups.add([track]);
       }
     }
 
