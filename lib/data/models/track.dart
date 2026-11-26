@@ -23,6 +23,7 @@ class Track {
     this.isPreviewOnly = false,
     this.isMetadataOnly = false,
     this.matchedSources = const [],
+    this.alternatives = const [],
     this.playbackHeaders = const {},
   });
 
@@ -58,6 +59,10 @@ class Track {
 
   /// Other catalogues that matched this same recording.
   final List<String> matchedSources;
+
+  /// Same-recording alternatives retained in AUREL's internal priority order.
+  /// The player may try the next eligible copy if the preferred source fails.
+  final List<Track> alternatives;
 
   /// Short-lived in-memory request headers (for example SoundCloud OAuth).
   /// Deliberately omitted from toJson so access tokens never reach local or
@@ -602,6 +607,13 @@ class Track {
                 ?.map((value) => value.toString())
                 .toList(growable: false) ??
             const [],
+        alternatives: (json['alternatives'] as List?)
+                ?.whereType<Map>()
+                .map((value) => Track.fromJson(
+                      Map<String, dynamic>.from(value),
+                    ).copyWith(alternatives: const []))
+                .toList(growable: false) ??
+            const [],
       );
 
   Map<String, dynamic> toJson() => {
@@ -628,6 +640,9 @@ class Track {
         'isPreviewOnly': isPreviewOnly,
         'isMetadataOnly': isMetadataOnly,
         'matchedSources': matchedSources,
+        'alternatives': alternatives
+            .map((track) => track.copyWith(alternatives: const []).toJson())
+            .toList(growable: false),
       };
 
   Track copyWith({
@@ -641,6 +656,7 @@ class Track {
     int? durationMs,
     String? recordingId,
     List<String>? matchedSources,
+    List<Track>? alternatives,
     Map<String, String>? playbackHeaders,
   }) =>
       Track(
@@ -667,6 +683,7 @@ class Track {
         isPreviewOnly: isPreviewOnly,
         isMetadataOnly: isMetadataOnly,
         matchedSources: matchedSources ?? this.matchedSources,
+        alternatives: alternatives ?? this.alternatives,
         playbackHeaders: playbackHeaders ?? this.playbackHeaders,
       );
 }
