@@ -58,6 +58,41 @@ class MusicCatalogService {
 
   static const pageSize = 30;
 
+  // Search text fields can emit several near-identical requests while the
+  // user is typing. A short in-memory cache avoids repeated provider fan-out.
+  final Map<String, _CatalogCacheEntry> _pageCache = {};
+
+  CatalogPage? _readCache(String key, CancelToken? cancelToken) {
+    if (cancelToken?.isCancelled ?? false) {
+      throw DioException(
+        requestOptions: RequestOptions(path: 'catalog-cache'),
+        type: DioExceptionType.cancel,
+        message: 'Catalogue request cancelled.',
+      );
+    }
+    final entry = _pageCache[key];
+    if (entry == null) return null;
+    if (!entry.expiresAt.isAfter(DateTime.now())) {
+      _pageCache.remove(key);
+      return null;
+    }
+    return entry.page;
+  }
+
+  void _writeCache(String key, CatalogPage page) {
+    // Bound the cache so long sessions cannot accumulate unbounded results.
+    if (_pageCache.length >= 30 && !_pageCache.containsKey(key)) {
+      _pageCache.remove(_pageCache.keys.first);
+    }
+    final lifetime = page.sourceErrors.isEmpty
+        ? const Duration(minutes: 4)
+        : const Duration(seconds: 30);
+    _pageCache[key] = _CatalogCacheEntry(
+      page,
+      DateTime.now().add(lifetime),
+    );
+  }
+
   Future<CatalogPage> search(
     String query, {
     int page = 0,
@@ -72,6 +107,10 @@ class MusicCatalogService {
         sourceErrors: {},
       );
     }
+    final cacheKey = 'search:${normalized.toLowerCase()}:$page';
+    final cached = _readCache(cacheKey, cancelToken);
+    if (cached != null) return cached;
+
     final offset = page * pageSize;
     final collected = await _collect([
       _SourceRequest(
@@ -170,15 +209,21 @@ class MusicCatalogService {
       page: page,
       cancelToken: cancelToken,
     );
-    return _buildPage(
+    final result = _buildPage(
       _CollectedSources({...collected.sources, 'Open audio': commons}),
     );
+    _writeCache(cacheKey, result);
+    return result;
   }
 
   Future<CatalogPage> discover({
     int page = 0,
     CancelToken? cancelToken,
   }) async {
+    final cacheKey = 'discover:$page';
+    final cached = _readCache(cacheKey, cancelToken);
+    if (cached != null) return cached;
+
     final offset = page * pageSize;
     final collected = await _collect([
       _SourceRequest(
@@ -246,9 +291,11 @@ class MusicCatalogService {
       page: page,
       cancelToken: cancelToken,
     );
-    return _buildPage(
+    final result = _buildPage(
       _CollectedSources({...collected.sources, 'Open audio': commons}),
     );
+    _writeCache(cacheKey, result);
+    return result;
   }
 
   Future<_SourceResult> _collectCommons(
@@ -532,4 +579,12 @@ class _CollectedSources {
   const _CollectedSources(this.sources);
 
   final Map<String, _SourceResult> sources;
+}
+
+
+class _CatalogCacheEntry {
+  const _CatalogCacheEntry(this.page, this.expiresAt);
+
+  final CatalogPage page;
+  final DateTime expiresAt;
 }
