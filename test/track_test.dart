@@ -292,4 +292,53 @@ void main() {
     });
   });
   });
+
+  group('Local playback eligibility', () {
+    test('does not treat a downloaded record without a file as playable', () {
+      const track = Track(
+        id: 'broken-download',
+        title: 'Missing file',
+        artist: 'Artist',
+        streamUrl: 'https://example.com/stream.mp3',
+        isDownloaded: true,
+      );
+
+      expect(track.isLocal, isFalse);
+      expect(track.canPlay, isFalse);
+    });
+
+    test('does not treat a device record without a URI as playable', () {
+      const track = Track(
+        id: 'broken-device-track',
+        title: 'Missing URI',
+        artist: 'Artist',
+        isDeviceTrack: true,
+      );
+
+      expect(track.isLocal, isFalse);
+      expect(track.canPlay, isFalse);
+    });
+
+    test('allows downloaded files and device content URIs', () {
+      const downloaded = Track(
+        id: 'saved-track',
+        title: 'Saved',
+        artist: 'Artist',
+        isDownloaded: true,
+        localPath: '/data/user/0/com.aurel.aurel/files/saved.mp3',
+      );
+      const device = Track(
+        id: 'device-track',
+        title: 'Device',
+        artist: 'Artist',
+        isDeviceTrack: true,
+        localPath: 'content://media/external/audio/media/42',
+      );
+
+      expect(downloaded.isLocal, isTrue);
+      expect(downloaded.canPlay, isTrue);
+      expect(device.isLocal, isTrue);
+      expect(device.canPlay, isTrue);
+    });
+  });
 }
