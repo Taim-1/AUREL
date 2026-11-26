@@ -2,7 +2,8 @@ import '../models/track.dart';
 
 /// Recording identity rules shared by search, discovery and catalogue tests.
 ///
-/// ISRC is authoritative when both entries have one. Otherwise the title,
+/// A matching MusicBrainz MBID is authoritative, followed by an exact ISRC.
+/// Otherwise the title,
 /// credited artist and a close duration must all agree. Version words remain
 /// part of the normalized title, so Live/Remix/Acoustic releases stay distinct.
 class CatalogIdentity {
@@ -13,8 +14,8 @@ class CatalogIdentity {
   static bool matches(Track a, Track b) {
     final aMbid = a.recordingMbid.trim().toLowerCase();
     final bMbid = b.recordingMbid.trim().toLowerCase();
-    if (aMbid.isNotEmpty && bMbid.isNotEmpty) {
-      return aMbid == bMbid;
+    if (aMbid.isNotEmpty && bMbid.isNotEmpty && aMbid == bMbid) {
+      return true;
     }
 
     final aIsrc = _normalizeIsrc(a.recordingId);
@@ -23,6 +24,9 @@ class CatalogIdentity {
     if (aIsrc.isNotEmpty && bIsrc.isNotEmpty) {
       return aIsrc == bIsrc;
     }
+
+    // Conflicting verified MBIDs must not fall through to fuzzy matching.
+    if (aMbid.isNotEmpty && bMbid.isNotEmpty) return false;
 
     final aTitle = normalizeText(a.title);
     final bTitle = normalizeText(b.title);
