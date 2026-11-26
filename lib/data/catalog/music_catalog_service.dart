@@ -317,28 +317,8 @@ class MusicCatalogService {
         .where((track) => track.id.isNotEmpty)
         .toList(growable: false);
 
-    // Group by verified recording identity, not a rounded duration bucket.
-    // This avoids both duplicate rows at bucket boundaries and accidental
-    // merges when two unrelated tracks happen to have no duration metadata.
-    final groups = <List<Track>>[];
-    for (final track in allTracks) {
-      final matchingGroups = <int>[];
-      for (var index = 0; index < groups.length; index++) {
-        if (groups[index].any(
-          (candidate) => CatalogIdentity.matches(candidate, track),
-        )) {
-          matchingGroups.add(index);
-        }
-      }
-
-      if (matchingGroups.length == 1) {
-        groups[matchingGroups.single].add(track);
-      } else {
-        // An entry without an ISRC can resemble more than one known recording.
-        // Do not let that ambiguous entry bridge two distinct ISRC groups.
-        groups.add([track]);
-      }
-    }
+    // Group by verified recording identity, not rounded duration buckets.
+    final groups = CatalogIdentity.group(allTracks);
 
     final ranked = <Track>[];
     for (final group in groups) {
