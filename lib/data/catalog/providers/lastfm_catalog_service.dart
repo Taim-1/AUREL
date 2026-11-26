@@ -46,6 +46,7 @@ class LastFmCatalogService {
         },
         cancelToken: cancelToken,
       );
+      _throwForApiError(response.data);
       final chart = response.data?['tracks'];
       final rawTracks = chart is Map ? chart['track'] : null;
       return _parseTracks(rawTracks);
@@ -63,6 +64,7 @@ class LastFmCatalogService {
   Future<List<Track>> artistTopTracks(
     String artist, {
     int limit = 30,
+    int page = 1,
     CancelToken? cancelToken,
   }) async {
     final normalized = artist.trim();
@@ -82,9 +84,11 @@ class LastFmCatalogService {
           'api_key': _apiKey,
           'format': 'json',
           'limit': limit.clamp(1, 100),
+          'page': page.clamp(1, 100000),
         },
         cancelToken: cancelToken,
       );
+      _throwForApiError(response.data);
       final topTracks = response.data?['toptracks'];
       final rawTracks = topTracks is Map ? topTracks['track'] : null;
       return _parseTracks(rawTracks);
@@ -129,6 +133,7 @@ class LastFmCatalogService {
         cancelToken: cancelToken,
       );
 
+      _throwForApiError(response.data);
       final results = response.data?['results'];
       final matches = results is Map ? results['trackmatches'] : null;
       final rawTracks = matches is Map ? matches['track'] : null;
@@ -144,6 +149,23 @@ class LastFmCatalogService {
                 : 'Last.fm discovery could not be reached.',
       );
     }
+  }
+
+  void _throwForApiError(Map<String, dynamic>? payload) {
+    final rawCode = payload?['error'];
+    if (rawCode == null) return;
+    final code = rawCode is num
+        ? rawCode.toInt()
+        : int.tryParse(rawCode.toString());
+    final message = switch (code) {
+      4 => 'Last.fm access is not authorized for this API key.',
+      6 || 7 => 'Last.fm rejected the discovery request parameters.',
+      10 => 'Last.fm API key is invalid. Check the key in the app build.',
+      11 || 16 => 'Last.fm is temporarily unavailable. Try again shortly.',
+      29 => 'Last.fm rate limit reached. Try again in a moment.',
+      _ => 'Last.fm could not complete the discovery request.',
+    };
+    throw LastFmCatalogException(message);
   }
 
   List<Track> _parseTracks(dynamic rawTracks) {
