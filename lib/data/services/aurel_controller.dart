@@ -15,7 +15,6 @@ import '../catalog/providers/jamendo_service.dart';
 import '../catalog/music_catalog_service.dart';
 import 'lyrics_service.dart';
 import 'playback_controller.dart';
-import 'device_library_service.dart';
 
 class AurelController extends ChangeNotifier {
   AurelController({
@@ -26,8 +25,7 @@ class AurelController extends ChangeNotifier {
     required this.lyrics,
     required this.account,
     required this.catalog,
-    DeviceLibraryService? deviceLibrary,
-  }) : deviceLibrary = deviceLibrary ?? DeviceLibraryService() {
+  }) {
     playback.setFallbackResolver(catalog.prepareTrack);
     playback.addListener(_onPlaybackChanged);
   }
@@ -116,7 +114,6 @@ class AurelController extends ChangeNotifier {
   final LyricsService lyrics;
   final AurelAccountService account;
   final MusicCatalogService catalog;
-  final DeviceLibraryService deviceLibrary;
 
   Map<String, String> sourceErrors = const {};
   Map<String, int> sourceCounts = const {};
@@ -124,11 +121,6 @@ class AurelController extends ChangeNotifier {
   String? cloudSyncError;
 
   List<Track> discoverTracks = [];
-  List<Track> deviceTracks = [];
-  bool hasDeviceAudioPermission = false;
-  bool isLoadingDeviceTracks = false;
-  String? deviceLibraryError;
-  int _deviceLibraryGeneration = 0;
   List<Track> searchResults = [];
   List<Track> favoriteTracks = [];
   List<Track> downloadedTracks = [];
@@ -177,43 +169,8 @@ class AurelController extends ChangeNotifier {
       await restoreCloudLibrary();
     }
     notifyListeners();
-    unawaited(refreshDeviceLibrary());
     if (!offlineMode) {
       await refreshDiscover();
-    }
-  }
-
-  /// Refreshes the phone's indexed audio. Permission is requested only when
-  /// the user explicitly opens the On Device library.
-  Future<void> refreshDeviceLibrary({bool requestPermission = false}) async {
-    final generation = ++_deviceLibraryGeneration;
-    isLoadingDeviceTracks = true;
-    deviceLibraryError = null;
-    notifyListeners();
-
-    try {
-      final granted = requestPermission
-          ? await deviceLibrary.requestAudioPermission()
-          : await deviceLibrary.hasAudioPermission();
-      if (generation != _deviceLibraryGeneration) return;
-      hasDeviceAudioPermission = granted;
-      if (!granted) {
-        deviceTracks = [];
-        return;
-      }
-
-      final tracks = await deviceLibrary.loadTracks();
-      if (generation != _deviceLibraryGeneration) return;
-      deviceTracks = tracks;
-    } catch (error) {
-      if (generation == _deviceLibraryGeneration) {
-        deviceLibraryError = error.toString().replaceFirst('Exception: ', '');
-      }
-    } finally {
-      if (generation == _deviceLibraryGeneration) {
-        isLoadingDeviceTracks = false;
-        notifyListeners();
-      }
     }
   }
 
@@ -364,10 +321,9 @@ class AurelController extends ChangeNotifier {
 
     if (offlineMode) {
       final term = normalized.toLowerCase();
-      final offlineTracks = [...downloadedTracks, ...deviceTracks];
       searchResults = term.isEmpty
-          ? List<Track>.of(offlineTracks)
-          : offlineTracks.where((track) {
+          ? List<Track>.of(downloadedTracks)
+          : downloadedTracks.where((track) {
               final searchable =
                   '${track.title} ${track.artist} ${track.album}'.toLowerCase();
               return searchable.contains(term);
@@ -620,9 +576,9 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> addToQueue(Track track) async {
-    if (offlineMode && !track.isDownloaded && !track.isDeviceTrack) {
+    if (offlineMode && !track.isDownloaded) {
       throw const PlaybackException(
-        'Only local or AUREL-downloaded tracks can be queued in Offline mode.',
+        'Only tracks saved inside AUREL can be queued in Offline mode.',
       );
     }
     await playback.addToQueue(await catalog.prepareTrack(track));
@@ -631,7 +587,7 @@ class AurelController extends ChangeNotifier {
   Future<void> playNext(Track track) async {
     if (offlineMode && !track.isDownloaded) {
       throw const PlaybackException(
-        'Only local or AUREL-downloaded tracks can be played next in Offline mode.',
+        'Only tracks saved inside AUREL can be played next in Offline mode.',
       );
     }
     await playback.playNext(await catalog.prepareTrack(track));
@@ -640,15 +596,11 @@ class AurelController extends ChangeNotifier {
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
     if (offlineMode && !track.isDownloaded) {
       throw const PlaybackException(
-        'This track is not available locally for offline listening.',
+        'This track is not saved for offline listening yet.',
       );
     }
     final source = queue ??
-        (track.isDeviceTrack
-            ? deviceTracks
-            : track.isDownloaded
-                ? downloadedTracks
-                : discoverTracks);
+        (track.isDownloaded ? downloadedTracks : discoverTracks);
 
     // The selected recording must always be part of the queue. This matters
     // for tracks opened from playlists, favourites, recent history, or a
@@ -659,7 +611,7 @@ class AurelController extends ChangeNotifier {
 
     final tracks = offlineMode
         ? sourceWithSelection
-            .where((item) => item.isDownloaded || item.isDeviceTrack)
+            .where((item) => item.isDownloaded)
             .toList(growable: false)
         : sourceWithSelection;
     final prepared = await catalog.prepareQueue(
@@ -702,9 +654,7 @@ class AurelController extends ChangeNotifier {
       discoverError = null;
 
       // Never leave an online stream playing after entering offline mode.
-      final currentTrack = playback.currentTrack;
-      if (currentTrack?.isDownloaded != true &&
-          currentTrack?.isDeviceTrack != true) {
+      if (playback.currentTrack?.isDownloaded != true) {
         await playback.player.stop();
         playback.queue = const [];
         playback.currentIndex = -1;
@@ -833,7 +783,6 @@ class AurelController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _deviceLibraryGeneration++;
     _discoverCancelToken?.cancel('AUREL is closing');
     _searchCancelToken?.cancel('AUREL is closing');
     for (final token in _downloadTokens.values) {
