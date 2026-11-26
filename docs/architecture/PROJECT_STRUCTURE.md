@@ -58,7 +58,7 @@ AUREL/
 
 ## Library and offline boundary
 
-The Downloads tab contains only audio saved through AUREL into app-managed storage. It is not a phone file browser, device music importer or whole-device storage viewer. A saved record is playable only while its local URI is present.
+The Library's **On Device** tab queries Android MediaStore through a narrow platform channel after the user grants audio permission. It reads content URIs in place, excludes Snaptube paths, and neither copies nor uploads device files. The Downloads tab remains separate: it contains only audio saved through AUREL into app-managed storage. A saved record is playable only while its local URI is present. Offline mode can play both accessible on-device tracks and AUREL-managed downloads.
 
 ## Verification and release
 
