@@ -67,7 +67,7 @@ jobs:
 
       - name: Compile Android debug bundle (not published)
         run: >-
-          flutter build appbundle --debug
+          timeout 10m flutter build appbundle --debug --verbose
           --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
           --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY"
           --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY"
