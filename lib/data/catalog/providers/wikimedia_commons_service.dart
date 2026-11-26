@@ -161,27 +161,23 @@ class WikimediaCommonsService {
 
   _ReusableLicense? _license(Map<String, dynamic> metadata) {
     final url = _metadataValue(metadata, 'LicenseUrl').trim();
-    final shortName = _metadataValue(metadata, 'LicenseShortName').trim();
-    final normalizedUrl = url.toLowerCase();
-    final normalizedName = shortName.toLowerCase();
-
-    if (normalizedUrl.contains('/licenses/by-sa/') ||
-        normalizedName.startsWith('cc by-sa')) {
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.toLowerCase() != 'creativecommons.org') {
+      return null;
+    }
+    final path = uri.path.toLowerCase();
+    if (path.contains('/licenses/by-sa/')) {
       return _ReusableLicense('CC BY-SA', url);
     }
-    if (normalizedUrl.contains('/licenses/by/') ||
-        (normalizedName.startsWith('cc by') &&
-            !normalizedName.contains('nc') &&
-            !normalizedName.contains('nd') &&
-            !normalizedName.contains('sa'))) {
+    if (path.contains('/licenses/by/')) {
       return _ReusableLicense('CC BY', url);
     }
-    if (normalizedUrl.contains('/publicdomain/zero/') ||
-        normalizedName.startsWith('cc0')) {
+    if (path.contains('/publicdomain/zero/')) {
       return _ReusableLicense('CC0', url);
     }
-    if (normalizedUrl.contains('/publicdomain/mark/') ||
-        normalizedName.contains('public domain')) {
+    if (path.contains('/publicdomain/mark/')) {
       return _ReusableLicense('Public Domain', url);
     }
     return null;
