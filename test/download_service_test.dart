@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../lib/data/services/download_service.dart';
+import 'package:aurel/data/services/download_service.dart';
 
 void main() {
   group('audioFileExtensionFromUrl', () {
