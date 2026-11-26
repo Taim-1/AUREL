@@ -14,7 +14,9 @@ void main() {
       final releaseFirstRequest = Completer<void>();
       final adapter = _BlockingAdapter(
         onFetch: (options) async {
-          firstRequestStarted.complete();
+          if (!firstRequestStarted.isCompleted) {
+            firstRequestStarted.complete();
+          }
           await releaseFirstRequest.future;
           return ResponseBody.fromString(
             '{"recordings":[]}',
@@ -52,9 +54,14 @@ void main() {
         ),
       );
 
+      final third = service.search('third');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(adapter.requestCount, 1);
+
       releaseFirstRequest.complete();
       expect(await first, isEmpty);
-      expect(adapter.requestCount, 1);
+      expect(await third, isEmpty);
+      expect(adapter.requestCount, 2);
       adapter.close();
     });
   });
