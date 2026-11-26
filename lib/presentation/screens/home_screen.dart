@@ -62,6 +62,7 @@ class HomeScreen extends StatelessWidget {
         break;
       }
     }
+    final featuredTrack = featured;
     final downloadedById = {
       for (final track in controller.downloadedTracks) track.id: track,
     };
@@ -95,11 +96,11 @@ class HomeScreen extends StatelessWidget {
           _FeaturedMusicCard(
             track: featured,
             offline: controller.offlineMode,
-            onTap: featured == null
+            onTap: featuredTrack == null
                 ? () => context.read<AurelController>().selectTab(1)
                 : () => context
                     .read<AurelController>()
-                    .playTrack(featured, queue: tracks),
+                    .playTrack(featuredTrack, queue: tracks),
           ),
           const SizedBox(height: 26),
           _SectionHeading(
