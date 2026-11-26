@@ -90,6 +90,7 @@ class MusicCatalogService {
           normalized,
           limit: pageSize,
           offset: offset,
+          cancelToken: cancelToken,
         ),
       ),
       _SourceRequest(
@@ -176,6 +177,7 @@ class MusicCatalogService {
         () => jamendo.popular(
           limit: pageSize,
           offset: offset,
+          cancelToken: cancelToken,
         ),
       ),
       _SourceRequest(
@@ -288,6 +290,9 @@ class MusicCatalogService {
         final tracks = await request.load();
         return MapEntry(request.name, _SourceResult.success(tracks));
       } catch (error) {
+        if (error is DioException && error.type == DioExceptionType.cancel) {
+          rethrow;
+        }
         return MapEntry(
           request.name,
           _SourceResult.failure(
