@@ -297,6 +297,18 @@ class Track {
     final licenseUrl = (json['license_url'] ?? '').toString().trim();
     final attribution = (json['attribution'] ?? '').toString().trim();
     const reusableLicenses = {'by', 'by-sa', 'cc0', 'pdm'};
+    final licenseUri = Uri.tryParse(licenseUrl);
+    final licensePath = licenseUri?.path.toLowerCase() ?? '';
+    final licenseLocationIsValid = licenseUri != null &&
+        licenseUri.scheme == 'https' &&
+        licenseUri.host.toLowerCase() == 'creativecommons.org' &&
+        switch (license) {
+          'by' => licensePath.contains('/licenses/by/'),
+          'by-sa' => licensePath.contains('/licenses/by-sa/'),
+          'cc0' => licensePath.contains('/publicdomain/zero/'),
+          'pdm' => licensePath.contains('/publicdomain/mark/'),
+          _ => false,
+        };
     const audioFileTypes = {
       'mp3',
       'ogg',
@@ -307,7 +319,7 @@ class Track {
       'flac',
     };
     final allowed = reusableLicenses.contains(license) &&
-        Uri.tryParse(licenseUrl)?.scheme == 'https';
+        licenseLocationIsValid;
     final id = (json['id'] ?? '').toString().trim();
     final duration = json['duration'];
     final fileType = (json['filetype'] ?? '').toString().toLowerCase();
