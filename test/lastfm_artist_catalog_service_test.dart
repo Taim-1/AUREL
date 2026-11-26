@@ -104,6 +104,82 @@ void main() {
       adapter.close();
     });
 
+    test('resolves an exact artist before loading top tracks', () async {
+      final methods = <String>[];
+      final adapter = _JsonAdapter((options) {
+        final method = options.queryParameters['method']?.toString() ?? '';
+        methods.add(method);
+        if (method == 'artist.search') {
+          return {
+            'results': {
+              'artistmatches': {
+                'artist': [
+                  {'name': 'M83'},
+                  {'name': 'M83 Tribute'},
+                ],
+              },
+            },
+          };
+        }
+        return {
+          'toptracks': {
+            'track': [
+              {
+                'name': 'Midnight City',
+                'artist': {'name': 'M83'},
+              },
+            ],
+          },
+        };
+      });
+      final service = LastFmCatalogService(
+        apiKey: 'test-key',
+        dio: Dio(
+          BaseOptions(
+            baseUrl: 'https://ws.audioscrobbler.com/2.0/',
+            responseType: ResponseType.json,
+          ),
+        )..httpClientAdapter = adapter,
+      );
+
+      final tracks = await service.searchArtistTopTracks('  m83  ');
+
+      expect(methods, ['artist.search', 'artist.gettoptracks']);
+      expect(tracks.single.title, 'Midnight City');
+      adapter.close();
+    });
+
+    test('does not call artist top tracks for a non-matching artist result',
+        () async {
+      final methods = <String>[];
+      final adapter = _JsonAdapter((options) {
+        final method = options.queryParameters['method']?.toString() ?? '';
+        methods.add(method);
+        return {
+          'results': {
+            'artistmatches': {
+              'artist': [
+                {'name': 'M83 Tribute'},
+              ],
+            },
+          },
+        };
+      });
+      final service = LastFmCatalogService(
+        apiKey: 'test-key',
+        dio: Dio(
+          BaseOptions(
+            baseUrl: 'https://ws.audioscrobbler.com/2.0/',
+            responseType: ResponseType.json,
+          ),
+        )..httpClientAdapter = adapter,
+      );
+
+      expect(await service.searchArtistTopTracks('M83'), isEmpty);
+      expect(methods, ['artist.search']);
+      adapter.close();
+    });
+
     test('does not make a request when artist is empty', () async {
       final adapter = _JsonAdapter((_) => throw StateError('unexpected request'));
       final service = LastFmCatalogService(
