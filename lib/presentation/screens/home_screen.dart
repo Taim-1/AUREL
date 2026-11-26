@@ -57,7 +57,7 @@ class HomeScreen extends StatelessWidget {
         : controller.discoverTracks;
     Track? featured;
     for (final track in tracks) {
-      if (track.canPlay) {
+      if (controller.hasPlayableSource(track)) {
         featured = track;
         break;
       }
