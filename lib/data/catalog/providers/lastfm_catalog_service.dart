@@ -6,8 +6,13 @@ import '../../models/track.dart';
 /// It is deliberately metadata-only: Last.fm does not provide AUREL with
 /// an authorized full-track audio stream.
 class LastFmCatalogService {
-  LastFmCatalogService({Dio? dio, String? apiKey})
-      : _apiKey = apiKey ?? const String.fromEnvironment('LASTFM_API_KEY'),
+  LastFmCatalogService({
+    Dio? dio,
+    String? apiKey,
+    bool? termsApproved,
+  })  : _apiKey = apiKey ?? const String.fromEnvironment('LASTFM_API_KEY'),
+        _termsApproved =
+            termsApproved ?? const bool.fromEnvironment('LASTFM_API_APPROVED'),
         _dio = dio ??
             Dio(
               BaseOptions(
@@ -25,8 +30,11 @@ class LastFmCatalogService {
 
   final Dio _dio;
   final String _apiKey;
+  final bool _termsApproved;
 
-  bool get isConfigured => _apiKey.trim().isNotEmpty;
+  /// Last.fm public-app data is intentionally opt-in. A key alone does not
+  /// establish written approval for public display and its required branding.
+  bool get isConfigured => _apiKey.trim().isNotEmpty && _termsApproved;
 
   Future<List<Track>> topTracks({
     int limit = 30,
