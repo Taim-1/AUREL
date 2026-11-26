@@ -46,6 +46,38 @@ void main() {
       expect(isSecureDownloadUri(Uri.parse('file:///audio.mp3')), isFalse);
       expect(isSecureDownloadUri(Uri.parse('https:///audio.mp3')), isFalse);
     });
+
+    test('resolves relative HTTPS redirects safely', () {
+      expect(
+        resolveSecureDownloadRedirect(
+          Uri.parse('https://source.example/audio/song.mp3'),
+          '../files/song.mp3',
+        ).toString(),
+        'https://source.example/files/song.mp3',
+      );
+    });
+
+    test('rejects HTTP, credential-bearing and empty redirect targets', () {
+      final source = Uri.parse('https://source.example/audio.mp3');
+      expect(
+        () => resolveSecureDownloadRedirect(
+          source,
+          'http://insecure.example/audio.mp3',
+        ),
+        throwsA(isA<DownloadException>()),
+      );
+      expect(
+        () => resolveSecureDownloadRedirect(
+          source,
+          'https://user:pass@cdn.example/audio.mp3',
+        ),
+        throwsA(isA<DownloadException>()),
+      );
+      expect(
+        () => resolveSecureDownloadRedirect(source, ' '),
+        throwsA(isA<DownloadException>()),
+      );
+    });
   });
 
   group('download response validation', () {
