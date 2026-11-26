@@ -291,33 +291,55 @@ class Track {
   }
 
   factory Track.fromOpenverse(Map<String, dynamic> json) {
-    final rawUrl = (json['url'] ?? '').toString();
-    final license = (json['license'] ?? '').toString().toLowerCase();
+    final rawUrl = (json['url'] ?? '').toString().trim();
+    final license = (json['license'] ?? '').toString().trim().toLowerCase();
+    final licenseUrl = (json['license_url'] ?? '').toString().trim();
+    final attribution = (json['attribution'] ?? '').toString().trim();
     const reusableLicenses = {'by', 'by-sa', 'cc0', 'pdm'};
-    final allowed = reusableLicenses.contains(license);
-    final id = (json['id'] ?? '').toString();
+    const audioFileTypes = {
+      'mp3',
+      'ogg',
+      'opus',
+      'wav',
+      'm4a',
+      'aac',
+      'flac',
+    };
+    final allowed = reusableLicenses.contains(license) &&
+        Uri.tryParse(licenseUrl)?.scheme == 'https';
+    final id = (json['id'] ?? '').toString().trim();
     final duration = json['duration'];
-    final safeUrl = Uri.tryParse(rawUrl);
-    final playable = safeUrl != null &&
-        (safeUrl.scheme == 'https' || safeUrl.scheme == 'http') &&
-        (json['category'] ?? 'music').toString() == 'music' &&
-        rawUrl.isNotEmpty;
+    final fileType = (json['filetype'] ?? '').toString().toLowerCase();
+    final mediaUri = Uri.tryParse(rawUrl);
+    final landingUri =
+        Uri.tryParse((json['foreign_landing_url'] ?? '').toString());
+    final playable = id.isNotEmpty &&
+        mediaUri != null &&
+        mediaUri.scheme == 'https' &&
+        mediaUri.host.isNotEmpty &&
+        audioFileTypes.contains(fileType) &&
+        (json['category'] ?? '').toString().toLowerCase() == 'music';
+    final safeLandingUrl = landingUri != null &&
+            landingUri.scheme == 'https' &&
+            landingUri.host.isNotEmpty
+        ? landingUri.toString()
+        : '';
 
     return Track(
       id: 'openverse-$id',
       title: (json['title'] ?? 'Unknown track').toString(),
       artist: (json['creator'] ?? 'Unknown creator').toString(),
       artworkUrl: (json['thumbnail'] ?? '').toString(),
-      streamUrl: playable ? rawUrl : '',
-      downloadUrl: playable && allowed ? rawUrl : '',
-      licenseUrl: (json['license_url'] ?? '').toString(),
+      streamUrl: playable ? mediaUri.toString() : '',
+      downloadUrl: playable && allowed ? mediaUri.toString() : '',
+      licenseUrl: licenseUrl,
       licenseName: license,
-      attribution: (json['attribution'] ?? '').toString(),
+      attribution: attribution,
       durationMs: duration is num ? duration.round() : 0,
       downloadAllowed: playable && allowed,
       providerId: 'openverse',
       providerName: 'Openverse',
-      sourceUrl: (json['foreign_landing_url'] ?? '').toString(),
+      sourceUrl: safeLandingUrl,
       isPlayable: playable,
     );
   }
@@ -399,8 +421,8 @@ class Track {
         final name = directName.isNotEmpty ? directName : nestedName;
         if (name.isNotEmpty) artists.add(name);
         final joinPhrase = (entry['joinphrase'] ?? '').toString();
-        if (joinPhrase.trim().isNotEmpty) {
-          artists.add(joinPhrase.trim());
+        if (joinPhrase.isNotEmpty) {
+          artists.add(joinPhrase);
         }
       }
     }
