@@ -40,12 +40,67 @@ void main() {
       expect(captured.queryParameters['method'], 'artist.gettoptracks');
       expect(captured.queryParameters['artist'], 'M83');
       expect(captured.queryParameters['limit'], 12);
+      expect(captured.queryParameters['page'], 1);
       expect(tracks, hasLength(1));
       expect(tracks.single.title, 'Midnight City');
       expect(tracks.single.artist, 'M83');
       expect(tracks.single.canPlay, isFalse);
       expect(tracks.single.streamUrl, isEmpty);
       expect(tracks.single.downloadAllowed, isFalse);
+      adapter.close();
+    });
+
+    test('supports artist chart pagination', () async {
+      late RequestOptions captured;
+      final adapter = _JsonAdapter((options) {
+        captured = options;
+        return {
+          'toptracks': {
+            'track': [
+              {
+                'name': 'Next Song',
+                'artist': {'name': 'M83'},
+              },
+            ],
+          },
+        };
+      });
+      final service = LastFmCatalogService(
+        apiKey: 'test-key',
+        dio: Dio(
+          BaseOptions(
+            baseUrl: 'https://ws.audioscrobbler.com/2.0/',
+            responseType: ResponseType.json,
+          ),
+        )..httpClientAdapter = adapter,
+      );
+
+      final tracks = await service.artistTopTracks('M83', page: 2);
+
+      expect(captured.queryParameters['page'], 2);
+      expect(tracks.single.title, 'Next Song');
+      adapter.close();
+    });
+
+    test('surfaces Last.fm JSON API errors even when HTTP succeeds', () async {
+      final adapter = _JsonAdapter((_) => {
+            'error': 10,
+            'message': 'Invalid API key',
+          });
+      final service = LastFmCatalogService(
+        apiKey: 'invalid-key',
+        dio: Dio(
+          BaseOptions(
+            baseUrl: 'https://ws.audioscrobbler.com/2.0/',
+            responseType: ResponseType.json,
+          ),
+        )..httpClientAdapter = adapter,
+      );
+
+      await expectLater(
+        service.artistTopTracks('M83'),
+        throwsA(isA<LastFmCatalogException>()),
+      );
       adapter.close();
     });
 
