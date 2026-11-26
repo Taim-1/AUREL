@@ -89,7 +89,7 @@ class MusicBrainzService {
         _cache.remove(_cache.keys.first);
       }
       return tracks;
-    });
+    }, cancelToken: cancelToken);
   }
 
   void _throwIfCancelled(CancelToken? cancelToken) {
@@ -102,27 +102,50 @@ class MusicBrainzService {
     }
   }
 
+
+  Future<void> _waitOrCancel(
+    Future<void> wait,
+    CancelToken? cancelToken,
+  ) async {
+    if (cancelToken == null) {
+      await wait;
+      return;
+    }
+    await Future.any<void>([
+      wait,
+      cancelToken.whenCancel.then<void>((_) {}),
+    ]);
+    _throwIfCancelled(cancelToken);
+  }
+
   String _escapeLucene(String value) => value
       .replaceAll(String.fromCharCode(92), r'\\')
       .replaceAll('"', r'\"');
 
-  Future<T> _serialized<T>(Future<T> Function() action) {
+  Future<T> _serialized<T>(
+    Future<T> Function() action, {
+    CancelToken? cancelToken,
+  }) {
     final result = Completer<T>();
     final previous = _requestQueue;
     final release = Completer<void>();
     _requestQueue = release.future;
 
     () async {
-      await previous;
       try {
+        await _waitOrCancel(previous, cancelToken);
         final lastRequest = _lastRequestAt;
         if (lastRequest != null) {
           final elapsed = DateTime.now().difference(lastRequest);
           const spacing = Duration(seconds: 1);
           if (elapsed < spacing) {
-            await Future<void>.delayed(spacing - elapsed);
+            await _waitOrCancel(
+              Future<void>.delayed(spacing - elapsed),
+              cancelToken,
+            );
           }
         }
+        _throwIfCancelled(cancelToken);
         _lastRequestAt = DateTime.now();
         result.complete(await action());
       } catch (error, stackTrace) {
