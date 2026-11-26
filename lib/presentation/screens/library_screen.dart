@@ -5,6 +5,7 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/models/music_playlist.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
+import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
 
 class LibraryScreen extends StatefulWidget {
