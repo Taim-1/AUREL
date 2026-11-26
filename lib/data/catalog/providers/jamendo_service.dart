@@ -43,40 +43,46 @@ class JamendoService {
   Future<List<Track>> popular({
     int limit = 30,
     int offset = 0,
+    CancelToken? cancelToken,
   }) =>
       _requestTracks({
         'order': 'popularity_total',
         'limit': _safeLimit(limit),
         'offset': _safeOffset(offset),
-      });
+      }, cancelToken: cancelToken);
 
   Future<List<Track>> search(
     String query, {
     int limit = 30,
     int offset = 0,
+    CancelToken? cancelToken,
   }) =>
       _requestTracks({
         'search': query.trim(),
         'limit': _safeLimit(limit),
         'offset': _safeOffset(offset),
-      });
+      }, cancelToken: cancelToken);
 
   Future<List<Track>> byTag(
     String tag, {
     int limit = 30,
     int offset = 0,
+    CancelToken? cancelToken,
   }) =>
       _requestTracks({
         'tags': tag.trim(),
         'order': 'popularity_total',
         'limit': _safeLimit(limit),
         'offset': _safeOffset(offset),
-      });
+      }, cancelToken: cancelToken);
 
   String _safeLimit(int value) => value.clamp(1, 200).toString();
   String _safeOffset(int value) => value.clamp(0, 1000000).toString();
 
-  Future<List<Track>> _requestTracks(Map<String, String> extra) async {
+  Future<List<Track>> _requestTracks(
+    Map<String, String> extra, {
+    CancelToken? cancelToken,
+  }) async {
     if (_clientId.isEmpty) {
       throw const JamendoException(
         'A music collection is not configured for this build yet.',
@@ -94,6 +100,7 @@ class JamendoService {
           'include': 'musicinfo',
           ...extra,
         },
+        cancelToken: cancelToken,
       );
       final body = response.data;
       if (body == null) {
@@ -121,6 +128,7 @@ class JamendoService {
           .where((track) => track.id.isNotEmpty && track.streamUrl.isNotEmpty)
           .toList(growable: false);
     } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
       final status = error.response?.statusCode;
       final detail = status == 401 || status == 403
           ? 'The music catalogue access settings need to be checked.'
