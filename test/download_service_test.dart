@@ -29,4 +29,59 @@ void main() {
       );
     });
   });
+
+  group('download response validation', () {
+    test('allows audio and generic binary content types', () {
+      expect(isAllowedAudioContentType('audio/mpeg'), isTrue);
+      expect(isAllowedAudioContentType('audio/mp4; codecs=mp4a'), isTrue);
+      expect(isAllowedAudioContentType('application/octet-stream'), isTrue);
+      expect(isAllowedAudioContentType(null), isTrue);
+    });
+
+    test('rejects explicit non-audio responses', () {
+      expect(isAllowedAudioContentType('text/html; charset=utf-8'), isFalse);
+      expect(isAllowedAudioContentType('application/json'), isFalse);
+      expect(isAllowedAudioContentType('text/plain'), isFalse);
+    });
+
+    test('recognizes supported audio file signatures', () {
+      expect(
+        audioFileExtensionFromSignature(
+          [0x49, 0x44, 0x33, 0x04, 0x00, 0x00],
+        ),
+        'mp3',
+      );
+      expect(
+        audioFileExtensionFromSignature(
+          [0x66, 0x4C, 0x61, 0x43],
+        ),
+        'flac',
+      );
+      expect(
+        audioFileExtensionFromSignature(
+          [0x4F, 0x67, 0x67, 0x53, 0x00],
+        ),
+        'ogg',
+      );
+      expect(
+        audioFileExtensionFromSignature(
+          [0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45],
+        ),
+        'wav',
+      );
+      expect(
+        audioFileExtensionFromSignature(
+          [0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70],
+        ),
+        'm4a',
+      );
+      expect(audioFileExtensionFromSignature('<html>'.codeUnits), isNull);
+      expect(audioFileExtensionFromSignature('{"error":true}'.codeUnits), isNull);
+    });
+
+    test('recognizes MPEG and AAC frame headers', () {
+      expect(audioFileExtensionFromSignature([0xFF, 0xFB, 0x90, 0x64]), 'mp3');
+      expect(audioFileExtensionFromSignature([0xFF, 0xF1, 0x50, 0x80]), 'aac');
+    });
+  });
 }
