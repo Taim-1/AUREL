@@ -30,6 +30,24 @@ void main() {
     });
   });
 
+  group('download URL security', () {
+    test('accepts HTTPS final URLs with a host', () {
+      expect(
+        isSecureDownloadUri(Uri.parse('https://cdn.example/audio.mp3')),
+        isTrue,
+      );
+    });
+
+    test('rejects HTTP, hostless and non-web final URLs', () {
+      expect(
+        isSecureDownloadUri(Uri.parse('http://cdn.example/audio.mp3')),
+        isFalse,
+      );
+      expect(isSecureDownloadUri(Uri.parse('file:///audio.mp3')), isFalse);
+      expect(isSecureDownloadUri(Uri.parse('https:///audio.mp3')), isFalse);
+    });
+  });
+
   group('download response validation', () {
     test('allows audio and generic binary content types', () {
       expect(isAllowedAudioContentType('audio/mpeg'), isTrue);
