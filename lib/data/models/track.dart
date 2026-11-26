@@ -64,10 +64,17 @@ class Track {
   /// cloud library persistence.
   final Map<String, String> playbackHeaders;
 
-  bool get isLocal => isDeviceTrack || isDownloaded;
+  bool get hasLocalPlaybackUri => localPath?.trim().isNotEmpty == true;
 
-  bool get canPlay =>
-      isLocal || (isPlayable && streamUrl.trim().isNotEmpty);
+  bool get isLocal =>
+      hasLocalPlaybackUri && (isDeviceTrack || isDownloaded);
+
+  bool get canPlay {
+    // A device/downloaded item must use its real local URI. Never fall back
+    // to a network stream for a broken offline entry.
+    if (isDeviceTrack || isDownloaded) return hasLocalPlaybackUri;
+    return isPlayable && streamUrl.trim().isNotEmpty;
+  }
 
   String get playbackUri {
     if (localPath != null && localPath!.isNotEmpty) {
