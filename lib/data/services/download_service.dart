@@ -131,7 +131,14 @@ class DownloadService {
   Future<void> delete(Track track) async {
     final path = track.localPath;
     if (path == null || path.startsWith('content://')) return;
-    final file = File(path);
+
+    final root = await getApplicationDocumentsDirectory();
+    final downloadsPath =
+        Directory('${root.path}/AUREL Downloads').absolute.path;
+    final file = File(path).absolute;
+    final allowedPrefix = '$downloadsPath${Platform.pathSeparator}';
+    if (!file.path.startsWith(allowedPrefix)) return;
+
     if (await file.exists()) await file.delete();
   }
 }
@@ -146,7 +153,6 @@ bool isAllowedAudioContentType(String? contentType) {
       mime == 'application/ogg' ||
       mime == 'application/mp4' ||
       mime == 'application/x-ogg' ||
-      mime == 'application/x-flac' ||
       mime == 'application/x-flac';
 }
 
