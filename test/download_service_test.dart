@@ -45,6 +45,12 @@ void main() {
       );
       expect(isSecureDownloadUri(Uri.parse('file:///audio.mp3')), isFalse);
       expect(isSecureDownloadUri(Uri.parse('https:///audio.mp3')), isFalse);
+      expect(
+        isSecureDownloadUri(
+          Uri.parse('https://user:password@cdn.example/audio.mp3'),
+        ),
+        isFalse,
+      );
     });
 
     test('resolves relative HTTPS redirects safely', () {
