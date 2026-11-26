@@ -150,6 +150,7 @@ class TrackTile extends StatelessWidget {
     final controller = context.watch<AurelController>();
     final favorite = controller.isFavorite(track);
     final downloading = controller.downloadingIds.contains(track.id);
+    final alreadyDownloaded = controller.hasLocalPlayableCopy(track);
 
     return InkWell(
       borderRadius: BorderRadius.circular(17),
@@ -268,16 +269,20 @@ class TrackTile extends StatelessWidget {
               IconButton(
                 tooltip: downloading
                     ? 'Cancel download'
-                    : controller.offlineMode
-                        ? 'Turn off Offline mode to download'
-                        : track.downloadAllowed
-                            ? 'Download for offline listening'
-                            : 'Download not allowed',
+                    : alreadyDownloaded
+                        ? 'Saved offline'
+                        : controller.offlineMode
+                            ? 'Turn off Offline mode to download'
+                            : track.downloadAllowed
+                                ? 'Download for offline listening'
+                                : 'Download not allowed',
                 onPressed: downloading
                     ? () => context
                         .read<AurelController>()
                         .cancelDownload(track.id)
-                    : !track.downloadAllowed || controller.offlineMode
+                    : alreadyDownloaded ||
+                            !track.downloadAllowed ||
+                            controller.offlineMode
                         ? null
                         : () async {
                             final message = await context
@@ -308,10 +313,12 @@ class TrackTile extends StatelessWidget {
                         ),
                       )
                     : Icon(
-                        track.downloadAllowed
-                            ? Icons.download_rounded
-                            : Icons.download_for_offline_outlined,
-                        color: track.downloadAllowed
+                        alreadyDownloaded
+                            ? Icons.download_done_rounded
+                            : track.downloadAllowed
+                                ? Icons.download_rounded
+                                : Icons.download_for_offline_outlined,
+                        color: alreadyDownloaded || track.downloadAllowed
                             ? AurelColors.champagne
                             : AurelColors.muted.withValues(alpha: 0.45),
                         size: 20,
