@@ -119,7 +119,7 @@ class DownloadService {
     final clean = value
         .replaceAll(RegExp(r'[\\/:*?"<>|]'), '')
         .trim()
-        .replaceAll(RegExp(r'\\s+'), '_');
+        .replaceAll(RegExp(r'\s+'), '_');
     if (clean.isEmpty) return 'track';
     return clean.length > 64 ? clean.substring(0, 64) : clean;
   }
@@ -195,7 +195,7 @@ String? audioFileExtensionFromSignature(List<int> bytes) {
   if (bytes.length >= 2 && bytes[0] == 0xFF) {
     final second = bytes[1];
     if ((second & 0xF6) == 0xF0) return 'aac';
-    if ((second & 0xE0) == 0xE0 && ((second >> 1) & 0x03) != 0x01) {
+    if ((second & 0xE0) == 0xE0 && ((second >> 1) & 0x03) != 0x00) {
       return 'mp3';
     }
   }
