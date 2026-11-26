@@ -672,11 +672,12 @@ class AurelController extends ChangeNotifier {
     _downloadTokens[track.id] = token;
     downloadingIds.add(track.id);
     downloadProgress[track.id] = 0;
+    Track? saved;
     notifyListeners();
 
     try {
       final preparedTrack = await catalog.prepareTrackForDownload(track);
-      final saved = await downloads.download(
+      saved = await downloads.download(
         preparedTrack,
         cancelToken: token,
         onProgress: (received, total) {
@@ -690,10 +691,19 @@ class AurelController extends ChangeNotifier {
         },
       );
 
-      downloadedTracks = [...downloadedTracks, saved];
-      await repository.saveDownloads(downloadedTracks);
+      final updated = [...downloadedTracks, saved];
+      await repository.saveDownloads(updated);
+      downloadedTracks = updated;
       return null;
     } catch (error) {
+      if (saved != null) {
+        try {
+          await downloads.delete(saved);
+        } catch (_) {
+          // Keep the original error visible; a stale file can be cleaned up
+          // by the next AUREL-managed download maintenance pass.
+        }
+      }
       return error.toString();
     } finally {
       _downloadTokens.remove(track.id);
@@ -711,12 +721,22 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> removeDownload(Track track) async {
-    await downloads.delete(track);
-    downloadedTracks =
-        downloadedTracks.where((item) => item.id != track.id).toList();
-    await repository.saveDownloads(downloadedTracks);
-    if (playback.currentTrack?.id == track.id) {
-      await playback.player.stop();
+    final previous = downloadedTracks;
+    final updated =
+        previous.where((item) => item.id != track.id).toList(growable: false);
+    if (updated.length == previous.length) return;
+
+    await repository.saveDownloads(updated);
+    downloadedTracks = updated;
+    try {
+      if (playback.currentTrack?.id == track.id) {
+        await playback.removeCurrentTrackFromQueue();
+      }
+      await downloads.delete(track);
+    } catch (_) {
+      downloadedTracks = previous;
+      await repository.saveDownloads(previous);
+      rethrow;
     }
     notifyListeners();
   }
