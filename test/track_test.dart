@@ -452,9 +452,14 @@ void main() {
         'artist': 'Local Artist',
         'album': 'Local Album',
         'duration': 187000,
+        'artworkUri': 'content://media/external/audio/albumart/8',
       });
 
       expect(track.id, 'device-42');
+      expect(
+        track.artworkUrl,
+        'content://media/external/audio/albumart/8',
+      );
       expect(track.providerId, 'device');
       expect(track.title, 'Local Song');
       expect(track.artist, 'Local Artist');
@@ -471,12 +476,14 @@ void main() {
       final track = Track.fromDevice({
         'id': '43',
         'uri': 'https://example.com/audio.mp3',
+        'artworkUri': 'https://attacker.example/image.jpg',
         'title': 'Not a local content URI',
         'artist': 'Unknown artist',
       });
 
       expect(track.isDeviceTrack, isTrue);
       expect(track.localPath, isNull);
+      expect(track.artworkUrl, isEmpty);
       expect(track.canPlay, isFalse);
     });
   });
