@@ -43,7 +43,7 @@ class MusicBrainzService {
   }) async {
     final normalized = query.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) return const [];
-    if (cancelToken?.isCancelled ?? false) return const [];
+    _throwIfCancelled(cancelToken);
 
     final key = '${normalized.toLowerCase()}:${offset.clamp(0, 100000)}';
     final cached = _cache[key];
@@ -53,7 +53,7 @@ class MusicBrainzService {
     }
 
     return _serialized(() async {
-      if (cancelToken?.isCancelled ?? false) return const <Track>[];
+      _throwIfCancelled(cancelToken);
       final queryText = _escapeLucene(normalized);
       final response = await _dio.get<Map<String, dynamic>>(
         'recording/',
@@ -90,6 +90,16 @@ class MusicBrainzService {
       }
       return tracks;
     });
+  }
+
+  void _throwIfCancelled(CancelToken? cancelToken) {
+    if (cancelToken?.isCancelled ?? false) {
+      throw DioException(
+        requestOptions: RequestOptions(path: 'recording/'),
+        type: DioExceptionType.cancel,
+        message: 'Recording metadata search cancelled.',
+      );
+    }
   }
 
   String _escapeLucene(String value) => value
