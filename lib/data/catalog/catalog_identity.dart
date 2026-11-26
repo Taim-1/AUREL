@@ -12,6 +12,14 @@ class CatalogIdentity {
   static const int durationToleranceMs = 5000;
 
   static bool matches(Track a, Track b) {
+    // A provider's own stable track ID is authoritative even when that
+    // provider omits duration and recording identifiers.
+    if (a.providerId == b.providerId &&
+        a.id.isNotEmpty &&
+        a.id == b.id) {
+      return true;
+    }
+
     final aMbid = a.recordingMbid.trim().toLowerCase();
     final bMbid = b.recordingMbid.trim().toLowerCase();
     if (aMbid.isNotEmpty && bMbid.isNotEmpty && aMbid == bMbid) {
