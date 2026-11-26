@@ -36,6 +36,29 @@ class CatalogIdentity {
     return (a.durationMs - b.durationMs).abs() <= durationToleranceMs;
   }
 
+  /// Groups cross-source matches conservatively. Ambiguous entries are kept
+  /// separate rather than being allowed to bridge distinct known recordings.
+  static List<List<Track>> group(List<Track> tracks) {
+    final groups = <List<Track>>[];
+    for (final track in tracks) {
+      final matchingGroups = <int>[];
+      for (var index = 0; index < groups.length; index++) {
+        if (groups[index].any(
+          (candidate) => matches(candidate, track),
+        )) {
+          matchingGroups.add(index);
+        }
+      }
+
+      if (matchingGroups.length == 1) {
+        groups[matchingGroups.single].add(track);
+      } else {
+        groups.add([track]);
+      }
+    }
+    return groups;
+  }
+
   static String normalizeText(String value) => value
       .toLowerCase()
       .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
