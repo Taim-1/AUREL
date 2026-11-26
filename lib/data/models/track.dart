@@ -461,6 +461,57 @@ class Track {
     );
   }
 
+
+  factory Track.fromLastFm(Map<String, dynamic> json) {
+    final rawArtist = json['artist'];
+    final artist = rawArtist is Map
+        ? (rawArtist['name'] ?? '').toString().trim()
+        : (rawArtist ?? '').toString().trim();
+    final rawImages = json['image'];
+    var artworkUrl = '';
+    if (rawImages is List) {
+      for (final image in rawImages.whereType<Map>()) {
+        final candidate = (image['#text'] ?? '').toString().trim();
+        final uri = Uri.tryParse(candidate);
+        if (uri != null && uri.scheme == 'https' && uri.host.isNotEmpty) {
+          artworkUrl = candidate;
+        }
+      }
+    }
+    final rawDuration = json['duration'];
+    final duration = rawDuration is num
+        ? rawDuration.round()
+        : int.tryParse(rawDuration?.toString() ?? '') ?? 0;
+    final mbid = (json['mbid'] ?? '').toString().trim();
+    final source = (json['url'] ?? '').toString().trim();
+    final sourceUri = Uri.tryParse(source);
+    final safeSource = sourceUri != null &&
+            sourceUri.scheme == 'https' &&
+            sourceUri.host.isNotEmpty
+        ? source
+        : '';
+    final title = (json['name'] ?? 'Unknown recording').toString().trim();
+    final stableKey = mbid.isNotEmpty
+        ? mbid
+        : safeSource.isNotEmpty
+            ? safeSource
+            : '${artist.toLowerCase()}::${title.toLowerCase()}';
+
+    return Track(
+      id: 'lastfm-$stableKey',
+      title: title.isEmpty ? 'Unknown recording' : title,
+      artist: artist.isEmpty ? 'Unknown artist' : artist,
+      artworkUrl: artworkUrl,
+      durationMs: duration,
+      providerId: 'lastfm',
+      providerName: 'Last.fm',
+      sourceUrl: safeSource,
+      recordingId: mbid,
+      isPlayable: false,
+      isMetadataOnly: true,
+    );
+  }
+
   factory Track.fromDevice(Map<Object?, Object?> json) {
     final uri = (json['uri'] ?? '').toString();
     final id = (json['id'] ?? uri).toString();
