@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../models/track.dart';
 import 'catalog_identity.dart';
+import 'catalog_ranking.dart';
 import 'providers/apple_music_catalog_service.dart';
 import 'providers/audius_service.dart';
 import 'providers/jamendo_service.dart';
@@ -56,25 +57,6 @@ class MusicCatalogService {
   final ListenBrainzCatalogService listenBrainz;
 
   static const pageSize = 30;
-
-  /// AUREL's internal source order. These values are never shown in the UI.
-  /// Local files always win; metadata-only catalogues are fallback metadata,
-  /// never playback candidates.
-  static const _providerRank = <String, int>{
-    'device': 120,
-    'local': 120,
-    'audius': 100,
-    'jamendo': 90,
-    'soundcloud': 80,
-    'internet_archive': 65,
-    'wikimedia_commons': 60,
-    'openverse': 55,
-    'apple_music': 20,
-    'spotify': 15,
-    'lastfm': 12,
-    'listenbrainz': 11,
-    'musicbrainz': 5,
-  };
 
   Future<CatalogPage> search(
     String query, {
@@ -380,9 +362,9 @@ class MusicCatalogService {
 
     final ranked = <Track>[];
     for (final group in groups) {
-      final best = [...group]..sort(_compareTracks);
+      final best = [...group]..sort(CatalogRanking.compare);
       final selected = best.first;
-      final sources = group
+      final sources = best
           .map((track) => track.providerName)
           .toSet()
           .toList(growable: false);
@@ -466,32 +448,8 @@ class MusicCatalogService {
     );
   }
 
-  int _compareTracks(Track a, Track b) {
-    // Never let a metadata-only catalogue outrank a playable recording.
-    final playableCompare = (b.canPlay ? 1 : 0).compareTo(a.canPlay ? 1 : 0);
-    if (playableCompare != 0) return playableCompare;
-
-    // Prefer a verified recording identity, then richer artwork and duration
-    // metadata, before applying AUREL's deterministic provider preference.
-    final aHasIsrc = a.recordingId.trim().isNotEmpty ? 1 : 0;
-    final bHasIsrc = b.recordingId.trim().isNotEmpty ? 1 : 0;
-    final isrcCompare = bHasIsrc.compareTo(aHasIsrc);
-    if (isrcCompare != 0) return isrcCompare;
-
-    final aHasArtwork = a.artworkUrl.trim().isNotEmpty ? 1 : 0;
-    final bHasArtwork = b.artworkUrl.trim().isNotEmpty ? 1 : 0;
-    final artworkCompare = bHasArtwork.compareTo(aHasArtwork);
-    if (artworkCompare != 0) return artworkCompare;
-
-    final aHasDuration = a.durationMs > 0 ? 1 : 0;
-    final bHasDuration = b.durationMs > 0 ? 1 : 0;
-    final durationCompare = bHasDuration.compareTo(aHasDuration);
-    if (durationCompare != 0) return durationCompare;
-
-    final aRank = _providerRank[a.providerId] ?? 0;
-    final bRank = _providerRank[b.providerId] ?? 0;
-    return bRank.compareTo(aRank);
-  }
+  int _compareTracks(Track a, Track b) =>
+      CatalogRanking.compare(a, b);
 }
 
 class CatalogPlaybackException implements Exception {
