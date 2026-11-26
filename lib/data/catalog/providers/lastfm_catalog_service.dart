@@ -109,6 +109,70 @@ class LastFmCatalogService {
     }
   }
 
+  /// Resolves an artist name through Last.fm before requesting that
+  /// artist's top tracks. This avoids treating every song-title search as an
+  /// artist lookup and creating false source failures for ordinary searches.
+  Future<List<Track>> searchArtistTopTracks(
+    String query, {
+    int limit = 30,
+    int page = 1,
+    CancelToken? cancelToken,
+  }) async {
+    final normalized = query.trim().replaceAll(RegExp(r'\\s+'), ' ');
+    if (normalized.isEmpty) return const [];
+    if (!isConfigured) {
+      throw const LastFmCatalogException(
+        'Last.fm discovery is not configured for this build.',
+      );
+    }
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '',
+        queryParameters: {
+          'method': 'artist.search',
+          'artist': normalized,
+          'api_key': _apiKey,
+          'format': 'json',
+          'limit': 10,
+        },
+        cancelToken: cancelToken,
+      );
+      _throwForApiError(response.data);
+      final results = response.data?['results'];
+      final matches = results is Map ? results['artistmatches'] : null;
+      final artists = matches is Map ? matches['artist'] : null;
+      if (artists is! List) return const [];
+
+      String normalize(String value) =>
+          value.toLowerCase().replaceAll(RegExp(r'\\s+'), ' ').trim();
+      final exactArtist = artists
+          .whereType<Map>()
+          .map((item) => (item['name'] ?? '').toString().trim())
+          .where((name) => name.isNotEmpty)
+          .where((name) => normalize(name) == normalize(normalized))
+          .firstOrNull;
+      if (exactArtist == null) return const [];
+
+      return artistTopTracks(
+        exactArtist,
+        limit: limit,
+        page: page,
+        cancelToken: cancelToken,
+      );
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      final status = error.response?.statusCode;
+      throw LastFmCatalogException(
+        status == 429
+            ? 'Last.fm artist discovery is busy. Try again shortly.'
+            : status == 403
+                ? 'Last.fm API access is unavailable for this key.'
+                : 'Artist search could not be reached.',
+      );
+    }
+  }
+
   Future<List<Track>> search(
     String query, {
     int limit = 30,
