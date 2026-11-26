@@ -18,6 +18,7 @@ Release packaging is intentionally deferred while the app is being completed. Gi
 - Source ranking, ISRC matching, version-aware de-duplication, and provider attribution.
 - Champagne waveform seek control, background playback, lock-screen controls, mini-player, shuffle and repeat.
 - Licensed lyrics when the provider makes them available.
+- On-device Songs library through Android MediaStore, using a permission prompt only when the user opens that Library tab; playback reads content URIs in place without copying or uploading device audio.
 - Favourites, playlists, AUREL-managed offline downloads, offline mode and recently played history.
 - User-selected AUREL username.
 - Firebase email/password and Google account implementation with cloud library restore.
@@ -43,7 +44,7 @@ AUREL presents one unified search and one in-app player. Provider names are not 
 | Spotify | Commercial-catalogue metadata and ISRC matching | Metadata only in this AUREL player; no Spotify protected audio is copied into AUREL |
 | Apple Music | Commercial-catalogue metadata and recording matching | Metadata only in this AUREL player; native Apple Music playback is not enabled in this build |
 
-**Song priority:** playable local/device copies come first, followed by Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons and Openverse. Apple Music, Spotify, Last.fm, ListenBrainz and MusicBrainz are metadata-only fallbacks and never outrank playable audio. Metadata completeness breaks ties within the same source tier.
+**Song priority:** playable copies already on the device (MediaStore or AUREL-managed downloads) come first, followed by Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons and Openverse. Apple Music, Spotify, Last.fm, ListenBrainz and MusicBrainz are metadata-only fallbacks and never outrank playable audio. Metadata completeness breaks ties within the same source tier.
 
 **Important:** a catalogue match is not automatically a playable track. AUREL prefers the strongest eligible in-app stream for the same recording. Spotify and Apple Music metadata can help identify a recording, while an authorized SoundCloud, Audius, Jamendo or openly licensed copy supplies the audio. Live, remix, acoustic and alternate versions are kept distinct.
 
