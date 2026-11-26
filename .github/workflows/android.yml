@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: aurel-verify-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify Flutter app and Firebase functions
+    name: Verify Flutter app and build Android APK
     runs-on: ubuntu-latest
     env:
       JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
@@ -65,7 +65,7 @@ jobs:
       - name: Run tests
         run: flutter test
 
-      - name: Compile Android debug bundle (not published)
+      - name: Compile Android debug bundle
         run: >-
           timeout 10m flutter build appbundle --debug --verbose
           --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
@@ -75,3 +75,41 @@ jobs:
           --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID"
           --dart-define=AUREL_FIREBASE_MESSAGING_SENDER_ID="$AUREL_FIREBASE_MESSAGING_SENDER_ID"
           --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Build Android release APK
+        run: >-
+          timeout 15m flutter build apk --release --verbose
+          --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
+          --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY"
+          --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY"
+          --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID"
+          --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID"
+          --dart-define=AUREL_FIREBASE_MESSAGING_SENDER_ID="$AUREL_FIREBASE_MESSAGING_SENDER_ID"
+          --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
+
+      - name: Upload Android release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AUREL-android-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish APK at repository root
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/AUREL.apk
+          git fetch origin main
+          git checkout -B aurel-apk-publish origin/main
+          cp /tmp/AUREL.apk AUREL.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add AUREL.apk
+          if git diff --cached --quiet; then
+            echo "The repository-root APK is already up to date."
+            exit 0
+          fi
+          git commit -m "chore(release): publish AUREL Android APK [skip ci]"
+          git push origin HEAD:main
