@@ -164,7 +164,7 @@ class LastFmCatalogService {
       }
       if (exactArtist == null) return const [];
 
-      return artistTopTracks(
+      return await artistTopTracks(
         exactArtist,
         limit: limit,
         page: page,
