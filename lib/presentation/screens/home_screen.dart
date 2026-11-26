@@ -56,6 +56,15 @@ class HomeScreen extends StatelessWidget {
         ? controller.downloadedTracks
         : controller.discoverTracks;
     final featured = tracks.isNotEmpty ? tracks.first : null;
+    final downloadedById = {
+      for (final track in controller.downloadedTracks) track.id: track,
+    };
+    final recentTracks = controller.offlineMode
+        ? controller.recentlyPlayed
+            .map((track) => downloadedById[track.id])
+            .whereType<Track>()
+            .toList(growable: false)
+        : controller.recentlyPlayed;
 
     return RefreshIndicator(
       color: AurelColors.champagne,
@@ -115,11 +124,11 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
-          if (controller.recentlyPlayed.isNotEmpty) ...[
+          if (recentTracks.isNotEmpty) ...[
             const SizedBox(height: 26),
             const _SectionHeading(title: 'Continue Listening'),
             const SizedBox(height: 12),
-            _RecentTrackStrip(tracks: controller.recentlyPlayed),
+            _RecentTrackStrip(tracks: recentTracks),
           ],
           const SizedBox(height: 27),
           _SectionHeading(
