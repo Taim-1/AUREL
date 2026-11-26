@@ -442,4 +442,72 @@ void main() {
       expect(device.canPlay, isTrue);
     });
   });
+
+  group('MusicBrainz recording identity', () {
+    test('keeps recording MBID separate from ISRC for MusicBrainz', () {
+      final track = Track.fromMusicBrainz({
+        'id': '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        'title': 'Closer',
+        'isrcs': ['USABC2600001'],
+        'artist-credit': [
+          {'name': 'Nine Inch Nails', 'joinphrase': ''},
+        ],
+      });
+
+      expect(
+        track.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      expect(track.recordingId, 'USABC2600001');
+    });
+
+    test('maps Last.fm MBID without treating it as an ISRC', () {
+      final track = Track.fromLastFm({
+        'name': 'Closer',
+        'mbid': '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        'artist': {'name': 'Nine Inch Nails'},
+      });
+
+      expect(
+        track.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      expect(track.recordingId, isEmpty);
+    });
+
+    test('maps ListenBrainz MBID without treating it as an ISRC', () {
+      final track = Track.fromListenBrainz({
+        'recording_mbid': '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        'track_name': 'Closer',
+        'artist_name': 'Nine Inch Nails',
+      });
+
+      expect(
+        track.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      expect(track.recordingId, isEmpty);
+    });
+
+    test('persists recording MBID independently from ISRC', () {
+      const original = Track(
+        id: 'metadata-recording',
+        title: 'Closer',
+        artist: 'Nine Inch Nails',
+        recordingId: 'USABC2600001',
+        recordingMbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        isPlayable: false,
+        isMetadataOnly: true,
+      );
+
+      final restored = Track.fromJson(original.toJson());
+
+      expect(restored.recordingId, 'USABC2600001');
+      expect(
+        restored.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+    });
+  });
+
 }
