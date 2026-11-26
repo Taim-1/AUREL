@@ -26,6 +26,7 @@ class AurelController extends ChangeNotifier {
     required this.account,
     required this.catalog,
   }) {
+    playback.setFallbackResolver(catalog.prepareTrack);
     playback.addListener(_onPlaybackChanged);
   }
 
