@@ -37,9 +37,9 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 4. Do not merge different recordings merely because title and artist match.
 5. When duration is absent or unreliable and no exact recording identifier exists, keep separate entries rather than risk a false merge.
 6. If both entries have ISRCs and they differ, never merge them through title/duration fallback.
-6. Choose the best eligible playable candidate using: playback eligibility, verified recording identity, artwork availability, duration metadata, then source preference.
-7. Preserve matched catalogue identifiers internally for diagnostics and future fallback, but do not display provider names as user-facing labels.
-8. Metadata-only matches may enrich an existing recording (artist spelling, album, artwork, ISRC) but must not replace a playable candidate.
+7. Choose the best eligible playable candidate using: playback eligibility, verified recording identity, artwork availability, duration metadata, then source preference.
+8. Preserve matched catalogue identifiers internally for diagnostics and future fallback, but do not display provider names as user-facing labels.
+9. Metadata-only matches may enrich an existing recording (artist spelling, album, artwork, ISRC) but must not replace a playable candidate.
 
 ## Search result presentation
 
