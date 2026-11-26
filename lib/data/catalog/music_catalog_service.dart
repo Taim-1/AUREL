@@ -304,10 +304,15 @@ class MusicCatalogService {
     Object? lastError;
     for (final candidate in candidates) {
       try {
-        if (candidate.providerId == 'soundcloud') {
-          return await soundcloud.prepareForPlayback(candidate);
-        }
-        return candidate;
+        final prepared = candidate.providerId == 'soundcloud'
+            ? await soundcloud.prepareForPlayback(candidate)
+            : candidate;
+        // Keep the selected catalogue identity stable while the actual
+        // provider/stream switches to the successful same-recording copy.
+        return prepared.copyWith(
+          id: track.id,
+          alternatives: track.alternatives,
+        );
       } catch (error) {
         lastError = error;
       }
