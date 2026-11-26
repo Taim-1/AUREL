@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
+import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/track_tile.dart';
 
