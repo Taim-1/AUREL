@@ -346,14 +346,9 @@ class AurelAccountService {
     final remoteFavorites = favorites
         .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
         .toList(growable: false);
-    final remoteHistory = recentlyPlayed
-        .where((track) => !track.isDeviceTrack && track.streamUrl.isNotEmpty)
-        .take(100)
-        .toList(growable: false);
-
     final remotePlaylists = playlists.map((playlist) {
       final tracks = playlist.tracks
-          .where((track) => !track.isDeviceTrack && track.streamUrl.isNotEmpty)
+          .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
           .map(_trackForCloudModel)
           .toList(growable: false);
       return MusicPlaylist(
