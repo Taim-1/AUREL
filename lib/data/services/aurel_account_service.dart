@@ -262,8 +262,9 @@ class AurelAccountService {
         .doc(user.uid)
         .collection('library');
 
-    final results = await Future.wait([
+    final results = await Future.wait<Object>([
       library.doc('favorites').collection('items').get(),
+      library.doc('recentlyPlayed').get(),
       library.doc('recentlyPlayed').collection('items').get(),
       library.doc('playlists').collection('items').get(),
     ]);
@@ -273,27 +274,57 @@ class AurelAccountService {
         ..sort((a, b) =>
             (a.data()['sortOrder'] as num? ?? 0)
                 .compareTo(b.data()['sortOrder'] as num? ?? 0));
-      return ordered.map((document) {
-        final raw = document.data()['track'];
-        return raw is Map<String, dynamic> ? Track.fromJson(raw) : null;
-      }).whereType<Track>().toList(growable: false);
+      return readTrackValues(
+        ordered.map((document) => document.data()['track']),
+      );
     }
 
-    final playlistDocs = results[2].docs
-      ..sort((a, b) =>
-          (a.data()['sortOrder'] as num? ?? 0)
-              .compareTo(b.data()['sortOrder'] as num? ?? 0));
+    List<Track> readTrackValues(Iterable<dynamic> values) {
+      final tracks = <Track>[];
+      for (final raw in values) {
+        if (raw is! Map) continue;
+        try {
+          tracks.add(Track.fromJson(Map<String, dynamic>.from(raw)));
+        } catch (_) {
+          // Ignore one malformed cloud record without losing the library.
+        }
+      }
+      return tracks;
+    }
+
+    final recentDocument =
+        results[1] as DocumentSnapshot<Map<String, dynamic>>;
+    final recentValues = recentDocument.data()?['tracks'];
+    final recentlyPlayed = recentValues is List
+        ? readTrackValues(recentValues)
+        : readTracks(
+            results[2] as QuerySnapshot<Map<String, dynamic>>,
+          );
+
+    final playlistDocs =
+        (results[3] as QuerySnapshot<Map<String, dynamic>>).docs
+          ..sort((a, b) =>
+              (a.data()['sortOrder'] as num? ?? 0)
+                  .compareTo(b.data()['sortOrder'] as num? ?? 0));
     final playlists = <MusicPlaylist>[];
     for (final document in playlistDocs) {
       final raw = document.data()['playlist'];
-      if (raw is Map<String, dynamic>) {
-        playlists.add(MusicPlaylist.fromJson(raw));
+      if (raw is Map) {
+        try {
+          playlists.add(
+            MusicPlaylist.fromJson(Map<String, dynamic>.from(raw)),
+          );
+        } catch (_) {
+          // Ignore one malformed playlist without losing the others.
+        }
       }
     }
 
     return CloudLibrarySnapshot(
-      favorites: readTracks(results[0]),
-      recentlyPlayed: readTracks(results[1]),
+      favorites: readTracks(
+        results[0] as QuerySnapshot<Map<String, dynamic>>,
+      ),
+      recentlyPlayed: recentlyPlayed,
       playlists: playlists,
     );
   }
@@ -313,7 +344,7 @@ class AurelAccountService {
         .collection('library');
 
     final remoteFavorites = favorites
-        .where((track) => !track.isDeviceTrack && track.streamUrl.isNotEmpty)
+        .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
         .toList(growable: false);
     final remoteHistory = recentlyPlayed
         .where((track) => !track.isDeviceTrack && track.streamUrl.isNotEmpty)
@@ -336,9 +367,12 @@ class AurelAccountService {
       library.doc('favorites').collection('items'),
       remoteFavorites,
     );
+    await saveCloudRecentlyPlayed(recentlyPlayed);
+    // Migrate the previous per-track history collection after the compact
+    // history document has been written successfully.
     await _replaceTrackCollection(
       library.doc('recentlyPlayed').collection('items'),
-      remoteHistory,
+      const [],
     );
     await _replacePlaylistCollection(
       library.doc('playlists').collection('items'),
@@ -349,6 +383,28 @@ class AurelAccountService {
       {'lastLibrarySyncAt': FieldValue.serverTimestamp()},
       SetOptions(merge: true),
     );
+  }
+
+  Future<void> saveCloudRecentlyPlayed(List<Track> tracks) async {
+    final user = currentUser;
+    final firestore = _firestore;
+    if (user == null || firestore == null) return;
+
+    final remoteHistory = tracks
+        .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
+        .take(100)
+        .map(_trackForCloud)
+        .toList(growable: false);
+
+    await firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('library')
+        .doc('recentlyPlayed')
+        .set({
+      'tracks': remoteHistory,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> _replaceTrackCollection(
