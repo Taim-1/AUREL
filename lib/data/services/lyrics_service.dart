@@ -51,6 +51,7 @@ class LyricsService {
   Future<LyricsDocument?> fetchFor(
     Track track, {
     bool forceRefresh = false,
+    bool allowNetwork = true,
   }) {
     if (!hasApiKey) {
       return Future.error(
@@ -65,6 +66,9 @@ class LyricsService {
     if (!forceRefresh && _inFlight.containsKey(track.id)) {
       return _inFlight[track.id]!;
     }
+    // Offline mode may use a result already held in this session, but never
+    // opens a network request or persists copyrighted lyrics without rights.
+    if (!allowNetwork) return Future.value(null);
     final request = _fetch(track);
     _inFlight[track.id] = request;
     return request.whenComplete(() {
