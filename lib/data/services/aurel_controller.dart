@@ -604,10 +604,16 @@ class AurelController extends ChangeNotifier {
             (saved.id == track.id || CatalogIdentity.matches(saved, track)),
       );
 
-  bool hasPlayableSource(Track track) =>
-      track.canPlay ||
-      track.alternatives.any((alternative) => alternative.canPlay) ||
-      hasLocalPlayableCopy(track);
+  /// Whether this recording can actually start in the current mode.
+  /// Online alternatives are never advertised as playable while offline.
+  bool hasPlayableSource(Track track) {
+    final localCopy =
+        (track.isDownloaded && track.canPlay) || hasLocalPlayableCopy(track);
+    if (offlineMode) return localCopy;
+    return track.canPlay ||
+        track.alternatives.any((alternative) => alternative.canPlay) ||
+        localCopy;
+  }
 
   Future<void> addToQueue(Track track) async {
     final selected = _preferDownloadedCopy(track);
