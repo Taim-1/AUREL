@@ -56,12 +56,10 @@ void main() {
         captured = options;
         return {
           'toptracks': {
-            'track': [
-              {
-                'name': 'Next Song',
-                'artist': {'name': 'M83'},
-              },
-            ],
+            'track': {
+              'name': 'Next Song',
+              'artist': {'name': 'M83'},
+            },
           },
         };
       });
@@ -113,22 +111,17 @@ void main() {
           return {
             'results': {
               'artistmatches': {
-                'artist': [
-                  {'name': 'M83'},
-                  {'name': 'M83 Tribute'},
-                ],
+                'artist': {'name': 'M83'},
               },
             },
           };
         }
         return {
           'toptracks': {
-            'track': [
-              {
-                'name': 'Midnight City',
-                'artist': {'name': 'M83'},
-              },
-            ],
+            'track': {
+              'name': 'Midnight City',
+              'artist': {'name': 'M83'},
+            },
           },
         };
       });
