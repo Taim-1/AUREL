@@ -184,6 +184,21 @@ void main() {
       expect(nc.downloadAllowed, isFalse);
     });
 
+    test('Openverse rejects a forged Creative Commons license URL', () {
+      final forged = Track.fromOpenverse({
+        'id': 'forged-license',
+        'title': 'Unverified license',
+        'url': 'https://example.com/audio.mp3',
+        'filetype': 'mp3',
+        'license': 'by',
+        'license_url': 'https://attacker.example/creativecommons.org/licenses/by/4.0/',
+        'category': 'music',
+      });
+
+      expect(forged.canPlay, isTrue);
+      expect(forged.downloadAllowed, isFalse);
+    });
+
     test('Openverse rejects landing pages and unknown media file types', () {
       final landingPage = Track.fromOpenverse({
         'id': 'landing-page',
