@@ -42,6 +42,12 @@ The search orchestrator:
 8. Falls back to normalized title, artist and a duration difference of no more than five seconds, while preserving version labels such as Live, Remix and Acoustic.
 9. Does not merge uncertain recordings when both ISRC and useful duration/album data are missing.
 10. Ranks playable audio above metadata-only results. A match in a metadata catalogue never creates a fake audio URL.
+11. Selects the best duplicate by deterministic priority: playable local/device copy, then Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons and Openverse. Metadata-only fallbacks follow Apple Music, Spotify, Last.fm, ListenBrainz and MusicBrainz.
+12. Uses recording identity first for grouping; within each duplicate group, source priority selects the playback copy and metadata completeness breaks ties inside the same source tier.
+
+## Source priority and quality
+
+The priority order is internal and deterministic; it is not exposed as a provider picker in the listening UI. A playable local/device file wins first. Online playable sources then follow Audius → Jamendo → SoundCloud → Internet Archive → Wikimedia Commons → Openverse. Metadata-only discovery follows Apple Music → Spotify → Last.fm → ListenBrainz → MusicBrainz and can never outrank a playable recording. Within one source tier, richer verified recording identity, artwork, album, duration, source link and eligible download/licence metadata break ties. A lower-priority source cannot displace a higher-priority playable source merely because it has more artwork or metadata. If the preferred source fails playback preparation, AUREL can move to the next eligible copy of the same recording; it must not change the recording/version.
 
 ## Playback and download rights
 
