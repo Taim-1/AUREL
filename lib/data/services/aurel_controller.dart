@@ -494,9 +494,19 @@ class AurelController extends ChangeNotifier {
     }
     final source = queue ??
         (track.isDownloaded ? downloadedTracks : discoverTracks);
+
+    // The selected recording must always be part of the queue. This matters
+    // for tracks opened from playlists, favourites, recent history, or a
+    // search result whose caller did not supply its complete result list.
+    final sourceWithSelection = source.any((item) => item.id == track.id)
+        ? source
+        : [track, ...source];
+
     final tracks = offlineMode
-        ? source.where((item) => item.isDownloaded).toList(growable: false)
-        : source;
+        ? sourceWithSelection
+            .where((item) => item.isDownloaded)
+            .toList(growable: false)
+        : sourceWithSelection;
     final prepared = await catalog.prepareQueue(
       tracks,
       requiredTrackId: track.id,
