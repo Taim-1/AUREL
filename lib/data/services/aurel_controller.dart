@@ -90,6 +90,7 @@ class AurelController extends ChangeNotifier {
       final document = await lyrics.fetchFor(
         track,
         forceRefresh: forceRefresh,
+        allowNetwork: !offlineMode,
       );
       if (generation != _lyricsRequestGeneration) return;
       currentLyrics = document;
