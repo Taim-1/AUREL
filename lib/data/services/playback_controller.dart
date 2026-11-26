@@ -16,19 +16,22 @@ enum AurelEqualizerPreset {
 
 class PlaybackController extends ChangeNotifier {
   PlaybackController() {
-    player.playerStateStream.listen((_) => notifyListeners());
-    player.shuffleModeEnabledStream.listen((_) => notifyListeners());
-    player.loopModeStream.listen((_) => notifyListeners());
-    player.speedStream.listen((_) => notifyListeners());
-    equalizer.enabledStream.listen((_) => notifyListeners());
-    player.currentIndexStream.listen((index) {
-      if (index != null && index >= 0 && index < queue.length) {
-        currentIndex = index;
-        notifyListeners();
-      }
-    });
+    _subscriptions.addAll([
+      player.playerStateStream.listen((_) => notifyListeners()),
+      player.shuffleModeEnabledStream.listen((_) => notifyListeners()),
+      player.loopModeStream.listen((_) => notifyListeners()),
+      player.speedStream.listen((_) => notifyListeners()),
+      equalizer.enabledStream.listen((_) => notifyListeners()),
+      player.currentIndexStream.listen((index) {
+        if (index != null && index >= 0 && index < queue.length) {
+          currentIndex = index;
+          notifyListeners();
+        }
+      }),
+    ]);
   }
 
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
   final AndroidEqualizer equalizer = AndroidEqualizer();
   late final AudioPlayer player = AudioPlayer(
     audioPipeline: AudioPipeline(androidAudioEffects: [equalizer]),
@@ -337,6 +340,10 @@ class PlaybackController extends ChangeNotifier {
   @override
   void dispose() {
     _sleepTimer?.cancel();
+    for (final subscription in _subscriptions) {
+      unawaited(subscription.cancel());
+    }
+    _subscriptions.clear();
     unawaited(player.dispose());
     super.dispose();
   }
