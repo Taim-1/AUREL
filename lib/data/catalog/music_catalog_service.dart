@@ -83,6 +83,18 @@ class MusicCatalogService {
   void clearCache() => _pageCache.clear();
 
   void _writeCache(String key, CatalogPage page) {
+    // Last.fm's API licence sets a strict data-storage cap and requires
+    // caching to respect its response headers. Do not place Last.fm records
+    // (including merged alternatives) in AUREL's generic catalogue cache.
+    final containsLastFmData = page.tracks.any(
+      (track) =>
+          track.providerId == 'lastfm' ||
+          track.alternatives.any(
+            (alternative) => alternative.providerId == 'lastfm',
+          ),
+    );
+    if (containsLastFmData) return;
+
     // Bound the cache so long sessions cannot accumulate unbounded results.
     if (_pageCache.length >= 30 && !_pageCache.containsKey(key)) {
       _pageCache.remove(_pageCache.keys.first);
