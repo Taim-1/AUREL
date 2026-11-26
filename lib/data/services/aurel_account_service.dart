@@ -269,16 +269,6 @@ class AurelAccountService {
       library.doc('playlists').collection('items').get(),
     ]);
 
-    List<Track> readTracks(QuerySnapshot<Map<String, dynamic>> snapshot) {
-      final ordered = snapshot.docs.toList()
-        ..sort((a, b) =>
-            (a.data()['sortOrder'] as num? ?? 0)
-                .compareTo(b.data()['sortOrder'] as num? ?? 0));
-      return readTrackValues(
-        ordered.map((document) => document.data()['track']),
-      );
-    }
-
     List<Track> readTrackValues(Iterable<dynamic> values) {
       final tracks = <Track>[];
       for (final raw in values) {
@@ -290,6 +280,16 @@ class AurelAccountService {
         }
       }
       return tracks;
+    }
+
+    List<Track> readTracks(QuerySnapshot<Map<String, dynamic>> snapshot) {
+      final ordered = snapshot.docs.toList()
+        ..sort((a, b) =>
+            (a.data()['sortOrder'] as num? ?? 0)
+                .compareTo(b.data()['sortOrder'] as num? ?? 0));
+      return readTrackValues(
+        ordered.map((document) => document.data()['track']),
+      );
     }
 
     final recentDocument =
