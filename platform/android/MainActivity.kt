@@ -59,7 +59,9 @@ class MainActivity : AudioServiceActivity() {
                 "loadAlbumArtwork" -> {
                     val rawUri = call.arguments?.toString().orEmpty()
                     val uri = Uri.parse(rawUri)
-                    if (uri.scheme != "content" || uri.authority != "media") {
+                    if (uri.scheme != "content" ||
+                        uri.authority != "media" ||
+                        !uri.path.orEmpty().startsWith("/external/audio/albumart/")) {
                         result.error(
                             "invalid_artwork_uri",
                             "Only Android MediaStore artwork is supported.",
