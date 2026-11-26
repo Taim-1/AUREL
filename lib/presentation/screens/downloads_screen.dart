@@ -12,6 +12,10 @@ class DownloadsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
     final tracks = controller.downloadedTracks;
+    final activeDownloads = <String, Track>{
+      for (final track in [...controller.searchResults, ...controller.discoverTracks])
+        if (controller.downloadingIds.contains(track.id)) track.id: track,
+    }.values.toList(growable: false);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -101,6 +105,31 @@ class DownloadsScreen extends StatelessWidget {
             ],
           ),
         ),
+        if (activeDownloads.isNotEmpty) ...[
+          const SizedBox(height: 25),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Downloading now',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                  ),
+                ),
+              ),
+              Text(
+                '${activeDownloads.length}',
+                style: const TextStyle(color: AurelColors.muted, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...activeDownloads.map(
+            (track) => TrackTile(track: track, showDownload: true),
+          ),
+        ],
         const SizedBox(height: 27),
         Row(
           children: [
