@@ -518,6 +518,287 @@ class Track {
     );
   }
 
+
+  factory Track.fromListenBrainz(Map<String, dynamic> json) {
+    final recordingMbid = (json['recording_mbid'] ?? '').toString().trim();
+    final releaseMbid = (json['release_mbid'] ?? '').toString().trim();
+    final title = (json['track_name'] ?? 'Unknown recording').toString().trim();
+    final artist = (json['artist_name'] ?? 'Unknown artist').toString().trim();
+    final album = (json['release_name'] ?? '').toString().trim();
+    final rawLength = json['length'];
+    final duration = rawLength is num
+        ? rawLength.round()
+        : int.tryParse(rawLength?.toString() ?? '') ?? 0;
+    final validReleaseMbid = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+    final uri = (json['uri'] ?? '').toString();
+    final id = (json['id'] ?? uri).toString();
+    final duration = json['duration'];
+    return Track(
+      id: 'device-$id',
+      title: (json['title'] ?? 'Unknown track').toString(),
+      artist: (json['artist'] ?? 'Unknown artist').toString(),
+      album: (json['album'] ?? '').toString(),
+      durationMs: duration is num ? duration.round() : 0,
+      isDeviceTrack: true,
+      localPath: uri,
+      providerId: 'device',
+      providerName: 'On this device',
+      isPlayable: true,
+    );
+  }
+
+  factory Track.fromJson(Map<String, dynamic> json) => Track(
+        id: (json['id'] ?? '').toString(),
+        title: (json['title'] ?? '').toString(),
+        artist: (json['artist'] ?? '').toString(),
+        album: (json['album'] ?? '').toString(),
+        artworkUrl: (json['artworkUrl'] ?? '').toString(),
+        streamUrl: (json['streamUrl'] ?? '').toString(),
+        downloadUrl: (json['downloadUrl'] ?? '').toString(),
+        licenseUrl: (json['licenseUrl'] ?? '').toString(),
+        durationMs: (json['durationMs'] as num?)?.round() ?? 0,
+        downloadAllowed: json['downloadAllowed'] == true,
+        isDeviceTrack: json['isDeviceTrack'] == true,
+        isDownloaded: json['isDownloaded'] == true,
+        localPath: json['localPath']?.toString(),
+        providerId: (json['providerId'] ?? 'jamendo').toString(),
+        providerName: (json['providerName'] ?? 'Jamendo').toString(),
+        sourceUrl: (json['sourceUrl'] ?? '').toString(),
+        recordingId: (json['recordingId'] ?? '').toString(),
+        licenseName: (json['licenseName'] ?? '').toString(),
+        attribution: (json['attribution'] ?? '').toString(),
+        isPlayable: json['isPlayable'] != false,
+        isPreviewOnly: json['isPreviewOnly'] == true,
+        isMetadataOnly: json['isMetadataOnly'] == true,
+        matchedSources: (json['matchedSources'] as List?)
+                ?.map((value) => value.toString())
+                .toList(growable: false) ??
+            const [],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'artist': artist,
+        'album': album,
+        'artworkUrl': artworkUrl,
+        'streamUrl': streamUrl,
+        'downloadUrl': downloadUrl,
+        'licenseUrl': licenseUrl,
+        'durationMs': durationMs,
+        'downloadAllowed': downloadAllowed,
+        'isDeviceTrack': isDeviceTrack,
+        'isDownloaded': isDownloaded,
+        'localPath': localPath,
+        'providerId': providerId,
+        'providerName': providerName,
+        'sourceUrl': sourceUrl,
+        'recordingId': recordingId,
+        'licenseName': licenseName,
+        'attribution': attribution,
+        'isPlayable': isPlayable,
+        'isPreviewOnly': isPreviewOnly,
+        'isMetadataOnly': isMetadataOnly,
+        'matchedSources': matchedSources,
+      };
+
+  Track copyWith({
+    String? title,
+    String? artist,
+    String? album,
+    String? artworkUrl,
+    String? localPath,
+    bool? isDownloaded,
+    String? streamUrl,
+    int? durationMs,
+    String? recordingId,
+    List<String>? matchedSources,
+    Map<String, String>? playbackHeaders,
+  }) =>
+      Track(
+        id: id,
+        title: title ?? this.title,
+        artist: artist ?? this.artist,
+        album: album ?? this.album,
+        artworkUrl: artworkUrl ?? this.artworkUrl,
+        streamUrl: streamUrl ?? this.streamUrl,
+        downloadUrl: downloadUrl,
+        licenseUrl: licenseUrl,
+        durationMs: durationMs ?? this.durationMs,
+        downloadAllowed: downloadAllowed,
+        isDeviceTrack: isDeviceTrack,
+        isDownloaded: isDownloaded ?? this.isDownloaded,
+        localPath: localPath ?? this.localPath,
+        providerId: providerId,
+        providerName: providerName,
+        sourceUrl: sourceUrl,
+        recordingId: recordingId ?? this.recordingId,
+        licenseName: licenseName,
+        attribution: attribution,
+        isPlayable: isPlayable,
+        isPreviewOnly: isPreviewOnly,
+        isMetadataOnly: isMetadataOnly,
+        matchedSources: matchedSources ?? this.matchedSources,
+        playbackHeaders: playbackHeaders ?? this.playbackHeaders,
+      );
+}
+
+
+bool _isSecureHttpsUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+  return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
+}
+,
+    ).hasMatch(releaseMbid);
+    final validRecordingMbid = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+    final uri = (json['uri'] ?? '').toString();
+    final id = (json['id'] ?? uri).toString();
+    final duration = json['duration'];
+    return Track(
+      id: 'device-$id',
+      title: (json['title'] ?? 'Unknown track').toString(),
+      artist: (json['artist'] ?? 'Unknown artist').toString(),
+      album: (json['album'] ?? '').toString(),
+      durationMs: duration is num ? duration.round() : 0,
+      isDeviceTrack: true,
+      localPath: uri,
+      providerId: 'device',
+      providerName: 'On this device',
+      isPlayable: true,
+    );
+  }
+
+  factory Track.fromJson(Map<String, dynamic> json) => Track(
+        id: (json['id'] ?? '').toString(),
+        title: (json['title'] ?? '').toString(),
+        artist: (json['artist'] ?? '').toString(),
+        album: (json['album'] ?? '').toString(),
+        artworkUrl: (json['artworkUrl'] ?? '').toString(),
+        streamUrl: (json['streamUrl'] ?? '').toString(),
+        downloadUrl: (json['downloadUrl'] ?? '').toString(),
+        licenseUrl: (json['licenseUrl'] ?? '').toString(),
+        durationMs: (json['durationMs'] as num?)?.round() ?? 0,
+        downloadAllowed: json['downloadAllowed'] == true,
+        isDeviceTrack: json['isDeviceTrack'] == true,
+        isDownloaded: json['isDownloaded'] == true,
+        localPath: json['localPath']?.toString(),
+        providerId: (json['providerId'] ?? 'jamendo').toString(),
+        providerName: (json['providerName'] ?? 'Jamendo').toString(),
+        sourceUrl: (json['sourceUrl'] ?? '').toString(),
+        recordingId: (json['recordingId'] ?? '').toString(),
+        licenseName: (json['licenseName'] ?? '').toString(),
+        attribution: (json['attribution'] ?? '').toString(),
+        isPlayable: json['isPlayable'] != false,
+        isPreviewOnly: json['isPreviewOnly'] == true,
+        isMetadataOnly: json['isMetadataOnly'] == true,
+        matchedSources: (json['matchedSources'] as List?)
+                ?.map((value) => value.toString())
+                .toList(growable: false) ??
+            const [],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'artist': artist,
+        'album': album,
+        'artworkUrl': artworkUrl,
+        'streamUrl': streamUrl,
+        'downloadUrl': downloadUrl,
+        'licenseUrl': licenseUrl,
+        'durationMs': durationMs,
+        'downloadAllowed': downloadAllowed,
+        'isDeviceTrack': isDeviceTrack,
+        'isDownloaded': isDownloaded,
+        'localPath': localPath,
+        'providerId': providerId,
+        'providerName': providerName,
+        'sourceUrl': sourceUrl,
+        'recordingId': recordingId,
+        'licenseName': licenseName,
+        'attribution': attribution,
+        'isPlayable': isPlayable,
+        'isPreviewOnly': isPreviewOnly,
+        'isMetadataOnly': isMetadataOnly,
+        'matchedSources': matchedSources,
+      };
+
+  Track copyWith({
+    String? title,
+    String? artist,
+    String? album,
+    String? artworkUrl,
+    String? localPath,
+    bool? isDownloaded,
+    String? streamUrl,
+    int? durationMs,
+    String? recordingId,
+    List<String>? matchedSources,
+    Map<String, String>? playbackHeaders,
+  }) =>
+      Track(
+        id: id,
+        title: title ?? this.title,
+        artist: artist ?? this.artist,
+        album: album ?? this.album,
+        artworkUrl: artworkUrl ?? this.artworkUrl,
+        streamUrl: streamUrl ?? this.streamUrl,
+        downloadUrl: downloadUrl,
+        licenseUrl: licenseUrl,
+        durationMs: durationMs ?? this.durationMs,
+        downloadAllowed: downloadAllowed,
+        isDeviceTrack: isDeviceTrack,
+        isDownloaded: isDownloaded ?? this.isDownloaded,
+        localPath: localPath ?? this.localPath,
+        providerId: providerId,
+        providerName: providerName,
+        sourceUrl: sourceUrl,
+        recordingId: recordingId ?? this.recordingId,
+        licenseName: licenseName,
+        attribution: attribution,
+        isPlayable: isPlayable,
+        isPreviewOnly: isPreviewOnly,
+        isMetadataOnly: isMetadataOnly,
+        matchedSources: matchedSources ?? this.matchedSources,
+        playbackHeaders: playbackHeaders ?? this.playbackHeaders,
+      );
+}
+
+
+bool _isSecureHttpsUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+  return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
+}
+,
+    ).hasMatch(recordingMbid);
+    final artworkUrl = validReleaseMbid
+        ? 'https://coverartarchive.org/release/$releaseMbid/front-250'
+        : '';
+    final sourceUrl = validRecordingMbid
+        ? 'https://musicbrainz.org/recording/$recordingMbid'
+        : '';
+    final stableKey = validRecordingMbid
+        ? recordingMbid
+        : '${artist.toLowerCase()}::${title.toLowerCase()}';
+
+    return Track(
+      id: 'listenbrainz-$stableKey',
+      title: title.isEmpty ? 'Unknown recording' : title,
+      artist: artist.isEmpty ? 'Unknown artist' : artist,
+      album: album,
+      artworkUrl: artworkUrl,
+      durationMs: duration,
+      providerId: 'listenbrainz',
+      providerName: 'ListenBrainz',
+      sourceUrl: sourceUrl,
+      // A MusicBrainz recording MBID is not an ISRC.
+      isPlayable: false,
+      isMetadataOnly: true,
+    );
+  }
+
   factory Track.fromDevice(Map<Object?, Object?> json) {
     final uri = (json['uri'] ?? '').toString();
     final id = (json['id'] ?? uri).toString();
