@@ -27,7 +27,7 @@ Do not redesign, reinterpret, recolor, or replace the identity with a different 
 4. Now Playing: large square artwork, track and artist metadata, favourite/action controls, progress and transport controls, lyrics entry point.
 5. Library: “Your Library”, horizontal tabs for Playlists / Liked Songs / Albums / Artists, compact artwork rows.
 6. Playlist detail: prominent cover artwork, title, creator/track count, play action and track list.
-7. Downloads: storage summary and downloaded-song list with clear completed states.
+7. Downloads: AUREL-only offline-download summary and downloaded-song list with clear completed states.
 8. Profile: circular profile image, TAIM identity, Music Lover subtitle, concise settings rows and AUREL information.
 
 ## Navigation and interaction
