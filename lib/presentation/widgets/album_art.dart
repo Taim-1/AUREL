@@ -66,7 +66,7 @@ class _AlbumArtState extends State<AlbumArt> {
         uri,
       );
       if (bytes == null || bytes.isEmpty) return null;
-      if (_localCache.length >= 160) {
+      if (_localCache.length >= 64) {
         _localCache.remove(_localCache.keys.first);
       }
       _localCache[uri] = bytes;
