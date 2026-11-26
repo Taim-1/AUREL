@@ -66,12 +66,12 @@ jobs:
         run: flutter test
 
       - name: Compile Android debug bundle (not published)
-        run: |
-          flutter build appbundle --debug \\
-            --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID" \\
-            --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY" \\
-            --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY" \\
-            --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID" \\
-            --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID" \\
-            --dart-define=AUREL_FIREBASE_MESSAGING_SENDER_ID="$AUREL_FIREBASE_MESSAGING_SENDER_ID" \\
-            --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
+        run: >-
+          flutter build appbundle --debug
+          --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
+          --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY"
+          --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY"
+          --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID"
+          --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID"
+          --dart-define=AUREL_FIREBASE_MESSAGING_SENDER_ID="$AUREL_FIREBASE_MESSAGING_SENDER_ID"
+          --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
