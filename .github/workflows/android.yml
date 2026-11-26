@@ -82,6 +82,7 @@ jobs:
         run: >-
           timeout 15m flutter build apk --release --verbose
           --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
+          --dart-define=LASTFM_API_KEY="$LASTFM_API_KEY"
           --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY"
           --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY"
           --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID"
