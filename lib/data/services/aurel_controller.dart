@@ -37,7 +37,7 @@ class AurelController extends ChangeNotifier {
       return catalog.prepareTrack(candidate);
     });
     playback.addListener(_onPlaybackChanged);
-    _deviceLibrarySubscription = deviceLibrary.changes.listen(
+    _deviceLibrarySubscription = this.deviceLibrary.changes.listen(
       (_) => _scheduleDeviceLibraryRefresh(),
       onError: (Object _) {
         // MediaStore change notifications are an optimization; manual refresh
