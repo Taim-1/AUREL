@@ -92,6 +92,23 @@ class SoundCloudService {
       playbackHeaders: {'Authorization': 'OAuth $accessToken'},
     );
   }
+
+  Future<Track> prepareForDownload(Track track) async {
+    if (track.providerId != 'soundcloud') return track;
+    final uri = Uri.tryParse(track.downloadUrl);
+    if (!track.downloadAllowed ||
+        uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty) {
+      throw const SoundCloudException(
+        'Offline download is not permitted for this recording.',
+      );
+    }
+    final accessToken = await tokens.tokenFor('soundcloud');
+    return track.copyWith(
+      playbackHeaders: {'Authorization': 'OAuth $accessToken'},
+    );
+  }
 }
 
 class SoundCloudException implements Exception {
