@@ -96,6 +96,37 @@ class Track {
     return streamUrl;
   }
 
+  factory Track.fromDevice(Map<String, dynamic> json) {
+    final rawId = (json['id'] ?? '').toString().trim();
+    final rawUri = (json['uri'] ?? '').toString().trim();
+    final uri = Uri.tryParse(rawUri);
+    final safeUri = uri != null &&
+            uri.scheme == 'content' &&
+            uri.authority == 'media'
+        ? rawUri
+        : '';
+    final title = (json['title'] ?? '').toString().trim();
+    final rawArtist = (json['artist'] ?? '').toString().trim();
+    final rawAlbum = (json['album'] ?? '').toString().trim();
+    final rawDuration = json['duration'];
+    final duration = rawDuration is num
+        ? rawDuration.round()
+        : int.tryParse(rawDuration?.toString() ?? '') ?? 0;
+
+    return Track(
+      id: 'device-$rawId',
+      title: title.isEmpty ? 'Unknown track' : title,
+      artist: rawArtist.isEmpty ? 'Unknown artist' : rawArtist,
+      album: rawAlbum,
+      durationMs: duration > 0 ? duration : 0,
+      providerId: 'device',
+      providerName: 'On device',
+      isDeviceTrack: true,
+      localPath: safeUri.isEmpty ? null : safeUri,
+      isPlayable: safeUri.isNotEmpty,
+    );
+  }
+
   factory Track.fromJamendo(Map<String, dynamic> json) {
     final audio = (json['audio'] ?? '').toString();
     final rawDuration = json['duration'];
