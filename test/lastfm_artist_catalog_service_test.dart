@@ -66,6 +66,7 @@ void main() {
       });
       final service = LastFmCatalogService(
         apiKey: 'test-key',
+        termsApproved: true,
         dio: Dio(
           BaseOptions(
             baseUrl: 'https://ws.audioscrobbler.com/2.0/',
@@ -129,6 +130,7 @@ void main() {
       });
       final service = LastFmCatalogService(
         apiKey: 'test-key',
+        termsApproved: true,
         dio: Dio(
           BaseOptions(
             baseUrl: 'https://ws.audioscrobbler.com/2.0/',
@@ -162,6 +164,7 @@ void main() {
       });
       final service = LastFmCatalogService(
         apiKey: 'test-key',
+        termsApproved: true,
         dio: Dio(
           BaseOptions(
             baseUrl: 'https://ws.audioscrobbler.com/2.0/',
@@ -201,6 +204,7 @@ void main() {
       final adapter = _JsonAdapter((_) => throw StateError('unexpected request'));
       final service = LastFmCatalogService(
         apiKey: 'test-key',
+        termsApproved: true,
         dio: Dio(
           BaseOptions(
             baseUrl: 'https://ws.audioscrobbler.com/2.0/',
