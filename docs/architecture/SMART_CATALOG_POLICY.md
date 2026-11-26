@@ -25,27 +25,33 @@ The current deterministic preference in `MusicCatalogService` is:
 | 7 | Openverse | Discovery/indexing; verify the underlying work and license before playback/download |
 | 8 | Apple Music catalogue metadata | Metadata fallback; not a free stream |
 | 9 | Spotify catalogue metadata | Metadata fallback; not a free stream |
-| 10 | MusicBrainz | Recording/artist metadata only |
+| 10 | Last.fm | Track search, artist discovery and popularity metadata only |
+| 11 | ListenBrainz | Community listening-popularity metadata only |
+| 12 | MusicBrainz | Recording/artist metadata only |
 
 Downloaded copies are created only by AUREL's in-app download action when the item and provider explicitly permit offline saving. The Downloads tab lists only those AUREL-managed copies; it is not a phone-file browser or device-music importer. This is a product fallback order, not a claim that every item from a source is legally playable or has superior audio quality. Track-level eligibility and verified audio quality always override the default rank.
 
 ## Deduplication rules
 
-1. Prefer exact ISRC matches when present.
-2. Without ISRC on both entries, require normalized title + normalized credited artist + duration difference of no more than five seconds.
-3. Preserve meaningful version qualifiers: Live, Remix, Acoustic, Radio Edit, Remaster, Demo, Instrumental, and similar labels.
-4. Do not merge different recordings merely because title and artist match.
-5. When duration is absent or unreliable and no exact recording identifier exists, keep separate entries rather than risk a false merge.
-6. If both entries have ISRCs and they differ, never merge them through title/duration fallback.
-7. Choose the best eligible playable candidate using: playback eligibility, verified recording identity, artwork availability, duration metadata, then source preference.
-8. Preserve matched catalogue identifiers internally for diagnostics and future fallback, but do not display provider names as user-facing labels.
-9. Metadata-only matches may enrich an existing recording (artist spelling, album, artwork, ISRC) but must not replace a playable candidate.
+1. Prefer a matching MusicBrainz recording MBID when both entries expose one.
+2. Otherwise prefer an exact ISRC match when both entries expose one.
+3. If both verified MBIDs conflict and no exact ISRC agrees, keep the entries separate.
+4. A provider's identical stable track ID is the same provider record, even when duration metadata is missing.
+5. Without a shared verified identifier, require normalized title + normalized credited artist + duration difference of no more than five seconds.
+6. Preserve meaningful version qualifiers: Live, Remix, Acoustic, Radio Edit, Remaster, Demo, Instrumental, and similar labels.
+7. Do not merge different recordings merely because title and artist match.
+8. When duration is absent or unreliable and no exact recording identifier exists, keep separate entries rather than risk a false merge.
+9. If both entries have ISRCs and they differ, never merge them through title/duration fallback.
+10. Choose the best eligible playable candidate using: playback eligibility, local-copy preference, deterministic source priority, then metadata completeness within the same source tier.
+11. Preserve matched catalogue identifiers internally for diagnostics and future fallback, but do not display provider names as user-facing labels.
+12. Metadata-only matches may enrich an existing recording (artist spelling, album, artwork, ISRC or recording MBID) but must not replace a playable candidate.
 
 ## Search result presentation
 
 - One row/card per recording identity.
 - One canonical title, artist credit, album, artwork, and duration.
-- Play is enabled only when `Track.canPlay` is true.
+- Play is enabled only when a playable canonical copy, a same-recording playable alternative, or an AUREL-managed local copy exists.
+- Queue and fallback logic must never change the recording/version identity.
 - If no legal in-app stream exists, present the recording as unavailable in AUREL rather than opening a third-party page.
 - Distinguish genuine alternate recordings (live/remix/acoustic/etc.) as separate versions.
 - Source counts and per-provider errors belong in developer diagnostics, not the consumer UI.
@@ -62,4 +68,4 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 
 ## Current implementation note
 
-The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking table is an internal preference in `lib/data/catalog/music_catalog_service.dart`. This policy document does not claim that all provider rights checks, UI hiding, or in-app playback constraints have already been fully audited or tested.
+The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking rules are centralized in `lib/data/catalog/catalog_ranking.dart`; same-recording alternatives are retained for controlled fallback. Last.fm is an optional metadata adapter and is omitted when no API key is configured; its data is excluded from the generic catalogue cache, labelled in track details and documented with the provider's attribution, caching and usage restrictions. The automated CI suite validates the current model, ranking, identity, provider parser and Android debug-build paths; real provider authorization, item rights and account-specific services still require their credentials and approval before a public release.
