@@ -57,10 +57,18 @@ class DownloadService {
         options: Options(
           headers: track.playbackHeaders.isEmpty ? null : track.playbackHeaders,
           followRedirects: true,
+          maxRedirects: 5,
           validateStatus: (status) =>
               status != null && status >= 200 && status < 300,
         ),
       );
+
+      // Do not allow a provider redirect to downgrade an HTTPS request.
+      if (!isSecureDownloadUri(response.realUri)) {
+        throw const DownloadException(
+          'The download server redirected to an insecure address.',
+        );
+      }
 
       if (!await temporaryFile.exists() || await temporaryFile.length() == 0) {
         throw const DownloadException('The downloaded audio file is empty.');
@@ -235,3 +243,7 @@ class DownloadException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Confirms that the final resolved download URL remains HTTPS after redirects.
+bool isSecureDownloadUri(Uri uri) =>
+    uri.scheme == 'https' && uri.host.isNotEmpty;
