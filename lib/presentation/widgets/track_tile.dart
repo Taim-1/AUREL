@@ -271,12 +271,12 @@ class TrackTile extends StatelessWidget {
                         : track.downloadAllowed
                             ? 'Download for offline listening'
                             : 'Download not allowed',
-                onPressed: !track.downloadAllowed || controller.offlineMode
-                    ? null
-                    : downloading
-                        ? () => context
-                            .read<AurelController>()
-                            .cancelDownload(track.id)
+                onPressed: downloading
+                    ? () => context
+                        .read<AurelController>()
+                        .cancelDownload(track.id)
+                    : !track.downloadAllowed || controller.offlineMode
+                        ? null
                         : () async {
                             final message = await context
                                 .read<AurelController>()
