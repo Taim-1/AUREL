@@ -361,18 +361,25 @@ class MusicCatalogService {
     ].where((candidate) => candidate.canPlay);
 
     Object? lastError;
+    final attemptedIds = <String>{};
     for (final candidate in candidates) {
       try {
         final prepared = candidate.providerId == 'soundcloud'
             ? await soundcloud.prepareForPlayback(candidate)
             : candidate;
-        // Keep the selected catalogue identity stable while the actual
-        // provider/stream switches to the successful same-recording copy.
+        attemptedIds.add(candidate.id);
+
+        // Keep the selected catalogue identity stable while removing every
+        // source already tried during preparation from future playback retry.
+        final remaining = track.alternatives
+            .where((alternative) => !attemptedIds.contains(alternative.id))
+            .toList(growable: false);
         return prepared.copyWith(
           id: track.id,
-          alternatives: track.alternatives,
+          alternatives: remaining,
         );
       } catch (error) {
+        attemptedIds.add(candidate.id);
         lastError = error;
       }
     }
