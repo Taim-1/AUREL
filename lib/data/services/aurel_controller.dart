@@ -37,6 +37,17 @@ class AurelController extends ChangeNotifier {
       return catalog.prepareTrack(candidate);
     });
     playback.addListener(_onPlaybackChanged);
+    _deviceLibrarySubscription = deviceLibrary.changes.listen(
+      (_) {
+        if (hasDeviceAudioPermission && !isLoadingDeviceTracks) {
+          unawaited(refreshDeviceLibrary());
+        }
+      },
+      onError: (Object _) {
+        // MediaStore change notifications are an optimization; manual refresh
+        // remains available when Android drops an event stream.
+      },
+    );
   }
 
 
@@ -125,6 +136,7 @@ class AurelController extends ChangeNotifier {
   final AurelAccountService account;
   final MusicCatalogService catalog;
   final DeviceLibraryService deviceLibrary;
+  late final StreamSubscription<void> _deviceLibrarySubscription;
 
   Map<String, String> sourceErrors = const {};
   Map<String, int> sourceCounts = const {};
@@ -925,6 +937,7 @@ class AurelController extends ChangeNotifier {
   @override
   void dispose() {
     _deviceLibraryGeneration++;
+    unawaited(_deviceLibrarySubscription.cancel());
     _discoverCancelToken?.cancel('AUREL is closing');
     _searchCancelToken?.cancel('AUREL is closing');
     for (final token in _downloadTokens.values) {
