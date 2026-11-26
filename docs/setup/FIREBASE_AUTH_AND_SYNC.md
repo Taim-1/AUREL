@@ -67,6 +67,17 @@ firebase deploy --only functions:catalogTokens
 
 The SoundCloud developer API currently requires approved app credentials; Apple Music requires a developer token generated from an Apple developer key. AUREL must not claim these catalogues are live until credentials are configured and the deployed token endpoint returns a valid token.
 
+### Optional Openverse API authentication
+
+Openverse allows anonymous search, so AUREL continues to work without these credentials. Register and verify an application to obtain its client ID and secret. Keep both values in Firebase Functions Secret Manager; never place the client secret in the APK.
+
+```bash
+firebase functions:secrets:set OPENVERSE_CLIENT_ID
+firebase functions:secrets:set OPENVERSE_CLIENT_SECRET
+firebase deploy --only functions:catalogTokens
+```
+
+The Android app requests a short-lived token through the authenticated AUREL token broker. If the credentials or account are not available, it falls back to anonymous public search. Registered users receive a slightly higher default rate limit; larger limits require a separate request and are not guaranteed.
 ### Jamendo production ID
 
 Replace the documented read-only development ID with your own registered Jamendo application ID by setting the `JAMENDO_CLIENT_ID` GitHub Actions secret.

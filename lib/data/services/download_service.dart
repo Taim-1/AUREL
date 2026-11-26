@@ -21,7 +21,7 @@ class DownloadService {
   }) async {
     if (!track.downloadAllowed || track.downloadUrl.isEmpty) {
       throw const DownloadException(
-        'This artist has not enabled downloads for this track.',
+        'Offline download is not permitted for this recording.',
       );
     }
 
@@ -34,8 +34,9 @@ class DownloadService {
     final safeArtist = _safeFilePart(track.artist);
     final safeTitle = _safeFilePart(track.title);
     final safeId = _safeFilePart(track.id);
+    final extension = audioFileExtensionFromUrl(track.downloadUrl);
     final file = File(
-      '${folder.path}/$safeArtist' '_$safeTitle' '_$safeId.mp3',
+      '${folder.path}/$safeArtist' '_$safeTitle' '_$safeId.$extension',
     );
 
     try {
@@ -97,4 +98,18 @@ class DownloadException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// Keeps the downloaded file extension aligned with the audio URL.
+/// Unknown or extensionless endpoints use MP3 as a safe fallback.
+String audioFileExtensionFromUrl(String url) {
+  const supported = {'mp3', 'm4a', 'aac', 'ogg', 'opus', 'flac', 'wav'};
+  final uri = Uri.tryParse(url);
+  final fileName = uri == null || uri.pathSegments.isEmpty
+      ? ''
+      : uri.pathSegments.last;
+  final dot = fileName.lastIndexOf('.');
+  if (dot < 0 || dot == fileName.length - 1) return 'mp3';
+  final extension = fileName.substring(dot + 1).toLowerCase();
+  return supported.contains(extension) ? extension : 'mp3';
 }

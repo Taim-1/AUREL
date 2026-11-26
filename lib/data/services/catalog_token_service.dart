@@ -33,14 +33,16 @@ class CatalogTokenService {
 
   Future<String> tokenFor(String provider) async {
     final key = provider.trim().toLowerCase();
-    if (!{'spotify', 'apple_music', 'soundcloud'}.contains(key)) {
-      throw const CatalogTokenException('Unknown music provider.');
+    if (!{'spotify', 'apple_music', 'soundcloud', 'openverse'}.contains(key)) {
+      throw const CatalogTokenException(
+        'This catalogue connection is unavailable.',
+      );
     }
 
     final user = account.currentUser;
     if (user == null) {
-      throw CatalogTokenException(
-        'Sign in to your AUREL account before using $provider catalog search.',
+      throw const CatalogTokenException(
+        'Sign in to AUREL to enable additional catalogue results.',
       );
     }
 
@@ -54,8 +56,8 @@ class CatalogTokenService {
 
     final projectId = account.firebaseProjectId;
     if (projectId == null || projectId.isEmpty) {
-      throw CatalogTokenException(
-        '$provider catalog access requires a connected AUREL account.',
+      throw const CatalogTokenException(
+        'This catalogue connection is not configured yet.',
       );
     }
 
@@ -86,7 +88,7 @@ class CatalogTokenService {
       final token = (body?['token'] ?? '').toString().trim();
       if (token.isEmpty) {
         throw const CatalogTokenException(
-          'The music provider token service returned an empty token.',
+          'Additional catalogue authentication is currently unavailable.',
         );
       }
 
@@ -99,20 +101,14 @@ class CatalogTokenService {
       return token;
     } on DioException catch (error) {
       final status = error.response?.statusCode;
-      final body = error.response?.data;
-      final message = body is Map
-          ? (body['message'] ?? body['error']?['message'] ?? '').toString()
-          : '';
       if (status == 401) {
         throw const CatalogTokenException(
-          'Your AUREL session expired. Sign in again to use this source.',
+          'Your AUREL session expired. Sign in again to continue.',
         );
       }
       if (status == 404 || status == 503) {
-        throw CatalogTokenException(
-          message.isNotEmpty
-              ? message
-              : 'This source is not configured on the AUREL server yet.',
+        throw const CatalogTokenException(
+          'This catalogue connection is not configured yet.',
         );
       }
       if (status == 429) {
@@ -120,10 +116,8 @@ class CatalogTokenService {
           'Music services are busy. Please try again shortly.',
         );
       }
-      throw CatalogTokenException(
-        message.isNotEmpty
-            ? message
-            : 'Could not connect to the AUREL music provider gateway.',
+      throw const CatalogTokenException(
+        'Could not connect to the AUREL catalogue gateway.',
       );
     }
   }

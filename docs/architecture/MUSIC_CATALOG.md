@@ -17,7 +17,7 @@ The word "source" is not equivalent to "playable track". The catalogue distingui
 | Playable audio | `providers/soundcloud_service.dart` | Public tracks that the API explicitly marks playable, with OAuth stream resolution and required creator/platform credit |
 | Playable audio | `providers/audius_service.dart` | Track search and trending; streams only when `is_streamable`; downloads only when `is_downloadable` |
 | Playable audio | `providers/jamendo_service.dart` | Independent music catalogue and direct audio; respects the registered application ID and per-track `audiodownload_allowed` |
-| Playable audio | `providers/openverse_service.dart` | Openly licensed music audio, creator, artwork and licence information |
+| Playable audio | `providers/openverse_service.dart` | Openly licensed music audio, creator, artwork and licence information; anonymous access works by default, with optional registered OAuth credentials for the authenticated rate-limit tier |
 | Playable audio | `providers/internet_archive_service.dart` | Public audio items after metadata/file checks and an accepted item-level licence |
 | Playable audio | `providers/wikimedia_commons_service.dart` | Direct audio files with an explicit CC BY, CC BY-SA, CC0 or Public Domain licence; credits and description link retained |
 | Metadata only | `providers/spotify_catalog_service.dart` | Commercial recording metadata, artwork, duration and ISRC matching; no protected audio in AUREL's custom player |
@@ -69,7 +69,8 @@ A catalogue that supplies only a widget, restricted metadata, previews, or undoc
 - SoundCloud uses server-held OAuth credentials through the Firebase token broker.
 - Spotify and Apple private credentials stay in Firebase Secret Manager and are never embedded in Dart or APK resources.
 - MusicBrainz requires no API key for ordinary non-commercial read access, but its request-rate and User-Agent rules must be respected.
-- Openverse, Wikimedia Commons and Internet Archive are public catalogues with their own access, licence and rate policies.
+- Openverse supports anonymous API access; registered client credentials may be used for its authenticated rate-limit tier. Anonymous access remains the fallback when credentials are absent.
+- Wikimedia Commons and Internet Archive are public catalogues with their own access, licence and rate policies.
 
 Missing credentials make the related adapter unavailable; other sources continue. Production credentials are described in `docs/setup/FIREBASE_AUTH_AND_SYNC.md`.
 

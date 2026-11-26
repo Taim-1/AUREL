@@ -59,7 +59,8 @@ See [Music catalogue architecture](docs/architecture/MUSIC_CATALOG.md) and [Fire
 - SoundCloud: register an approved application and configure `SOUNDCLOUD_CLIENT_ID` and `SOUNDCLOUD_CLIENT_SECRET` in Firebase Secret Manager.
 - Spotify: configure a developer app and its credentials in Firebase Secret Manager. API availability is subject to Spotify's current developer access rules.
 - Apple Music: configure an Apple developer MusicKit key, team ID and private key in Firebase Secret Manager.
-- Openverse, Wikimedia Commons and Internet Archive: public read APIs are used with per-item licence and request-policy checks.
+- Openverse: anonymous read access works by default; optional registered API credentials can be stored in Firebase Secret Manager for its authenticated rate-limit tier.
+- Wikimedia Commons and Internet Archive: public read APIs are used with per-item licence and request-policy checks.
 - MusicBrainz: public non-commercial read API; requests are serialized to one per second.
 - Firebase email/Google accounts and cloud restore: create the Firebase project, enable sign-in methods, apply `firestore.rules`, add GitHub Actions secrets and deploy the token-broker function.
 

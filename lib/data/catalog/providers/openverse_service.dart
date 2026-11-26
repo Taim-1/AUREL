@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 
 import '../../models/track.dart';
+import '../../services/catalog_token_service.dart';
 
 class OpenverseService {
-  OpenverseService({Dio? dio})
+  OpenverseService({Dio? dio, this.tokens})
       : _dio = dio ??
             Dio(
               BaseOptions(
@@ -17,6 +18,7 @@ class OpenverseService {
             );
 
   final Dio _dio;
+  final CatalogTokenService? tokens;
 
   static const _permittedLicenses = 'by,by-sa,cc0,pdm';
 
@@ -28,6 +30,18 @@ class OpenverseService {
   }) async {
     final normalized = query.trim();
     if (normalized.isEmpty) return const [];
+
+    String? accessToken;
+    final tokenService = tokens;
+    if (tokenService != null) {
+      try {
+        accessToken = await tokenService.tokenFor('openverse');
+      } on CatalogTokenException {
+        // Anonymous API access remains available when optional credentials or
+        // account sign-in have not been configured.
+        accessToken = null;
+      }
+    }
 
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -43,6 +57,9 @@ class OpenverseService {
           'page_size': pageSize.clamp(1, 20),
         },
         cancelToken: cancelToken,
+        options: accessToken == null
+            ? null
+            : Options(headers: {'Authorization': 'Bearer $accessToken'}),
       );
       final body = response.data;
       final raw = body?['results'];

@@ -13,8 +13,10 @@ const soundCloudClientSecret = defineSecret("SOUNDCLOUD_CLIENT_SECRET");
 const appleTeamId = defineSecret("APPLE_TEAM_ID");
 const appleKeyId = defineSecret("APPLE_KEY_ID");
 const applePrivateKey = defineSecret("APPLE_PRIVATE_KEY");
+const openverseClientId = defineSecret("OPENVERSE_CLIENT_ID");
+const openverseClientSecret = defineSecret("OPENVERSE_CLIENT_SECRET");
 
-type Provider = "spotify" | "soundcloud" | "apple_music";
+type Provider = "spotify" | "soundcloud" | "apple_music" | "openverse";
 
 type TokenResult = {
   token: string;
@@ -135,6 +137,53 @@ async function soundCloudToken(): Promise<TokenResult> {
   );
 }
 
+async function openverseToken(): Promise<TokenResult> {
+  const clientId = openverseClientId.value().trim();
+  const secret = openverseClientSecret.value().trim();
+  if (!clientId || !secret) {
+    throw new Error(
+      "Additional open-catalogue authentication is not configured.",
+    );
+  }
+
+  const response = await fetch(
+    "https://api.openverse.org/v1/auth_tokens/token/",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: secret,
+        grant_type: "client_credentials",
+      }),
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    console.error("AUREL open-catalogue token exchange failed", {
+      status: response.status,
+      body: body.slice(0, 300),
+    });
+    throw new Error("Additional catalogue authentication was rejected.");
+  }
+
+  const payload = (await response.json()) as {
+    access_token?: string;
+    expires_in?: number;
+  };
+  const token = payload.access_token?.trim();
+  if (!token) throw new Error("Additional catalogue authentication returned no token.");
+  const lifetime = Math.max(60, (payload.expires_in ?? 3600) - 90);
+  return {
+    token,
+    expiresAt: new Date(Date.now() + lifetime * 1000).toISOString(),
+  };
+}
 async function appleMusicToken(): Promise<TokenResult> {
   const teamId = appleTeamId.value().trim();
   const keyId = appleKeyId.value().trim();
@@ -150,7 +199,6 @@ async function appleMusicToken(): Promise<TokenResult> {
   const token = await new SignJWT({})
     .setProtectedHeader({ alg: "ES256", kid: keyId, typ: "JWT" })
     .setIssuer(teamId)
-    .setAudience("appstoreconnect-v1")
     .setIssuedAt()
     .setExpirationTime("30m")
     .sign(privateKey);
@@ -181,6 +229,9 @@ async function providerToken(provider: Provider): Promise<TokenResult> {
     case "apple_music":
       result = await appleMusicToken();
       break;
+    case "openverse":
+      result = await openverseToken();
+      break;
   }
 
   tokenCache.set(provider, result);
@@ -201,6 +252,8 @@ export const catalogTokens = onRequest(
       appleTeamId,
       appleKeyId,
       applePrivateKey,
+      openverseClientId,
+      openverseClientSecret,
     ],
   },
   async (request, response) => {
@@ -237,7 +290,8 @@ export const catalogTokens = onRequest(
     if (
       rawProvider !== "spotify" &&
       rawProvider !== "soundcloud" &&
-      rawProvider !== "apple_music"
+      rawProvider !== "apple_music" &&
+      rawProvider !== "openverse"
     ) {
       jsonError(response, 400, "Choose a supported catalog provider.");
       return;

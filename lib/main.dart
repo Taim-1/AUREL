@@ -60,7 +60,7 @@ Future<void> main() async {
     soundcloud: soundcloud,
     spotify: spotify,
     appleMusic: appleMusic,
-    openverse: OpenverseService(),
+    openverse: OpenverseService(tokens: tokens),
     internetArchive: InternetArchiveService(),
     wikimediaCommons: WikimediaCommonsService(),
     musicBrainz: MusicBrainzService(),
