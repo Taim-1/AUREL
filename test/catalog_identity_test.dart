@@ -76,6 +76,48 @@ void main() {
       );
     });
 
+    test('does not let an ambiguous entry bridge different ISRCs', () {
+      final first = recording(
+        id: 'first',
+        title: 'Same Title',
+        isrc: 'USABC2600001',
+        duration: 200000,
+      );
+      final second = recording(
+        id: 'second',
+        title: 'Same Title',
+        isrc: 'USABC2600002',
+        duration: 204000,
+      );
+      final ambiguous = recording(
+        id: 'ambiguous',
+        title: 'Same Title',
+        duration: 202000,
+      );
+
+      final groups = CatalogIdentity.group([first, second, ambiguous]);
+
+      expect(groups, hasLength(3));
+      expect(groups[0], [first]);
+      expect(groups[1], [second]);
+      expect(groups[2], [ambiguous]);
+    });
+
+    test('groups one matching recording across catalogues', () {
+      final first = recording(id: 'first', duration: 200000);
+      final second = recording(
+        id: 'second',
+        title: 'blue hour',
+        artist: 'AUREL ARTIST',
+        duration: 204000,
+      );
+
+      final groups = CatalogIdentity.group([first, second]);
+
+      expect(groups, hasLength(1));
+      expect(groups.single, [first, second]);
+    });
+
     test('does not merge when duration is missing', () {
       expect(
         CatalogIdentity.matches(
