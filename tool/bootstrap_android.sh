@@ -15,6 +15,12 @@ cp platform/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
 cp platform/android/MainActivity.kt android/app/src/main/kotlin/com/aurel/aurel/MainActivity.kt
 cp -R platform/android/res/. android/app/src/main/res/
 
+# Flutter's generated starter widget test targets a placeholder MyApp class.
+# Remove only that untouched scaffold test; AUREL's own tests live alongside it.
+if [[ -f test/widget_test.dart ]] && grep -q 'MyApp' test/widget_test.dart; then
+  rm test/widget_test.dart
+fi
+
 if [[ -f android/app/build.gradle.kts ]]; then
   if grep -q 'minSdk = flutter.minSdkVersion' android/app/build.gradle.kts; then
     sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts
