@@ -70,10 +70,13 @@ class Track {
       hasLocalPlaybackUri && (isDeviceTrack || isDownloaded);
 
   bool get canPlay {
+    // Previews and metadata-only records are never full playable recordings.
+    if (isPreviewOnly || isMetadataOnly || !isPlayable) return false;
+
     // A device/downloaded item must use its real local URI. Never fall back
     // to a network stream for a broken offline entry.
     if (isDeviceTrack || isDownloaded) return hasLocalPlaybackUri;
-    return isPlayable && streamUrl.trim().isNotEmpty;
+    return streamUrl.trim().isNotEmpty;
   }
 
   String get playbackUri {
@@ -496,22 +499,28 @@ class Track {
       };
 
   Track copyWith({
+    String? title,
+    String? artist,
+    String? album,
+    String? artworkUrl,
     String? localPath,
     bool? isDownloaded,
     String? streamUrl,
-    Map<String, String>? playbackHeaders,
+    int? durationMs,
+    String? recordingId,
     List<String>? matchedSources,
+    Map<String, String>? playbackHeaders,
   }) =>
       Track(
         id: id,
-        title: title,
-        artist: artist,
-        album: album,
-        artworkUrl: artworkUrl,
+        title: title ?? this.title,
+        artist: artist ?? this.artist,
+        album: album ?? this.album,
+        artworkUrl: artworkUrl ?? this.artworkUrl,
         streamUrl: streamUrl ?? this.streamUrl,
         downloadUrl: downloadUrl,
         licenseUrl: licenseUrl,
-        durationMs: durationMs,
+        durationMs: durationMs ?? this.durationMs,
         downloadAllowed: downloadAllowed,
         isDeviceTrack: isDeviceTrack,
         isDownloaded: isDownloaded ?? this.isDownloaded,
@@ -519,7 +528,7 @@ class Track {
         providerId: providerId,
         providerName: providerName,
         sourceUrl: sourceUrl,
-        recordingId: recordingId,
+        recordingId: recordingId ?? this.recordingId,
         licenseName: licenseName,
         attribution: attribution,
         isPlayable: isPlayable,
