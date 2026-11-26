@@ -8,6 +8,7 @@ import android.os.Handler
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.Looper
+import java.io.ByteArrayOutputStream
 import android.provider.MediaStore
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -55,6 +56,28 @@ class MainActivity : AudioServiceActivity() {
             when (call.method) {
                 "hasAudioPermission" -> result.success(hasAudioPermission())
                 "requestAudioPermission" -> requestAudioPermission(result)
+                "loadAlbumArtwork" -> {
+                    val rawUri = call.arguments?.toString().orEmpty()
+                    val uri = Uri.parse(rawUri)
+                    if (uri.scheme != "content" || uri.authority != "media") {
+                        result.error(
+                            "invalid_artwork_uri",
+                            "Only Android MediaStore artwork is supported.",
+                            null,
+                        )
+                    } else {
+                        mediaExecutor.execute {
+                            val artwork = try {
+                                readArtwork(uri)
+                            } catch (_: SecurityException) {
+                                null
+                            } catch (_: Exception) {
+                                null
+                            }
+                            mainHandler.post { result.success(artwork) }
+                        }
+                    }
+                }
                 "queryAudioTracks" -> {
                     if (!hasAudioPermission()) {
                         result.error(
@@ -149,6 +172,7 @@ class MainActivity : AudioServiceActivity() {
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.IS_MUSIC,
+            MediaStore.Audio.Media.ALBUM_ID,
         )
         val hasRelativePath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         if (hasRelativePath) {
@@ -179,6 +203,7 @@ class MainActivity : AudioServiceActivity() {
             val artistIndex = media.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val albumIndex = media.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val durationIndex = media.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val albumIdIndex = media.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val pathIndex = if (hasRelativePath) {
                 media.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
             } else {
@@ -211,6 +236,13 @@ class MainActivity : AudioServiceActivity() {
                 val album = if (rawAlbum.equals("<unknown>", ignoreCase = true)) "" else rawAlbum
                 val uri = ContentUris.withAppendedId(collection, id)
 
+                val albumId = media.getLong(albumIdIndex)
+                val artworkUri = if (albumId > 0L) {
+                    "content://media/external/audio/albumart/" + albumId
+                } else {
+                    ""
+                }
+
                 rows.add(
                     mapOf(
                         "id" to id.toString(),
@@ -219,11 +251,30 @@ class MainActivity : AudioServiceActivity() {
                         "artist" to artist,
                         "album" to album,
                         "duration" to media.getLong(durationIndex),
+                        "artworkUri" to artworkUri,
                     ),
                 )
             }
         }
         return rows
+    }
+
+    private fun readArtwork(uri: Uri): ByteArray? {
+        val input = contentResolver.openInputStream(uri) ?: return null
+        input.use { stream ->
+            val output = ByteArrayOutputStream()
+            val buffer = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val count = stream.read(buffer)
+                if (count < 0) break
+                total += count
+                // Avoid large or unexpected provider payloads in image memory.
+                if (total > 5 * 1024 * 1024) return null
+                output.write(buffer, 0, count)
+            }
+            return output.toByteArray().takeIf { it.isNotEmpty() }
+        }
     }
 
     private fun registerAudioChangeObserver() {
