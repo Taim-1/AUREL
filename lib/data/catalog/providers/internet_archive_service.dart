@@ -142,7 +142,8 @@ class InternetArchiveService {
         licenseName: licenseName,
         durationMs: (seconds * 1000).round(),
       );
-    } on DioException {
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
       return null;
     } on FormatException {
       return null;
