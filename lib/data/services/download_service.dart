@@ -49,21 +49,72 @@ class DownloadService {
         await temporaryFile.delete();
       }
 
-      final response = await _dio.download(
-        track.downloadUrl,
-        temporaryFile.path,
-        cancelToken: cancelToken,
-        onReceiveProgress: onProgress,
-        options: Options(
-          headers: track.playbackHeaders.isEmpty ? null : track.playbackHeaders,
-          followRedirects: true,
-          maxRedirects: 5,
-          validateStatus: (status) =>
-              status != null && status >= 200 && status < 300,
-        ),
-      );
+      var requestUri = downloadUri;
+      final requestHeaders = Map<String, String>.of(track.playbackHeaders);
+      Response<dynamic>? response;
 
-      // Do not allow a provider redirect to downgrade an HTTPS request.
+      // Follow redirects manually so an HTTPS request can never silently
+      // continue to an HTTP target. Provider authorization is not forwarded
+      // when a redirect crosses an origin boundary.
+      for (var redirectCount = 0; redirectCount <= 5; redirectCount++) {
+        if (!isSecureDownloadUri(requestUri)) {
+          throw const DownloadException(
+            'The download server redirected to an insecure address.',
+          );
+        }
+
+        response = await _dio.download(
+          requestUri.toString(),
+          temporaryFile.path,
+          cancelToken: cancelToken,
+          onReceiveProgress: onProgress,
+          options: Options(
+            headers: requestHeaders.isEmpty ? null : requestHeaders,
+            followRedirects: false,
+            maxRedirects: 0,
+            validateStatus: (status) =>
+                status != null && status >= 200 && status < 400,
+          ),
+        );
+
+        final status = response.statusCode ?? 0;
+        if (status >= 200 && status < 300) break;
+        if (!_isRedirectStatus(status)) {
+          throw DownloadException(
+            'The download server returned HTTP $status.',
+          );
+        }
+        if (redirectCount == 5) {
+          throw const DownloadException(
+            'The download server redirected too many times.',
+          );
+        }
+
+        final nextUri = resolveSecureDownloadRedirect(
+          requestUri,
+          response.headers.value('location'),
+        );
+        if (!_sameDownloadOrigin(requestUri, nextUri)) {
+          requestHeaders.removeWhere(
+            (key, _) =>
+                key.toLowerCase() == 'authorization' ||
+                key.toLowerCase() == 'cookie',
+          );
+        }
+        requestUri = nextUri;
+        if (await temporaryFile.exists()) {
+          await temporaryFile.delete();
+        }
+      }
+
+      if (response == null ||
+          response.statusCode == null ||
+          response.statusCode! < 200 ||
+          response.statusCode! >= 300) {
+        throw const DownloadException(
+          'The download server did not return an audio file.',
+        );
+      }
       if (!isSecureDownloadUri(response.realUri)) {
         throw const DownloadException(
           'The download server redirected to an insecure address.',
@@ -242,6 +293,35 @@ class DownloadException implements Exception {
 
   @override
   String toString() => message;
+}
+
+bool _isRedirectStatus(int status) =>
+    status == 300 ||
+    status == 301 ||
+    status == 302 ||
+    status == 303 ||
+    status == 307 ||
+    status == 308;
+
+bool _sameDownloadOrigin(Uri a, Uri b) =>
+    a.scheme == b.scheme && a.host == b.host && a.port == b.port;
+
+/// Resolves a redirect target and rejects insecure or malformed destinations
+/// before AUREL sends the next request.
+Uri resolveSecureDownloadRedirect(Uri source, String? location) {
+  final value = location?.trim() ?? '';
+  if (value.isEmpty) {
+    throw const DownloadException(
+      'The download server returned a redirect without a destination.',
+    );
+  }
+  final target = source.resolve(value);
+  if (!isSecureDownloadUri(target) || target.userInfo.isNotEmpty) {
+    throw const DownloadException(
+      'The download server redirected to an insecure address.',
+    );
+  }
+  return target;
 }
 
 /// Confirms that the final resolved download URL remains HTTPS after redirects.
