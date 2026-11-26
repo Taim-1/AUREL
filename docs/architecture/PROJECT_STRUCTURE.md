@@ -1,62 +1,64 @@
 # AUREL project structure
 
-The repository is organized by responsibility. A screen should not contain provider HTTP code, provider adapters should not depend on Flutter widgets, and playback/account services should not know how a catalogue source is implemented.
+AUREL is organized by responsibility. Presentation code does not call provider APIs, provider adapters do not depend on Flutter widgets, and playback does not know how catalogue search is implemented.
 
 ```text
 AUREL/
-├── assets/
-│   └── branding/                 # Approved ribbon-A identity artwork
+├── .github/workflows/             # Verification CI; release packaging deferred
+├── assets/branding/               # Approved AUREL identity artwork
 ├── docs/
-│   ├── architecture/             # System and catalogue design
-│   ├── branding/                 # Approved screen/brand reference
-│   └── setup/                    # Firebase and external credential setup
-├── functions/
-│   └── src/                      # Server-side short-lived catalogue tokens
+│   ├── architecture/              # Project, catalogue and ranking contracts
+│   ├── branding/                  # Approved visual reference
+│   └── setup/                     # Firebase and credential setup
+├── functions/src/                 # Server-side short-lived catalogue tokens
 ├── lib/
-│   ├── core/
-│   │   └── theme/                # Champagne Noir design tokens
+│   ├── core/theme/                 # Fixed Champagne Noir design system
 │   ├── data/
 │   │   ├── catalog/
+│   │   │   ├── catalog_identity.dart
 │   │   │   ├── music_catalog_service.dart
-│   │   │   └── providers/        # One isolated adapter per catalogue source
-│   │   ├── models/               # Track, playlist, lyrics models
-│   │   ├── repositories/         # Local persistence and library storage
-│   │   └── services/             # Playback, lyrics, download, account, device
+│   │   │   └── providers/          # One isolated adapter per catalogue
+│   │   ├── models/                 # Track, playlist and lyrics models
+│   │   ├── repositories/           # Local library and user-state persistence
+│   │   └── services/               # Playback, downloads, lyrics, account, tokens
 │   ├── presentation/
-│   │   ├── screens/              # Home, Search, Library, Player, Downloads
-│   │   ├── widgets/              # Reusable player, artwork and list widgets
+│   │   ├── screens/                # Home, Search, Library, Player, Downloads
+│   │   ├── widgets/                # Shared artwork, player and list components
 │   │   └── app_shell.dart
 │   ├── app.dart
-│   └── main.dart                 # Dependency composition / app startup
-├── platform/
-│   └── android/                  # Native Android manifest, Kotlin and resources
-├── test/                         # Unit/model/service tests
+│   └── main.dart                   # Dependency composition and startup
+├── platform/android/               # Native Android manifest and resources
+├── test/                            # Model, identity and service tests
 ├── firestore.rules
 ├── firebase.json
-├── pubspec.yaml
-└── AUREL.apk                     # Release output published by CI
+└── pubspec.yaml
 ```
 
 ## Dependency direction
 
-- Presentation depends on the controller and models; it does not call a catalogue API directly.
+- Presentation depends on the controller and models; it never calls a catalogue API directly.
 - `AurelController` coordinates user actions and local state.
-- `MusicCatalogService` coordinates independent provider adapters, error isolation, de-duplication and playback ranking.
-- Each file in `data/catalog/providers/` owns only one external API integration and converts results into the shared `Track` model.
-- Repositories own persistence. Provider adapters do not write to user libraries.
-- Account, playback, download, lyrics and device-storage services remain independent from catalogue adapters.
+- `MusicCatalogService` coordinates adapters, error isolation, canonical identity, deduplication and ranking.
+- `CatalogIdentity` owns cross-source recording matching and is covered by unit tests.
+- Each provider adapter converts one external API into the shared `Track` model.
+- Repositories own persistence. Provider adapters never write to user libraries.
+- Playback, account, downloads and lyrics services remain independent from catalogue adapters.
 
 ## Adding a catalogue source
 
 1. Create one adapter in `lib/data/catalog/providers/`.
-2. Normalize results to `Track`, including recording ID/ISRC, duration, artwork, licence, attribution and playback capability.
-3. Mark metadata-only items as non-playable. Never invent a stream URL.
-4. Set downloads available only when the item-level API/rights response allows it.
-5. Add the adapter to `MusicCatalogService` and dependency injection in `main.dart`.
-6. Add parser/model tests and update `MUSIC_CATALOG.md`.
-7. Keep provider identity internal to the adapter and model. Normal AUREL screens must not turn the catalogue into a list of external services.
-8. Retain any creator, licence or platform credit required by a source's terms in the track-details/credits view.
+2. Normalize results to `Track`, including real recording ID/ISRC, duration, artwork, licence, attribution and playback capability.
+3. Mark metadata-only and preview-only items as non-playable. Never invent a stream URL.
+4. Set download permission only when the item-level API and rights response explicitly allow it.
+5. Add the adapter to `MusicCatalogService` and dependency composition in `main.dart`.
+6. Add parser, licence, failure, pagination and identity tests; update catalogue documentation.
+7. Keep provider identity internal. Required creator/licence attribution remains available in track details.
+8. Verify official API access, Android app terms, rate limits and current playback/download rights before enabling it.
 
-## Release output
+## Library and offline boundary
 
-The Android workflow runs Firebase Functions validation, Flutter formatting, analysis, tests and a release build. Only a successful build is copied to the repository root as `AUREL.apk` and uploaded as the workflow artifact.
+The Downloads tab contains only audio saved through AUREL into app-managed storage. It is not a phone file browser, device music importer or whole-device storage viewer. A saved record is playable only while its local URI is present.
+
+## Verification and release
+
+GitHub Actions validates Firebase Functions, formats Dart sources, runs Flutter analysis and tests. Release packaging is intentionally deferred until product acceptance checks are complete.
