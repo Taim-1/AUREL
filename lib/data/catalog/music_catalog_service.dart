@@ -79,6 +79,9 @@ class MusicCatalogService {
     return entry.page;
   }
 
+  /// Drops cached pages after credentials or provider configuration change.
+  void clearCache() => _pageCache.clear();
+
   void _writeCache(String key, CatalogPage page) {
     // Bound the cache so long sessions cannot accumulate unbounded results.
     if (_pageCache.length >= 30 && !_pageCache.containsKey(key)) {
