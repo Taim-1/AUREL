@@ -150,6 +150,8 @@ class AurelController extends ChangeNotifier {
   int _searchOffset = 0;
   int _discoverGeneration = 0;
   int _searchGeneration = 0;
+  CancelToken? _discoverCancelToken;
+  CancelToken? _searchCancelToken;
   int selectedTab = 0;
 
   Future<void> initialize() async {
@@ -227,6 +229,9 @@ class AurelController extends ChangeNotifier {
 
   Future<void> refreshDiscover() async {
     if (offlineMode) return;
+    _discoverCancelToken?.cancel('A newer discovery request started');
+    final cancelToken = CancelToken();
+    _discoverCancelToken = cancelToken;
     final generation = ++_discoverGeneration;
     isLoadingDiscover = true;
     isLoadingMoreDiscover = false;
@@ -236,7 +241,7 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final page = await catalog.discover(page: 0);
+      final page = await catalog.discover(page: 0, cancelToken: cancelToken);
       if (generation != _discoverGeneration) return;
       discoverTracks = page.tracks;
       sourceErrors = page.sourceErrors;
@@ -250,6 +255,9 @@ class AurelController extends ChangeNotifier {
     } finally {
       if (generation == _discoverGeneration) {
         isLoadingDiscover = false;
+        if (identical(_discoverCancelToken, cancelToken)) {
+          _discoverCancelToken = null;
+        }
         notifyListeners();
       }
     }
@@ -260,12 +268,16 @@ class AurelController extends ChangeNotifier {
       return;
     }
     final generation = _discoverGeneration;
+    final cancelToken = _discoverCancelToken ??= CancelToken();
     isLoadingMoreDiscover = true;
     discoverError = null;
     notifyListeners();
 
     try {
-      final page = await catalog.discover(page: _discoverOffset);
+      final page = await catalog.discover(
+        page: _discoverOffset,
+        cancelToken: cancelToken,
+      );
       if (generation != _discoverGeneration) return;
       discoverTracks = _mergeCatalogResults(discoverTracks, page.tracks);
       sourceErrors = page.sourceErrors;
@@ -279,6 +291,9 @@ class AurelController extends ChangeNotifier {
     } finally {
       if (generation == _discoverGeneration) {
         isLoadingMoreDiscover = false;
+        if (identical(_discoverCancelToken, cancelToken)) {
+          _discoverCancelToken = null;
+        }
         notifyListeners();
       }
     }
@@ -289,6 +304,8 @@ class AurelController extends ChangeNotifier {
   Future<void> searchByTag(String tag) => _startSearch(tag);
 
   Future<void> _startSearch(String query) async {
+    _searchCancelToken?.cancel('A newer search started');
+    _searchCancelToken = null;
     final normalized = query.trim();
     final generation = ++_searchGeneration;
     searchQuery = normalized;
@@ -320,11 +337,17 @@ class AurelController extends ChangeNotifier {
       return;
     }
 
+    final cancelToken = CancelToken();
+    _searchCancelToken = cancelToken;
     isSearching = true;
     notifyListeners();
 
     try {
-      final page = await catalog.search(normalized, page: 0);
+      final page = await catalog.search(
+        normalized,
+        page: 0,
+        cancelToken: cancelToken,
+      );
       if (generation != _searchGeneration) return;
       searchResults = page.tracks;
       sourceErrors = page.sourceErrors;
@@ -342,6 +365,9 @@ class AurelController extends ChangeNotifier {
     } finally {
       if (generation == _searchGeneration) {
         isSearching = false;
+        if (identical(_searchCancelToken, cancelToken)) {
+          _searchCancelToken = null;
+        }
         notifyListeners();
       }
     }
@@ -353,12 +379,17 @@ class AurelController extends ChangeNotifier {
     }
     final generation = _searchGeneration;
     final query = searchQuery;
+    final cancelToken = _searchCancelToken ??= CancelToken();
     isLoadingMoreSearch = true;
     searchMoreError = null;
     notifyListeners();
 
     try {
-      final page = await catalog.search(query, page: _searchOffset);
+      final page = await catalog.search(
+        query,
+        page: _searchOffset,
+        cancelToken: cancelToken,
+      );
       if (generation != _searchGeneration) return;
       searchResults = _mergeCatalogResults(searchResults, page.tracks);
       sourceErrors = page.sourceErrors;
@@ -372,6 +403,9 @@ class AurelController extends ChangeNotifier {
     } finally {
       if (generation == _searchGeneration) {
         isLoadingMoreSearch = false;
+        if (identical(_searchCancelToken, cancelToken)) {
+          _searchCancelToken = null;
+        }
         notifyListeners();
       }
     }
@@ -521,6 +555,10 @@ class AurelController extends ChangeNotifier {
     await repository.saveOfflineMode(enabled);
 
     if (enabled) {
+      _discoverCancelToken?.cancel('Offline mode enabled');
+      _searchCancelToken?.cancel('Offline mode enabled');
+      _discoverCancelToken = null;
+      _searchCancelToken = null;
       _discoverGeneration++;
       _searchGeneration++;
       isLoadingDiscover = false;
@@ -644,6 +682,8 @@ class AurelController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _discoverCancelToken?.cancel('AUREL is closing');
+    _searchCancelToken?.cancel('AUREL is closing');
     for (final token in _downloadTokens.values) {
       if (!token.isCancelled) token.cancel('AUREL is closing');
     }
