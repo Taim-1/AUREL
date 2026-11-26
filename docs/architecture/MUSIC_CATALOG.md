@@ -24,7 +24,7 @@ The word "source" is not equivalent to "playable track". The catalogue distingui
 | Metadata only | `providers/apple_music_catalog_service.dart` | Storefront-aware track metadata and ISRC matching; native MusicKit playback is not enabled in this Android build |
 | Metadata only | `providers/music_brainz_service.dart` | Recording metadata, artist credit, duration and ISRC; non-commercial API use and one-request-per-second limit |
 
-The provider adapters live in one folder. Playback, account, local library, download and lyrics services remain in `lib/data/services/`.
+The provider adapters live in one folder. Playback, account, AUREL-managed offline downloads and lyrics services remain in `lib/data/services/`. The Downloads tab is exclusively for tracks saved from inside AUREL; it does not scan, import, or list the phone's unrelated music files.
 
 ## Search and ranking
 
@@ -54,7 +54,7 @@ The search orchestrator:
 
 ## No external-app handoff and no scraping
 
-Search, queue, player, lyrics, favourites, playlists, offline downloads and history remain inside AUREL. The core Play action never hands the user to another music application. AUREL does not scrape consumer websites, extract protected streams, copy protected audio, proxy copyrighted audio, or bypass access controls.
+Search, queue, player, lyrics, favourites, playlists, offline downloads and history remain inside AUREL. The offline Downloads collection contains only copies explicitly downloaded through AUREL from eligible catalogue entries; it is not a file manager for the device. The core Play action never hands the user to another music application. AUREL does not scrape consumer websites, extract protected streams, copy protected audio, proxy copyrighted audio, or bypass access controls.
 
 An external provider name is not part of the normal Home/Search/Player/Profile experience. Source/creator attribution that is required by the relevant licence or platform terms remains available in track details.
 
