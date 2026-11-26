@@ -24,6 +24,7 @@ The word "source" is not equivalent to "playable track". The catalogue distingui
 | Metadata only | `providers/apple_music_catalog_service.dart` | Storefront-aware track metadata and ISRC matching; native MusicKit playback is not enabled in this Android build |
 | Metadata only | `providers/music_brainz_service.dart` | Recording metadata, artist credit, duration and ISRC; non-commercial API use and one-request-per-second limit |
 | Metadata only | `providers/lastfm_catalog_service.dart` | Track search, global top-track charts, artist names, artwork, duration and Last.fm links; requires a Last.fm API key; never supplies audio |
+| Metadata only | `providers/listenbrainz_catalog_service.dart` | Public site-wide top-recording statistics, recording/release MBIDs and listening popularity; metadata only, no audio stream |
 
 The provider adapters live in one folder. Playback, account, AUREL-managed offline downloads and lyrics services remain in `lib/data/services/`. The Downloads tab is exclusively for tracks saved from inside AUREL; it does not scan, import, or list the phone's unrelated music files.
 
@@ -35,11 +36,12 @@ The search orchestrator:
 2. Applies per-source pagination and request cancellation where supported.
 3. Queries the public open-audio adapter sequentially after the other source batch, respecting its concurrency guidance.
 4. Queries Last.fm track discovery and global charts as metadata-only results; these records can enrich discovery but can never enter the playback queue as audio.
-5. Queries the recording metadata catalogue through a single serialized one-request-per-second queue.
-6. Matches exact ISRCs first.
-7. Falls back to normalized title, artist and a duration difference of no more than five seconds, while preserving version labels such as Live, Remix and Acoustic.
-8. Does not merge uncertain recordings when both ISRC and useful duration/album data are missing.
-9. Ranks playable audio above metadata-only results. A match in a metadata catalogue never creates a fake audio URL.
+5. Queries ListenBrainz site-wide popular recordings for global discovery; this popularity index is metadata-only and does not represent a complete recording database.
+6. Queries the recording metadata catalogue through a single serialized one-request-per-second queue.
+7. Matches exact ISRCs first.
+8. Falls back to normalized title, artist and a duration difference of no more than five seconds, while preserving version labels such as Live, Remix and Acoustic.
+9. Does not merge uncertain recordings when both ISRC and useful duration/album data are missing.
+10. Ranks playable audio above metadata-only results. A match in a metadata catalogue never creates a fake audio URL.
 
 ## Playback and download rights
 
@@ -72,6 +74,7 @@ A catalogue that supplies only a widget, restricted metadata, previews, or undoc
 - Spotify and Apple private credentials stay in Firebase Secret Manager and are never embedded in Dart or APK resources.
 - MusicBrainz requires no API key for ordinary non-commercial read access, but its request-rate and User-Agent rules must be respected.
 - Last.fm requires a registered API key supplied as `LASTFM_API_KEY` at build time. The key enables metadata search and charts only; it does not grant audio playback or download rights.
+- ListenBrainz site-wide statistics are read from its public HTTPS API. Popularity data is a discovery signal, not a full music catalogue or an audio source.
 - Openverse supports anonymous API access; registered client credentials may be used for its authenticated rate-limit tier. Anonymous access remains the fallback when credentials are absent.
 - Wikimedia Commons and Internet Archive are public catalogues with their own access, licence and rate policies.
 
