@@ -431,6 +431,12 @@ class MusicCatalogService {
             orElse: () => selected,
           )
           .recordingId;
+      final recordingMbid = best
+          .firstWhere(
+            (track) => track.recordingMbid.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .recordingMbid;
 
       ranked.add(
         selected.copyWith(
@@ -444,6 +450,9 @@ class MusicCatalogService {
           recordingId: selected.recordingId.trim().isEmpty
               ? recordingId
               : selected.recordingId,
+          recordingMbid: selected.recordingMbid.trim().isEmpty
+              ? recordingMbid
+              : selected.recordingMbid,
           matchedSources: sources,
           alternatives: best.skip(1).toList(growable: false),
         ),
