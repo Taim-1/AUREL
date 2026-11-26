@@ -27,7 +27,8 @@ AUREL/
 │   │   └── app_shell.dart
 │   ├── app.dart
 │   └── main.dart                   # Dependency composition and startup
-├── platform/android/               # Native Android manifest and resources
+├── platform/android/               # Reviewed Android manifest, activity and resources
+├── tool/bootstrap_android.sh       # Generate Gradle project and apply AUREL Android files
 ├── test/                            # Model, identity and service tests
 ├── firestore.rules
 ├── firebase.json
@@ -61,4 +62,4 @@ The Downloads tab contains only audio saved through AUREL into app-managed stora
 
 ## Verification and release
 
-GitHub Actions validates Firebase Functions, formats Dart sources, runs Flutter analysis and tests. Release packaging is intentionally deferred until product acceptance checks are complete.
+GitHub Actions validates Firebase Functions, generates the Android Gradle project, generates the approved launcher icon, formats Dart sources, runs Flutter analysis and tests, then compiles a non-published debug Android App Bundle. Release packaging and APK publication remain deferred until product acceptance checks are complete.
