@@ -17,6 +17,9 @@ enum AurelEqualizerPreset {
 class PlaybackController extends ChangeNotifier {
   PlaybackController() {
     _subscriptions.addAll([
+      player.errorStream.listen((error) {
+        unawaited(_recoverFromSourceError(error));
+      }),
       player.playerStateStream.listen((_) => notifyListeners()),
       player.shuffleModeEnabledStream.listen((_) => notifyListeners()),
       player.loopModeStream.listen((_) => notifyListeners()),
@@ -42,6 +45,13 @@ class PlaybackController extends ChangeNotifier {
 
   List<Track> queue = const [];
   int currentIndex = -1;
+  Future<Track> Function(Track)? _fallbackResolver;
+  bool _recoveringSource = false;
+  final Set<String> _attemptedFallbackIds = {};
+
+  void setFallbackResolver(Future<Track> Function(Track) resolver) {
+    _fallbackResolver = resolver;
+  }
 
   Timer? _sleepTimer;
   DateTime? _sleepDeadline;
@@ -73,6 +83,7 @@ class PlaybackController extends ChangeNotifier {
 
     queue = tracks;
     currentIndex = index < 0 ? 0 : index;
+    _attemptedFallbackIds.clear();
     final sources = tracks.map(_audioSource).toList(growable: false);
 
     try {
@@ -88,6 +99,57 @@ class PlaybackController extends ChangeNotifier {
       );
     } on PlayerInterruptedException {
       throw const PlaybackException('Playback was interrupted. Try again.');
+    }
+  }
+
+  Future<void> _recoverFromSourceError(PlayerException error) async {
+    if (_recoveringSource || queue.isEmpty) return;
+    final index = error.index ?? currentIndex;
+    if (index < 0 || index >= queue.length) return;
+
+    final failed = queue[index];
+    final resolver = _fallbackResolver;
+    if (resolver == null) return;
+
+    final candidates = failed.alternatives.where(
+      (candidate) =>
+          candidate.canPlay && !_attemptedFallbackIds.contains(candidate.id),
+    );
+    if (candidates.isEmpty) return;
+
+    _recoveringSource = true;
+    try {
+      for (final candidate in candidates) {
+        _attemptedFallbackIds.add(candidate.id);
+        try {
+          final prepared = await resolver(candidate);
+          final remaining = failed.alternatives
+              .where((item) => item.id != candidate.id)
+              .toList(growable: false);
+          final replacement = prepared.copyWith(
+            id: failed.id,
+            alternatives: remaining,
+          );
+          final updatedQueue = List<Track>.of(queue);
+          updatedQueue[index] = replacement;
+
+          // Replace only the failed source while retaining the visible queue.
+          // The fallback is the same recording/version, not a different song.
+          await player.setAudioSources(
+            updatedQueue.map(_audioSource).toList(growable: false),
+            initialIndex: index,
+          );
+          queue = updatedQueue;
+          currentIndex = index;
+          await player.play();
+          notifyListeners();
+          return;
+        } catch (_) {
+          // Try the next same-recording source in the agreed priority order.
+        }
+      }
+    } finally {
+      _recoveringSource = false;
     }
   }
 
