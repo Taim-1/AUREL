@@ -15,7 +15,11 @@ class LastFmCatalogService {
                 connectTimeout: const Duration(seconds: 10),
                 receiveTimeout: const Duration(seconds: 18),
                 responseType: ResponseType.json,
-                headers: const {'Accept': 'application/json'},
+                headers: const {
+                  'Accept': 'application/json',
+                  'User-Agent':
+                      'AUREL/1.0.0 (https://github.com/Taim-1/AUREL)',
+                },
               ),
             );
 
