@@ -576,26 +576,42 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Returns the app-managed local copy when the same recording has
+  /// already been downloaded. The download must still point to a playable
+  /// local file; stale database entries never outrank a network source.
+  Track _preferDownloadedCopy(Track track) {
+    for (final saved in downloadedTracks) {
+      if (!saved.isDownloaded || !saved.canPlay) continue;
+      if (saved.id == track.id || CatalogIdentity.matches(saved, track)) {
+        return saved;
+      }
+    }
+    return track;
+  }
+
   Future<void> addToQueue(Track track) async {
-    if (offlineMode && !track.isDownloaded) {
+    final selected = _preferDownloadedCopy(track);
+    if (offlineMode && !selected.isDownloaded) {
       throw const PlaybackException(
         'Only tracks saved inside AUREL can be queued in Offline mode.',
       );
     }
-    await playback.addToQueue(await catalog.prepareTrack(track));
+    await playback.addToQueue(await catalog.prepareTrack(selected));
   }
 
   Future<void> playNext(Track track) async {
-    if (offlineMode && !track.isDownloaded) {
+    final selected = _preferDownloadedCopy(track);
+    if (offlineMode && !selected.isDownloaded) {
       throw const PlaybackException(
         'Only tracks saved inside AUREL can be played next in Offline mode.',
       );
     }
-    await playback.playNext(await catalog.prepareTrack(track));
+    await playback.playNext(await catalog.prepareTrack(selected));
   }
 
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
-    if (offlineMode && !track.isDownloaded) {
+    final selectedTrack = _preferDownloadedCopy(track);
+    if (offlineMode && !selectedTrack.isDownloaded) {
       throw const PlaybackException(
         'This track is not saved for offline listening yet.',
       );
@@ -603,23 +619,35 @@ class AurelController extends ChangeNotifier {
     final source = queue ??
         (track.isDownloaded ? downloadedTracks : discoverTracks);
 
-    // The selected recording must always be part of the queue. This matters
-    // for tracks opened from playlists, favourites, recent history, or a
-    // search result whose caller did not supply its complete result list.
-    final sourceWithSelection = source.any((item) => item.id == track.id)
-        ? source
-        : [track, ...source];
+    // Substitute downloaded copies in the complete queue, not just for the
+    // selected item, so local audio always wins for recordings already saved
+    // by AUREL. The current selection is inserted exactly once by identity.
+    final sourceWithSelection = <Track>[];
+    var selectionInserted = false;
+    for (final item in source) {
+      if (item.id == track.id || CatalogIdentity.matches(item, track)) {
+        if (!selectionInserted) {
+          sourceWithSelection.add(selectedTrack);
+          selectionInserted = true;
+        }
+        continue;
+      }
+      sourceWithSelection.add(_preferDownloadedCopy(item));
+    }
+    if (!selectionInserted) {
+      sourceWithSelection.insert(0, selectedTrack);
+    }
 
     final tracks = offlineMode
         ? sourceWithSelection
-            .where((item) => item.isDownloaded)
+            .where((item) => item.isDownloaded && item.canPlay)
             .toList(growable: false)
         : sourceWithSelection;
     final prepared = await catalog.prepareQueue(
       tracks,
-      requiredTrackId: track.id,
+      requiredTrackId: selectedTrack.id,
     );
-    final selected = prepared.where((item) => item.id == track.id);
+    final selected = prepared.where((item) => item.id == selectedTrack.id);
     if (selected.isEmpty) {
       throw const PlaybackException(
         'This track has no authorized in-app playback source.',
@@ -655,7 +683,8 @@ class AurelController extends ChangeNotifier {
       discoverError = null;
 
       // Never leave an online stream playing after entering offline mode.
-      if (playback.currentTrack?.isDownloaded != true) {
+      if (playback.currentTrack?.isDownloaded != true ||
+          playback.currentTrack?.canPlay != true) {
         await playback.player.stop();
         playback.queue = const [];
         playback.currentIndex = -1;
