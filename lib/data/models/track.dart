@@ -493,9 +493,15 @@ class Track {
       }
     }
     final rawDuration = json['duration'];
-    final duration = rawDuration is num
+    final reportedDuration = rawDuration is num
         ? rawDuration.round()
         : int.tryParse(rawDuration?.toString() ?? '') ?? 0;
+    // Last.fm search/track-info data may report milliseconds, while
+    // artist.getTopTracks reports seconds. Normalize the smaller positive
+    // values to milliseconds without changing already-millisecond values.
+    final duration = reportedDuration > 0 && reportedDuration < 10000
+        ? reportedDuration * 1000
+        : reportedDuration;
     final mbid = (json['mbid'] ?? '').toString().trim();
     final source = (json['url'] ?? '').toString().trim();
     final sourceUri = Uri.tryParse(source);
