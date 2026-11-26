@@ -12,6 +12,7 @@ Release packaging is intentionally deferred while the app is being completed. Gi
 
 - Unified discovery across eleven catalogue adapters: six playable-audio collections (subject to item rights) and five metadata indexes, including Last.fm discovery and ListenBrainz global popularity.
 - In-app playback and queue from sources that authorize a playable audio stream.
+- Deterministic song priority: local library, Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons, then Openverse; metadata-only fallbacks remain below playable audio.
 - Source ranking, ISRC matching, version-aware de-duplication, and provider attribution.
 - Champagne waveform seek control, background playback, lock-screen controls, mini-player, shuffle and repeat.
 - Licensed lyrics when the provider makes them available.
@@ -39,6 +40,8 @@ AUREL presents one unified search and one in-app player. Provider names are not 
 | ListenBrainz | Site-wide popular recordings and community listening statistics | Metadata only; public popularity index, not a full audio catalogue |
 | Spotify | Commercial-catalogue metadata and ISRC matching | Metadata only in this AUREL player; no Spotify protected audio is copied into AUREL |
 | Apple Music | Commercial-catalogue metadata and recording matching | Metadata only in this AUREL player; native Apple Music playback is not enabled in this build |
+
+**Song priority:** playable local/device copies come first, followed by Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons and Openverse. Apple Music, Spotify, Last.fm, ListenBrainz and MusicBrainz are metadata-only fallbacks and never outrank playable audio. Metadata completeness breaks ties within the same source tier.
 
 **Important:** a catalogue match is not automatically a playable track. AUREL prefers the strongest eligible in-app stream for the same recording. Spotify and Apple Music metadata can help identify a recording, while an authorized SoundCloud, Audius, Jamendo or openly licensed copy supplies the audio. Live, remix, acoustic and alternate versions are kept distinct.
 
