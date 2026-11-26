@@ -772,6 +772,7 @@ class AurelController extends ChangeNotifier {
 
   Future<void> saveJamendoClientId(String value) async {
     await jamendo.setClientId(value);
+    catalog.clearCache();
     discoverError = null;
     await refreshDiscover();
   }
