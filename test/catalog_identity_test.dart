@@ -8,6 +8,7 @@ Track recording({
   String artist = 'Aurel Artist',
   String isrc = '',
   String mbid = '',
+  String provider = 'jamendo',
   int duration = 200000,
 }) =>
     Track(
@@ -16,6 +17,7 @@ Track recording({
       artist: artist,
       recordingId: isrc,
       recordingMbid: mbid,
+      providerId: provider,
       durationMs: duration,
       streamUrl: 'https://example.com/audio.mp3',
     );
@@ -140,6 +142,27 @@ void main() {
       );
     });
   });
+
+    test('matches the same provider track ID without metadata', () {
+      final first = recording(
+        id: 'jamendo-42',
+        duration: 0,
+        provider: 'jamendo',
+      );
+      final duplicate = recording(
+        id: 'jamendo-42',
+        title: 'Different catalogue formatting',
+        artist: 'A different text credit',
+        duration: 0,
+        provider: 'jamendo',
+      );
+
+      expect(CatalogIdentity.matches(first, duplicate), isTrue);
+      expect(
+        CatalogIdentity.group([first, duplicate]),
+        hasLength(1),
+      );
+    });
 
     test('matches exact MusicBrainz recording MBID across catalogues', () {
       expect(
