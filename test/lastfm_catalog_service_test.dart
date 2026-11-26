@@ -10,6 +10,7 @@ void main() {
         'url': 'https://www.last.fm/music/M83/_/Midnight+City',
         'duration': '244000',
         'artist': {'name': 'M83'},
+        'album': {'title': 'Hurry Up, We’re Dreaming'},
         'image': [
           {'size': 'small', '#text': 'https://img.example/small.jpg'},
           {'size': 'large', '#text': 'https://img.example/large.jpg'},
@@ -19,8 +20,9 @@ void main() {
 
       expect(track.title, 'Midnight City');
       expect(track.artist, 'M83');
+      expect(track.album, 'Hurry Up, We’re Dreaming');
       expect(track.durationMs, 244000);
-      expect(track.recordingId, 'recording-123');
+      expect(track.recordingId, isEmpty);
       expect(track.artworkUrl, 'https://img.example/large.jpg');
       expect(track.providerId, 'lastfm');
       expect(track.isMetadataOnly, isTrue);
