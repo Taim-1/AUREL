@@ -16,7 +16,7 @@ The current deterministic preference in `MusicCatalogService` is:
 
 | Rank | Source | Intended role |
 |---:|---|---|
-| 1 | On-device / downloaded user-owned file | Highest priority local playback |
+| 1 | Previously downloaded AUREL offline copy | Highest priority for a recording already saved through AUREL |
 | 2 | Audius | Eligible in-app streams where the specific recording and API terms permit |
 | 3 | Jamendo | Licensed catalogue streams where the account/API terms permit |
 | 4 | SoundCloud | Only tracks and playback methods explicitly allowed by the integration |
@@ -27,7 +27,7 @@ The current deterministic preference in `MusicCatalogService` is:
 | 9 | Spotify catalogue metadata | Metadata fallback; not a free stream |
 | 10 | MusicBrainz | Recording/artist metadata only |
 
-This is a product fallback order, not a claim that every item from a source is legally playable or has superior audio quality. Track-level eligibility and verified audio quality always override the default rank.
+Downloaded copies are created only by AUREL's in-app download action when the item and provider explicitly permit offline saving. The Downloads tab lists only those AUREL-managed copies; it is not a phone-file browser or device-music importer. This is a product fallback order, not a claim that every item from a source is legally playable or has superior audio quality. Track-level eligibility and verified audio quality always override the default rank.
 
 ## Deduplication rules
 
