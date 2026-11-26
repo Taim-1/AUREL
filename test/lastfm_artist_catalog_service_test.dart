@@ -27,6 +27,7 @@ void main() {
       });
       final service = LastFmCatalogService(
         apiKey: 'test-key',
+        termsApproved: true,
         dio: Dio(
           BaseOptions(
             baseUrl: 'https://ws.audioscrobbler.com/2.0/',
@@ -87,6 +88,7 @@ void main() {
           });
       final service = LastFmCatalogService(
         apiKey: 'invalid-key',
+        termsApproved: true,
         dio: Dio(
           BaseOptions(
             baseUrl: 'https://ws.audioscrobbler.com/2.0/',
@@ -170,6 +172,28 @@ void main() {
 
       expect(await service.searchArtistTopTracks('M83'), isEmpty);
       expect(methods, ['artist.search']);
+      adapter.close();
+    });
+
+    test('requires both a key and explicit terms approval', () async {
+      final adapter = _JsonAdapter((_) => throw StateError('unexpected request'));
+      final service = LastFmCatalogService(
+        apiKey: 'test-key',
+        termsApproved: false,
+        dio: Dio(
+          BaseOptions(
+            baseUrl: 'https://ws.audioscrobbler.com/2.0/',
+            responseType: ResponseType.json,
+          ),
+        )..httpClientAdapter = adapter,
+      );
+
+      expect(service.isConfigured, isFalse);
+      await expectLater(
+        service.topTracks(),
+        throwsA(isA<LastFmCatalogException>()),
+      );
+      expect(adapter.requestCount, 0);
       adapter.close();
     });
 
