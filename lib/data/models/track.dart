@@ -76,7 +76,7 @@ class Track {
     // A device/downloaded item must use its real local URI. Never fall back
     // to a network stream for a broken offline entry.
     if (isDeviceTrack || isDownloaded) return hasLocalPlaybackUri;
-    return streamUrl.trim().isNotEmpty;
+    return _isSecureHttpsUrl(streamUrl);
   }
 
   String get playbackUri {
@@ -106,7 +106,7 @@ class Track {
       licenseUrl: (json['license_ccurl'] ?? '').toString(),
       durationMs: seconds * 1000,
       downloadAllowed: json['audiodownload_allowed'] == true &&
-          download.isNotEmpty,
+          _isSecureHttpsUrl(download),
       providerId: 'jamendo',
       providerName: 'Jamendo',
       sourceUrl: (json['shareurl'] ?? '').toString(),
@@ -147,7 +147,8 @@ class Track {
           ? 'https://api.audius.co/v1/tracks/$id/download?app_name=AUREL'
           : '',
       durationMs: seconds * 1000,
-      downloadAllowed: downloadable,
+      downloadAllowed: downloadable &&
+          _isSecureHttpsUrl('https://api.audius.co/v1/tracks/$id/download?app_name=AUREL'),
       providerId: 'audius',
       providerName: 'Audius',
       sourceUrl: (json['permalink'] ?? '').toString(),
@@ -189,7 +190,7 @@ class Track {
           : 'https://api.soundcloud.com/tracks/$id/stream',
       downloadUrl: downloadable ? downloadUrl : '',
       durationMs: (json['duration'] as num?)?.round() ?? 0,
-      downloadAllowed: downloadable && downloadUrl.isNotEmpty,
+      downloadAllowed: downloadable && _isSecureHttpsUrl(downloadUrl),
       providerId: 'soundcloud',
       providerName: 'SoundCloud',
       sourceUrl: (json['permalink_url'] ?? '').toString(),
@@ -336,7 +337,7 @@ class Track {
       licenseName: license,
       attribution: attribution,
       durationMs: duration is num ? duration.round() : 0,
-      downloadAllowed: playable && allowed,
+      downloadAllowed: playable && allowed && _isSecureHttpsUrl(rawUrl),
       providerId: 'openverse',
       providerName: 'Openverse',
       sourceUrl: safeLandingUrl,
@@ -368,7 +369,7 @@ class Track {
         licenseName: licenseName,
         attribution: '$title by $artist — Internet Archive. $licenseUrl',
         durationMs: durationMs,
-        downloadAllowed: true,
+        downloadAllowed: _isSecureHttpsUrl(mediaUrl),
         providerId: 'internet_archive',
         providerName: 'Internet Archive',
         sourceUrl: sourceUrl,
@@ -396,7 +397,8 @@ class Track {
         licenseName: licenseName,
         attribution: attribution,
         durationMs: durationMs,
-        downloadAllowed: mediaUrl.isNotEmpty && licenseUrl.isNotEmpty,
+        downloadAllowed: _isSecureHttpsUrl(mediaUrl) &&
+            _isSecureHttpsUrl(licenseUrl),
         providerId: 'wikimedia_commons',
         providerName: 'Open audio collection',
         sourceUrl: sourceUrl,
@@ -559,4 +561,10 @@ class Track {
         matchedSources: matchedSources ?? this.matchedSources,
         playbackHeaders: playbackHeaders ?? this.playbackHeaders,
       );
+}
+
+
+bool _isSecureHttpsUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+  return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
 }
