@@ -277,29 +277,52 @@ class MusicCatalogService {
   }) async {
     final output = <Track>[];
     for (final track in tracks) {
-      if (!track.canPlay) continue;
+      final hasPlayableAlternative = track.alternatives.any(
+        (alternative) => alternative.canPlay,
+      );
+      if (!track.canPlay && !hasPlayableAlternative) continue;
       try {
         output.add(await prepareTrack(track));
       } catch (_) {
-        // An unavailable provider entry must not block other playable
-        // providers in the queue. The specifically selected track is strict.
+        // An unavailable recording must not block the rest of the queue.
+        // The specifically selected track remains strict and reports failure.
         if (track.id == requiredTrackId) rethrow;
       }
     }
     return output;
   }
 
+  /// Tries same-recording copies in AUREL priority order. Alternatives were
+  /// grouped by recording identity before this method is called, so fallback
+  /// can never silently switch to a different song, remix or live version.
   Future<Track> prepareTrack(Track track) async {
-    if (!track.canPlay) {
-      throw const CatalogPlaybackException(
-        'This recording is listed in the AUREL catalogue, but an '
-        'authorized in-app audio stream is not available.',
+    final candidates = <Track>[
+      track,
+      ...track.alternatives,
+    ].where((candidate) => candidate.canPlay);
+
+    Object? lastError;
+    for (final candidate in candidates) {
+      try {
+        if (candidate.providerId == 'soundcloud') {
+          return await soundcloud.prepareForPlayback(candidate);
+        }
+        return candidate;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError != null) {
+      throw CatalogPlaybackException(
+        'The preferred source and its eligible alternatives could not '
+        'prepare this recording: $lastError',
       );
     }
-    if (track.providerId == 'soundcloud') {
-      return soundcloud.prepareForPlayback(track);
-    }
-    return track;
+    throw const CatalogPlaybackException(
+      'This recording is listed in the AUREL catalogue, but an '
+      'authorized in-app audio stream is not available.',
+    );
   }
 
   /// Prepares authorization for an allowed offline copy independently of
@@ -409,6 +432,7 @@ class MusicCatalogService {
               ? recordingId
               : selected.recordingId,
           matchedSources: sources,
+          alternatives: best.skip(1).toList(growable: false),
         ),
       );
     }
