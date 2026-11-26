@@ -26,7 +26,6 @@ import 'data/catalog/providers/music_brainz_service.dart';
 import 'data/catalog/providers/lastfm_catalog_service.dart';
 import 'data/catalog/providers/listenbrainz_catalog_service.dart';
 import 'data/services/playback_controller.dart';
-import 'data/services/device_library_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,7 +77,6 @@ Future<void> main() async {
     lyrics: LyricsService(),
     account: account,
     catalog: catalog,
-    deviceLibrary: DeviceLibraryService(),
   );
 
   runApp(
