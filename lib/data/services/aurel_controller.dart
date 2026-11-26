@@ -521,6 +521,42 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> removeTrackFromPlaylist(
+    String playlistId,
+    String trackId,
+  ) async {
+    final index = playlists.indexWhere((playlist) => playlist.id == playlistId);
+    if (index < 0) return;
+    final playlist = playlists[index];
+    final updated = playlist.copyWith(
+      tracks: playlist.tracks
+          .where((track) => track.id != trackId)
+          .toList(growable: false),
+    );
+    playlists = [
+      for (var i = 0; i < playlists.length; i++)
+        if (i == index) updated else playlists[i],
+    ];
+    await repository.savePlaylists(playlists);
+    await syncCloudLibrary();
+    notifyListeners();
+  }
+
+  Future<void> renamePlaylist(String playlistId, String name) async {
+    final normalized = name.trim();
+    if (normalized.isEmpty || normalized.length > 32) return;
+    final index = playlists.indexWhere((playlist) => playlist.id == playlistId);
+    if (index < 0) return;
+    playlists = [
+      for (var i = 0; i < playlists.length; i++)
+        if (i == index) playlists[i].copyWith(name: normalized)
+        else playlists[i],
+    ];
+    await repository.savePlaylists(playlists);
+    await syncCloudLibrary();
+    notifyListeners();
+  }
+
   Future<void> removePlaylist(String playlistId) async {
     playlists = playlists.where((item) => item.id != playlistId).toList();
     await repository.savePlaylists(playlists);
