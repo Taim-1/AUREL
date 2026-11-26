@@ -591,7 +591,7 @@ class AurelController extends ChangeNotifier {
 
   Future<void> addToQueue(Track track) async {
     final selected = _preferDownloadedCopy(track);
-    if (offlineMode && !selected.isDownloaded) {
+    if (offlineMode && (!selected.isDownloaded || !selected.canPlay)) {
       throw const PlaybackException(
         'Only tracks saved inside AUREL can be queued in Offline mode.',
       );
@@ -611,7 +611,7 @@ class AurelController extends ChangeNotifier {
 
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
     final selectedTrack = _preferDownloadedCopy(track);
-    if (offlineMode && !selectedTrack.isDownloaded) {
+    if (offlineMode && (!selectedTrack.isDownloaded || !selectedTrack.canPlay)) {
       throw const PlaybackException(
         'This track is not saved for offline listening yet.',
       );
@@ -682,12 +682,34 @@ class AurelController extends ChangeNotifier {
       searchMoreError = null;
       discoverError = null;
 
-      // Never leave an online stream playing after entering offline mode.
-      if (playback.currentTrack?.isDownloaded != true ||
-          playback.currentTrack?.canPlay != true) {
-        await playback.player.stop();
-        playback.queue = const [];
-        playback.currentIndex = -1;
+      // Switch the current online copy to its saved AUREL file when one is
+      // available, preserving the current position and pause/play state.
+      final current = playback.currentTrack;
+      if (current != null) {
+        final wasPlaying = playback.isPlaying;
+        final position = playback.player.position;
+        final localCopy = _preferDownloadedCopy(current);
+        if (localCopy.isDownloaded && localCopy.canPlay) {
+          if (!current.isDownloaded || current.id != localCopy.id) {
+            try {
+              await playTrack(localCopy, queue: playback.queue);
+              try {
+                await playback.seek(position);
+              } catch (_) {
+                // The saved copy may have a slightly different duration.
+              }
+              if (!wasPlaying) await playback.player.pause();
+            } catch (_) {
+              await playback.player.stop();
+              playback.queue = const [];
+              playback.currentIndex = -1;
+            }
+          }
+        } else if (!current.isDownloaded || !current.canPlay) {
+          await playback.player.stop();
+          playback.queue = const [];
+          playback.currentIndex = -1;
+        }
       }
     }
 
