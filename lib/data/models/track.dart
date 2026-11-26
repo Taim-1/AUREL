@@ -521,6 +521,7 @@ class Track {
       providerId: 'lastfm',
       providerName: 'Last.fm',
       sourceUrl: safeSource,
+      attribution: 'Metadata provided by Last.fm. No audio is supplied by this source.',
       // Last.fm's MBID is a MusicBrainz recording UUID, not an ISRC.
       recordingMbid: _isValidMusicBrainzId(mbid) ? mbid : '',
       isPlayable: false,
