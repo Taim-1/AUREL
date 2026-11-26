@@ -438,7 +438,40 @@ class AurelController extends ChangeNotifier {
           .where((source) => source.trim().isNotEmpty)
           .toSet()
           .toList(growable: false);
-      return selected.copyWith(matchedSources: sources);
+      final artwork = ranked
+          .firstWhere(
+            (track) => track.artworkUrl.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .artworkUrl;
+      final album = ranked
+          .firstWhere(
+            (track) => track.album.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .album;
+      final duration = ranked
+          .firstWhere(
+            (track) => track.durationMs > 0,
+            orElse: () => selected,
+          )
+          .durationMs;
+      final recordingId = ranked
+          .firstWhere(
+            (track) => track.recordingId.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .recordingId;
+      return selected.copyWith(
+        artworkUrl: selected.artworkUrl.trim().isEmpty
+            ? artwork
+            : selected.artworkUrl,
+        album: selected.album.trim().isEmpty ? album : selected.album,
+        durationMs: selected.durationMs > 0 ? selected.durationMs : duration,
+        recordingId:
+            selected.recordingId.trim().isEmpty ? recordingId : selected.recordingId,
+        matchedSources: sources,
+      );
     }).toList(growable: false);
   }
 
