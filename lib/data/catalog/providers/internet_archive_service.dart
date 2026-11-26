@@ -187,20 +187,17 @@ class InternetArchiveService {
   }
 
   String? _licenseName(String url) {
-    final value = url.trim().toLowerCase();
-    if (value.isEmpty) return null;
-    if (value.contains('creativecommons.org/licenses/by-sa/')) {
-      return 'CC BY-SA';
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.toLowerCase() != 'creativecommons.org') {
+      return null;
     }
-    if (value.contains('creativecommons.org/licenses/by/')) {
-      return 'CC BY';
-    }
-    if (value.contains('creativecommons.org/publicdomain/zero/')) {
-      return 'CC0';
-    }
-    if (value.contains('creativecommons.org/publicdomain/mark/')) {
-      return 'Public Domain Mark';
-    }
+    final path = uri.path.toLowerCase();
+    if (path.contains('/licenses/by-sa/')) return 'CC BY-SA';
+    if (path.contains('/licenses/by/')) return 'CC BY';
+    if (path.contains('/publicdomain/zero/')) return 'CC0';
+    if (path.contains('/publicdomain/mark/')) return 'Public Domain Mark';
     return null;
   }
 }
