@@ -664,6 +664,72 @@ class _PlaylistDetailPage extends StatelessWidget {
 
   final String playlistId;
 
+  Future<void> _renamePlaylist(
+    BuildContext context,
+    MusicPlaylist playlist,
+  ) async {
+    final nameController = TextEditingController(text: playlist.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AurelColors.surfaceRaised,
+        title: const Text('Rename playlist'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          maxLength: 32,
+          decoration: const InputDecoration(labelText: 'Playlist name'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(dialogContext, nameController.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    nameController.dispose();
+    if (name != null && name.isNotEmpty && context.mounted) {
+      await context.read<AurelController>().renamePlaylist(playlist.id, name);
+    }
+  }
+
+  Future<void> _playPlaylist(
+    BuildContext context,
+    MusicPlaylist playlist,
+    AurelController controller,
+  ) async {
+    final firstPlayable = playlist.tracks.cast<Track?>().firstWhere(
+          (track) =>
+              track != null &&
+              track.canPlay &&
+              (!controller.offlineMode || track.isDownloaded),
+          orElse: () => null,
+        );
+    if (firstPlayable == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No tracks in this playlist are currently playable.'),
+        ),
+      );
+      return;
+    }
+    try {
+      await controller.playTrack(firstPlayable, queue: playlist.tracks);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
@@ -675,42 +741,143 @@ class _PlaylistDetailPage extends StatelessWidget {
       }
     }
     final selectedPlaylist = playlist;
+    final firstArtwork = selectedPlaylist?.tracks.isNotEmpty == true
+        ? selectedPlaylist!.tracks.first.artworkUrl
+        : '';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(selectedPlaylist?.name ?? 'Playlist'),
         actions: [
           if (selectedPlaylist != null)
-            IconButton(
-              tooltip: 'Delete playlist',
-              onPressed: () async {
-                await context.read<AurelController>().removePlaylist(playlistId);
-                if (context.mounted) Navigator.pop(context);
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'rename') {
+                  await _renamePlaylist(context, selectedPlaylist);
+                } else if (value == 'delete') {
+                  await context
+                      .read<AurelController>()
+                      .removePlaylist(playlistId);
+                  if (context.mounted) Navigator.pop(context);
+                }
               },
-              icon: const Icon(Icons.delete_outline_rounded),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'rename', child: Text('Rename playlist')),
+                PopupMenuItem(value: 'delete', child: Text('Delete playlist')),
+              ],
             ),
         ],
       ),
       body: selectedPlaylist == null
           ? const Center(child: Text('This playlist is no longer available.'))
-          : selectedPlaylist.tracks.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No tracks yet. Add music from Search or Discover.',
-                    style: TextStyle(color: AurelColors.muted),
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(17),
+                  decoration: BoxDecoration(
+                    color: AurelColors.surface,
+                    borderRadius: BorderRadius.circular(21),
+                    border: Border.all(color: AurelColors.divider),
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                  children: selectedPlaylist.tracks
-                      .map(
-                        (track) => TrackTile(
-                          track: track,
-                          queue: selectedPlaylist.tracks,
+                  child: Row(
+                    children: [
+                      AlbumArt(
+                        imageUrl: firstArtwork,
+                        size: 92,
+                        radius: 17,
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'YOUR PLAYLIST',
+                              style: TextStyle(
+                                color: AurelColors.champagne,
+                                fontSize: 9,
+                                letterSpacing: 1.7,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              selectedPlaylist.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              '${selectedPlaylist.tracks.length} tracks',
+                              style: const TextStyle(
+                                color: AurelColors.muted,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              onPressed: selectedPlaylist.tracks.isEmpty
+                                  ? null
+                                  : () => _playPlaylist(
+                                        context,
+                                        selectedPlaylist,
+                                        controller,
+                                      ),
+                              icon: const Icon(Icons.play_arrow_rounded),
+                              label: const Text('Play playlist'),
+                            ),
+                          ],
                         ),
-                      )
-                      .toList(),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 19),
+                if (selectedPlaylist.tracks.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 25),
+                    child: Center(
+                      child: Text(
+                        'No tracks yet. Add music from Search or Discover.',
+                        style: TextStyle(color: AurelColors.muted),
+                      ),
+                    ),
+                  )
+                else
+                  ...selectedPlaylist.tracks.map(
+                    (track) => Row(
+                      children: [
+                        Expanded(
+                          child: TrackTile(
+                            track: track,
+                            queue: selectedPlaylist.tracks,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove from playlist',
+                          onPressed: () => context
+                              .read<AurelController>()
+                              .removeTrackFromPlaylist(
+                                playlistId,
+                                track.id,
+                              ),
+                          icon: const Icon(
+                            Icons.remove_circle_outline_rounded,
+                            color: AurelColors.muted,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }
