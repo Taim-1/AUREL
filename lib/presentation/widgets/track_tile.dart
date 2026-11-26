@@ -230,15 +230,18 @@ class TrackTile extends StatelessWidget {
               ),
               onSelected: (value) => _handlePlaylistAction(context, value),
               itemBuilder: (_) => [
-                const PopupMenuItem<String>(
-                  value: '__play_next__',
-                  child: Text('Play next'),
-                ),
-                const PopupMenuItem<String>(
-                  value: '__queue__',
-                  child: Text('Add to queue'),
-                ),
-                const PopupMenuDivider(),
+                if (track.canPlay ||
+                    track.alternatives.any((item) => item.canPlay)) ...[
+                  const PopupMenuItem<String>(
+                    value: '__play_next__',
+                    child: Text('Play next'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: '__queue__',
+                    child: Text('Add to queue'),
+                  ),
+                  const PopupMenuDivider(),
+                ],
                 const PopupMenuItem<String>(
                   value: '__create__',
                   child: Text('Create new playlist'),
