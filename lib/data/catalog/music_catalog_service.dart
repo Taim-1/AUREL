@@ -12,6 +12,7 @@ import 'providers/spotify_catalog_service.dart';
 import 'providers/wikimedia_commons_service.dart';
 import 'providers/music_brainz_service.dart';
 import 'providers/lastfm_catalog_service.dart';
+import 'providers/listenbrainz_catalog_service.dart';
 
 class CatalogPage {
   const CatalogPage({
@@ -39,6 +40,7 @@ class MusicCatalogService {
     required this.wikimediaCommons,
     required this.musicBrainz,
     required this.lastFm,
+    required this.listenBrainz,
   });
 
   final JamendoService jamendo;
@@ -51,6 +53,7 @@ class MusicCatalogService {
   final WikimediaCommonsService wikimediaCommons;
   final MusicBrainzService musicBrainz;
   final LastFmCatalogService lastFm;
+  final ListenBrainzCatalogService listenBrainz;
 
   static const pageSize = 30;
 
@@ -69,6 +72,7 @@ class MusicCatalogService {
     'apple_music': 20,
     'spotify': 15,
     'lastfm': 12,
+    'listenbrainz': 11,
     'musicbrainz': 5,
   };
 
@@ -225,6 +229,14 @@ class MusicCatalogService {
         () => soundcloud.search(
           'trending music',
           limit: pageSize,
+          offset: offset,
+          cancelToken: cancelToken,
+        ),
+      ),
+      _SourceRequest(
+        'ListenBrainz global charts',
+        () => listenBrainz.sitewideTopRecordings(
+          count: pageSize,
           offset: offset,
           cancelToken: cancelToken,
         ),
@@ -438,6 +450,7 @@ class MusicCatalogService {
       'Recording metadata': 25,
       'Last.fm discovery': pageSize,
       'Last.fm charts': pageSize,
+      'ListenBrainz global charts': pageSize,
     };
     final hasMore = results.sources.entries.any(
       (entry) =>
