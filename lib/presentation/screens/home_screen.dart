@@ -52,8 +52,15 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
+    final localTracks = <String, Track>{
+      for (final track in [
+        ...controller.deviceTracks,
+        ...controller.downloadedTracks,
+      ])
+        track.id: track,
+    }.values.toList(growable: false);
     final tracks = controller.offlineMode
-        ? controller.downloadedTracks
+        ? localTracks
         : controller.discoverTracks;
     Track? featured;
     for (final track in tracks) {
@@ -63,12 +70,12 @@ class HomeScreen extends StatelessWidget {
       }
     }
     final featuredTrack = featured;
-    final downloadedById = {
-      for (final track in controller.downloadedTracks) track.id: track,
+    final localTracksById = {
+      for (final track in localTracks) track.id: track,
     };
     final recentTracks = controller.offlineMode
         ? controller.recentlyPlayed
-            .map((track) => downloadedById[track.id])
+            .map((track) => localTracksById[track.id])
             .whereType<Track>()
             .toList(growable: false)
         : controller.recentlyPlayed;
@@ -139,7 +146,7 @@ class HomeScreen extends StatelessWidget {
           ],
           const SizedBox(height: 27),
           _SectionHeading(
-            title: controller.offlineMode ? 'Downloaded Music' : 'Trending Now',
+            title: controller.offlineMode ? 'Available Offline' : 'Trending Now',
             action: controller.offlineMode ? null : 'See All',
             onTap: controller.offlineMode
                 ? null
