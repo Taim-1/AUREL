@@ -266,7 +266,7 @@ export const catalogTokens = onRequest(
     }
 
     const authorization = request.header("authorization") ?? "";
-    const match = /^Bearer\\s+(.+)$/i.exec(authorization);
+    const match = /^Bearer\s+(.+)$/i.exec(authorization);
     if (!match) {
       jsonError(response, 401, "Sign in to AUREL before requesting a provider token.");
       return;
