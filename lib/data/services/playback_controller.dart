@@ -128,6 +128,22 @@ class PlaybackController extends ChangeNotifier {
   }
 
   /// Removes an upcoming item. The current and already played items stay put.
+  Future<void> removeCurrentTrackFromQueue() async {
+    if (currentIndex < 0 || currentIndex >= queue.length) {
+      await player.stop();
+      return;
+    }
+    final index = currentIndex;
+    await player.stop();
+    await player.removeAudioSourceAt(index);
+    queue = [
+      ...queue.take(index),
+      ...queue.skip(index + 1),
+    ];
+    currentIndex = player.currentIndex ?? -1;
+    notifyListeners();
+  }
+
   Future<void> removeUpcoming(int index) async {
     if (isShuffleEnabled) {
       throw const PlaybackException(
