@@ -156,6 +156,23 @@ void main() {
       );
     });
 
+    test('uses exact ISRC when duplicate catalogue entries have different MBIDs', () {
+      expect(
+        CatalogIdentity.matches(
+          recording(
+            mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+            isrc: 'USABC2600001',
+          ),
+          recording(
+            id: 'duplicate-recording-entity',
+            mbid: 'ba8701ba-dc7c-4bca-9c83-846ee8c3d576',
+            isrc: 'USABC2600001',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
     test('does not merge conflicting verified recording MBIDs', () {
       expect(
         CatalogIdentity.matches(
