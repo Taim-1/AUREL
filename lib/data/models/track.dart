@@ -481,17 +481,7 @@ class Track {
     final album = rawAlbum is Map
         ? (rawAlbum['title'] ?? rawAlbum['name'] ?? '').toString().trim()
         : '';
-    final rawImages = json['image'];
-    var artworkUrl = '';
-    if (rawImages is List) {
-      for (final image in rawImages.whereType<Map>()) {
-        final candidate = (image['#text'] ?? '').toString().trim();
-        final uri = Uri.tryParse(candidate);
-        if (uri != null && uri.scheme == 'https' && uri.host.isNotEmpty) {
-          artworkUrl = candidate;
-        }
-      }
-    }
+    // Last.fm API terms do not license artwork/image reuse.
     final rawDuration = json['duration'];
     final reportedDuration = rawDuration is num
         ? rawDuration.round()
@@ -522,7 +512,7 @@ class Track {
       title: title.isEmpty ? 'Unknown recording' : title,
       artist: artist.isEmpty ? 'Unknown artist' : artist,
       album: album,
-      artworkUrl: artworkUrl,
+      artworkUrl: '',
       durationMs: duration,
       providerId: 'lastfm',
       providerName: 'Last.fm',
