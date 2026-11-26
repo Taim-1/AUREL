@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: aurel-verify-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: aurel-verify-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -28,10 +28,10 @@ jobs:
       AUREL_GOOGLE_SERVER_CLIENT_ID: ${{ secrets.AUREL_GOOGLE_SERVER_CLIENT_ID }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node for Firebase Functions
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
 
