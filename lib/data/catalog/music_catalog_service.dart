@@ -191,24 +191,26 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
-      _SourceRequest(
-        'Last.fm discovery',
-        () => lastFm.search(
-          normalized,
-          limit: pageSize,
-          page: page + 1,
-          cancelToken: cancelToken,
+      if (lastFm.isConfigured)
+        _SourceRequest(
+          'Last.fm discovery',
+          () => lastFm.search(
+            normalized,
+            limit: pageSize,
+            page: page + 1,
+            cancelToken: cancelToken,
+          ),
         ),
-      ),
-      _SourceRequest(
-        'Last.fm artist catalogue',
-        () => lastFm.artistTopTracks(
-          normalized,
-          limit: pageSize,
-          page: page + 1,
-          cancelToken: cancelToken,
+      if (lastFm.isConfigured)
+        _SourceRequest(
+          'Last.fm artist catalogue',
+          () => lastFm.searchArtistTopTracks(
+            normalized,
+            limit: pageSize,
+            page: page + 1,
+            cancelToken: cancelToken,
+          ),
         ),
-      ),
       _SourceRequest(
         'Recording metadata',
         () => musicBrainz.search(
@@ -292,14 +294,15 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
-      _SourceRequest(
-        'Last.fm charts',
-        () => lastFm.topTracks(
-          limit: pageSize,
-          page: page + 1,
-          cancelToken: cancelToken,
+      if (lastFm.isConfigured)
+        _SourceRequest(
+          'Last.fm charts',
+          () => lastFm.topTracks(
+            limit: pageSize,
+            page: page + 1,
+            cancelToken: cancelToken,
+          ),
         ),
-      ),
     ]);
     final commons = await _collectCommons(
       'instrumental music',
