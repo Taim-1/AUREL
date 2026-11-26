@@ -141,12 +141,11 @@ class LastFmCatalogService {
       _throwForApiError(response.data);
       final results = response.data?['results'];
       final matches = results is Map ? results['artistmatches'] : null;
-      final artists = matches is Map ? matches['artist'] : null;
-      if (artists is! List) return const [];
+      final artists = _asMaps(matches is Map ? matches['artist'] : null);
 
       String? exactArtist;
       final target = normalized.toLowerCase();
-      for (final item in artists.whereType<Map>()) {
+      for (final item in artists) {
         final name = (item['name'] ?? '').toString().trim();
         final normalizedName =
             name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
@@ -239,14 +238,23 @@ class LastFmCatalogService {
     throw LastFmCatalogException(message);
   }
 
-  List<Track> _parseTracks(dynamic rawTracks) {
-    if (rawTracks is! List) return const [];
-    return rawTracks
-        .whereType<Map>()
-        .map((item) => Track.fromLastFm(Map<String, dynamic>.from(item)))
-        .where((track) => track.id.isNotEmpty)
-        .toList(growable: false);
+  List<Map<String, dynamic>> _asMaps(dynamic value) {
+    if (value is Map) {
+      return [Map<String, dynamic>.from(value)];
+    }
+    if (value is List) {
+      return value
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false);
+    }
+    return const [];
   }
+
+  List<Track> _parseTracks(dynamic rawTracks) => _asMaps(rawTracks)
+      .map(Track.fromLastFm)
+      .where((track) => track.id.isNotEmpty)
+      .toList(growable: false);
 }
 
 class LastFmCatalogException implements Exception {
