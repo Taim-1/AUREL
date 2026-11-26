@@ -56,7 +56,8 @@ class AurelController extends ChangeNotifier {
     ].take(100).toList(growable: false);
     await repository.saveRecentlyPlayed(recentlyPlayed);
     try {
-      await syncCloudLibrary();
+      await account.saveCloudRecentlyPlayed(recentlyPlayed);
+      cloudSyncError = null;
     } catch (error) {
       cloudSyncError = error.toString().replaceFirst('Exception: ', '');
     }
