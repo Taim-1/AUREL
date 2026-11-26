@@ -6,8 +6,9 @@ import '../../models/track.dart';
 /// It is deliberately metadata-only: Last.fm does not provide AUREL with
 /// an authorized full-track audio stream.
 class LastFmCatalogService {
-  LastFmCatalogService({Dio? dio})
-      : _dio = dio ??
+  LastFmCatalogService({Dio? dio, String? apiKey})
+      : _apiKey = apiKey ?? const String.fromEnvironment('LASTFM_API_KEY'),
+        _dio = dio ??
             Dio(
               BaseOptions(
                 baseUrl: 'https://ws.audioscrobbler.com/2.0/',
@@ -19,7 +20,7 @@ class LastFmCatalogService {
             );
 
   final Dio _dio;
-  final String _apiKey = const String.fromEnvironment('LASTFM_API_KEY');
+  final String _apiKey;
 
   bool get isConfigured => _apiKey.trim().isNotEmpty;
 
