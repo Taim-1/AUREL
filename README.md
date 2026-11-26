@@ -11,6 +11,8 @@ Release packaging is intentionally deferred while the app is being completed. Gi
 ## Features
 
 - Unified discovery across eleven catalogue adapters: six playable-audio collections (subject to item rights) and five metadata indexes, including Last.fm discovery and ListenBrainz global popularity.
+- Real on-device music library access through Android MediaStore, with an explicit audio permission prompt and direct content-URI playback.
+- Local device files stay on the phone; Snaptube folders are excluded from AUREL's local library scan.
 - In-app playback and queue from sources that authorize a playable audio stream.
 - Deterministic song priority: local library, Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons, then Openverse; metadata-only fallbacks remain below playable audio.
 - Broader artist-led discovery: Last.fm artist top tracks are federated with track search, deduplicated and kept metadata-only unless another provider supplies playable audio.
@@ -27,7 +29,7 @@ AUREL does not scrape music sites, extract protected streams, record another app
 
 ## Music catalogue and playback capability
 
-AUREL presents one unified search and one in-app player. Provider names are not part of the normal listening screens; creator/licence credits required for individual works remain available in track details.
+AUREL presents one unified search and one in-app player. On-device music, AUREL-managed downloads and online catalogue results remain separate collections. Provider names are not part of the normal listening screens; creator/licence credits required for individual works remain available in track details.
 
 | Source | Purpose in AUREL | In-app audio |
 |---|---|---|
