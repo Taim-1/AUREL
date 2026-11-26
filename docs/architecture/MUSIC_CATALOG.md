@@ -35,7 +35,7 @@ The search orchestrator:
 3. Queries the public open-audio adapter sequentially after the other source batch, respecting its concurrency guidance.
 4. Queries the recording metadata catalogue through a single serialized one-request-per-second queue.
 5. Matches exact ISRCs first.
-6. Falls back to normalized title, artist and a duration bucket while preserving version labels such as Live, Remix and Acoustic.
+6. Falls back to normalized title, artist and a duration difference of no more than five seconds, while preserving version labels such as Live, Remix and Acoustic.
 7. Does not merge uncertain recordings when both ISRC and useful duration/album data are missing.
 8. Ranks playable audio above metadata-only results. A match in a metadata catalogue never creates a fake audio URL.
 
