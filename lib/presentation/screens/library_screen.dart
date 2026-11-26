@@ -714,8 +714,10 @@ class PlaylistDetailScreen extends StatelessWidget {
     final firstPlayable = playlist.tracks.cast<Track?>().firstWhere(
           (track) =>
               track != null &&
-              track.canPlay &&
-              (!controller.offlineMode || track.isDownloaded),
+              controller.hasPlayableSource(track) &&
+              (!controller.offlineMode ||
+                  track.isDownloaded ||
+                  controller.hasLocalPlayableCopy(track)),
           orElse: () => null,
         );
     if (firstPlayable == null) {
