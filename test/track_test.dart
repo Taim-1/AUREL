@@ -293,6 +293,32 @@ void main() {
   });
   });
 
+  group('Playable capability safeguards', () {
+    test('preview-only recordings are not playable', () {
+      const preview = Track(
+        id: 'preview',
+        title: 'Preview',
+        artist: 'Artist',
+        streamUrl: 'https://example.com/preview.mp3',
+        isPreviewOnly: true,
+      );
+
+      expect(preview.canPlay, isFalse);
+    });
+
+    test('metadata-only recordings are not playable even with a URL', () {
+      const metadata = Track(
+        id: 'metadata',
+        title: 'Metadata',
+        artist: 'Artist',
+        streamUrl: 'https://example.com/metadata.mp3',
+        isMetadataOnly: true,
+      );
+
+      expect(metadata.canPlay, isFalse);
+    });
+  });
+
   group('Local playback eligibility', () {
     test('does not treat a downloaded record without a file as playable', () {
       const track = Track(
