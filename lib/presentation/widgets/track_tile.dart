@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/models/track.dart';
@@ -46,13 +47,51 @@ class TrackTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         content: SingleChildScrollView(
-          child: SelectableText(
-            details.join('\n\n'),
-            style: const TextStyle(
-              color: AurelColors.muted,
-              fontSize: 12,
-              height: 1.5,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText(
+                details.join('\n\n'),
+                style: const TextStyle(
+                  color: AurelColors.muted,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+              if (track.providerId == 'lastfm' &&
+                  Uri.tryParse(track.sourceUrl)?.host.endsWith('last.fm') ==
+                      true) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.tryParse(track.sourceUrl);
+                      if (uri == null ||
+                          uri.scheme != 'https' ||
+                          !(uri.host == 'last.fm' ||
+                              uri.host.endsWith('.last.fm'))) {
+                        return;
+                      }
+                      final opened = await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                      if (!opened && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not open the Last.fm page.'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: const Text('View on Last.fm'),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         actions: [
