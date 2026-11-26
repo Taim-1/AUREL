@@ -38,11 +38,7 @@ class AurelController extends ChangeNotifier {
     });
     playback.addListener(_onPlaybackChanged);
     _deviceLibrarySubscription = deviceLibrary.changes.listen(
-      (_) {
-        if (hasDeviceAudioPermission && !isLoadingDeviceTracks) {
-          unawaited(refreshDeviceLibrary());
-        }
-      },
+      (_) => _scheduleDeviceLibraryRefresh(),
       onError: (Object _) {
         // MediaStore change notifications are an optimization; manual refresh
         // remains available when Android drops an event stream.
@@ -137,6 +133,8 @@ class AurelController extends ChangeNotifier {
   final MusicCatalogService catalog;
   final DeviceLibraryService deviceLibrary;
   late final StreamSubscription<void> _deviceLibrarySubscription;
+  Timer? _deviceLibraryDebounceTimer;
+  bool _deviceLibraryRefreshQueued = false;
 
   Map<String, String> sourceErrors = const {};
   Map<String, int> sourceCounts = const {};
@@ -204,7 +202,27 @@ class AurelController extends ChangeNotifier {
 
   /// Loads the indexed Android audio library only after the user opens
   /// Library → Songs. The permission prompt is never shown at startup.
+  void _scheduleDeviceLibraryRefresh() {
+    if (!hasDeviceAudioPermission) return;
+    if (isLoadingDeviceTracks) {
+      _deviceLibraryRefreshQueued = true;
+      return;
+    }
+    _deviceLibraryDebounceTimer?.cancel();
+    _deviceLibraryDebounceTimer = Timer(
+      const Duration(milliseconds: 350),
+      () {
+        _deviceLibraryDebounceTimer = null;
+        unawaited(refreshDeviceLibrary());
+      },
+    );
+  }
+
   Future<void> refreshDeviceLibrary({bool requestPermission = false}) async {
+    if (isLoadingDeviceTracks) {
+      _deviceLibraryRefreshQueued = true;
+      return;
+    }
     final generation = ++_deviceLibraryGeneration;
     isLoadingDeviceTracks = true;
     deviceLibraryError = null;
@@ -233,6 +251,10 @@ class AurelController extends ChangeNotifier {
       if (generation == _deviceLibraryGeneration) {
         isLoadingDeviceTracks = false;
         notifyListeners();
+        if (_deviceLibraryRefreshQueued) {
+          _deviceLibraryRefreshQueued = false;
+          _scheduleDeviceLibraryRefresh();
+        }
       }
     }
   }
@@ -937,6 +959,7 @@ class AurelController extends ChangeNotifier {
   @override
   void dispose() {
     _deviceLibraryGeneration++;
+    _deviceLibraryDebounceTimer?.cancel();
     unawaited(_deviceLibrarySubscription.cancel());
     _discoverCancelToken?.cancel('AUREL is closing');
     _searchCancelToken?.cancel('AUREL is closing');
