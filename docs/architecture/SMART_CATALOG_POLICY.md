@@ -32,10 +32,11 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 ## Deduplication rules
 
 1. Prefer exact ISRC matches when present.
-2. Without ISRC, require normalized title + normalized credited artist + a close duration match.
+2. Without ISRC on both entries, require normalized title + normalized credited artist + duration difference of no more than five seconds.
 3. Preserve meaningful version qualifiers: Live, Remix, Acoustic, Radio Edit, Remaster, Demo, Instrumental, and similar labels.
 4. Do not merge different recordings merely because title and artist match.
 5. When duration is absent or unreliable and no exact recording identifier exists, keep separate entries rather than risk a false merge.
+6. If both entries have ISRCs and they differ, never merge them through title/duration fallback.
 6. Choose the best eligible playable candidate using: playback eligibility, verified recording identity, artwork availability, duration metadata, then source preference.
 7. Preserve matched catalogue identifiers internally for diagnostics and future fallback, but do not display provider names as user-facing labels.
 8. Metadata-only matches may enrich an existing recording (artist spelling, album, artwork, ISRC) but must not replace a playable candidate.
@@ -61,4 +62,4 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 
 ## Current implementation note
 
-The catalogue currently collects multiple providers in parallel, groups matches, selects one candidate, and puts playable results before metadata-only results. The ranking table above is implemented as an internal preference in `lib/data/catalog/music_catalog_service.dart`. This policy document does not claim that all provider rights checks, UI hiding, or in-app playback constraints have already been fully audited or tested.
+The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking table is an internal preference in `lib/data/catalog/music_catalog_service.dart`. This policy document does not claim that all provider rights checks, UI hiding, or in-app playback constraints have already been fully audited or tested.
