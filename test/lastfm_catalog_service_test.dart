@@ -34,6 +34,13 @@ void main() {
       expect(track.providerId, 'lastfm');
       expect(track.attribution, contains('Last.fm'));
       expect(track.sourceUrl, 'https://www.last.fm/music/M83/_/Midnight+City');
+
+      final unsafeSource = Track.fromLastFm({
+        'name': 'Unexpected source',
+        'url': 'https://attacker.example/track',
+        'artist': 'Unknown artist',
+      });
+      expect(unsafeSource.sourceUrl, isEmpty);
       expect(track.isMetadataOnly, isTrue);
       expect(track.canPlay, isFalse);
       expect(track.streamUrl, isEmpty);
