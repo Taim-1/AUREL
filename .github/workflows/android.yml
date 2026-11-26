@@ -1,4 +1,4 @@
-name: AUREL Android Build
+name: AUREL Verification
 
 on:
   push:
@@ -8,15 +8,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: aurel-android-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: aurel-verify-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  verify-and-build:
-    name: Verify Flutter app and build APK
+  verify:
+    name: Verify Flutter app and Firebase functions
     runs-on: ubuntu-latest
     env:
       JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
@@ -29,10 +29,6 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
-          token: ${{ github.token }}
 
       - name: Set up Node for Firebase Functions
         uses: actions/setup-node@v4
@@ -44,12 +40,6 @@ jobs:
           npm install --prefix functions --no-audit --no-fund
           npm --prefix functions run build
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -57,95 +47,14 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Generate Android project scaffold
-        run: |
-          flutter create --platforms=android --org com.aurel --project-name aurel .
-          mkdir -p android/app/src/main/kotlin/com/aurel/aurel
-          cp platform/android/MainActivity.kt android/app/src/main/kotlin/com/aurel/aurel/MainActivity.kt
-          cp platform/android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          cp -R platform/android/res/. android/app/src/main/res/
-          rm -f test/widget_test.dart
-
-      - name: Install Android API 36
-        shell: bash
-        run: |
-          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          SDKMANAGER="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | head -n 1)"
-          fi
-          if [ ! -x "$SDKMANAGER" ]; then
-            echo "sdkmanager was not found under $SDK_ROOT"
-            exit 1
-          fi
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Set Android SDK versions
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('android/app/build.gradle.kts')
-          content = path.read_text()
-          content = content.replace(
-              'compileSdk = flutter.compileSdkVersion',
-              'compileSdk = 36'
-          )
-          content = content.replace(
-              'minSdk = flutter.minSdkVersion',
-              'minSdk = 23'
-          )
-          path.write_text(content)
-          PY
-
       - name: Resolve dependencies
         run: flutter pub get
 
-      - name: Generate AUREL launcher icon
-        run: dart run flutter_launcher_icons
-
-      - name: Format Dart sources
-        run: dart format lib test
+      - name: Check Dart formatting
+        run: dart format --output=none --set-exit-if-changed lib test
 
       - name: Analyze
         run: flutter analyze
 
       - name: Run tests
         run: flutter test
-
-      - name: Build release APK
-        run: |
-          flutter build apk --release \
-            --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID" \
-            --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY" \
-            --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY" \
-            --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID" \
-            --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID" \
-            --dart-define=AUREL_FIREBASE_MESSAGING_SENDER_ID="$AUREL_FIREBASE_MESSAGING_SENDER_ID" \
-            --dart-define=AUREL_GOOGLE_SERVER_CLIENT_ID="$AUREL_GOOGLE_SERVER_CLIENT_ID"
-
-      - name: Publish APK at repository root
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          PUBLISH_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
-        run: |
-          git fetch origin "${PUBLISH_BRANCH}"
-          git checkout -B aurel-apk-publish "origin/${PUBLISH_BRANCH}"
-          cp build/app/outputs/flutter-apk/app-release.apk AUREL.apk
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add AUREL.apk
-          if git diff --cached --quiet; then
-            echo "The root APK is already up to date."
-            exit 0
-          fi
-          git commit -m "chore: publish AUREL Android APK [skip ci]"
-          git push origin "HEAD:${PUBLISH_BRANCH}"
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AUREL-android-release
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          retention-days: 14
