@@ -32,6 +32,7 @@ class AppleMusicCatalogService {
   Future<List<Track>> search(
     String query, {
     int limit = 20,
+    int offset = 0,
     CancelToken? cancelToken,
   }) async {
     final normalized = query.trim();
@@ -45,6 +46,7 @@ class AppleMusicCatalogService {
           'term': normalized,
           'types': 'songs',
           'limit': limit.clamp(1, 25),
+          'offset': offset.clamp(0, 1000),
         },
         cancelToken: cancelToken,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
