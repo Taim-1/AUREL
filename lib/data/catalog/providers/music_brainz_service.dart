@@ -131,10 +131,12 @@ class MusicBrainzService {
     final previous = _requestQueue;
     final release = Completer<void>();
     _requestQueue = release.future;
+    var enteredQueue = false;
 
     () async {
       try {
         await _waitOrCancel(previous, cancelToken);
+        enteredQueue = true;
         final lastRequest = _lastRequestAt;
         if (lastRequest != null) {
           final elapsed = DateTime.now().difference(lastRequest);
@@ -152,7 +154,13 @@ class MusicBrainzService {
       } catch (error, stackTrace) {
         result.completeError(error, stackTrace);
       } finally {
-        release.complete();
+        if (enteredQueue) {
+          release.complete();
+        } else {
+          // A cancelled waiter must not let later requests bypass the active
+          // request that still owns the serialized queue.
+          previous.whenComplete(release.complete);
+        }
       }
     }();
 
