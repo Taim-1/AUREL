@@ -14,7 +14,12 @@ class DownloadsScreen extends StatelessWidget {
     final controller = context.watch<AurelController>();
     final tracks = controller.downloadedTracks;
     final activeDownloads = <String, Track>{
-      for (final track in [...controller.searchResults, ...controller.discoverTracks])
+      for (final track in [
+        ...controller.searchResults,
+        ...controller.discoverTracks,
+        ...controller.favoriteTracks,
+        ...controller.playlists.expand((playlist) => playlist.tracks),
+      ])
         if (controller.downloadingIds.contains(track.id)) track.id: track,
     }.values.toList(growable: false);
 
