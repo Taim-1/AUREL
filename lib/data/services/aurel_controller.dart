@@ -364,9 +364,10 @@ class AurelController extends ChangeNotifier {
 
     if (offlineMode) {
       final term = normalized.toLowerCase();
+      final offlineTracks = [...downloadedTracks, ...deviceTracks];
       searchResults = term.isEmpty
-          ? List<Track>.of(downloadedTracks)
-          : downloadedTracks.where((track) {
+          ? List<Track>.of(offlineTracks)
+          : offlineTracks.where((track) {
               final searchable =
                   '${track.title} ${track.artist} ${track.album}'.toLowerCase();
               return searchable.contains(term);
@@ -619,9 +620,9 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> addToQueue(Track track) async {
-    if (offlineMode && !track.isDownloaded) {
+    if (offlineMode && !track.isDownloaded && !track.isDeviceTrack) {
       throw const PlaybackException(
-        'Only tracks saved inside AUREL can be queued in Offline mode.',
+        'Only local or AUREL-downloaded tracks can be queued in Offline mode.',
       );
     }
     await playback.addToQueue(await catalog.prepareTrack(track));
@@ -630,7 +631,7 @@ class AurelController extends ChangeNotifier {
   Future<void> playNext(Track track) async {
     if (offlineMode && !track.isDownloaded) {
       throw const PlaybackException(
-        'Only tracks saved inside AUREL can be played next in Offline mode.',
+        'Only local or AUREL-downloaded tracks can be played next in Offline mode.',
       );
     }
     await playback.playNext(await catalog.prepareTrack(track));
@@ -639,11 +640,15 @@ class AurelController extends ChangeNotifier {
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
     if (offlineMode && !track.isDownloaded) {
       throw const PlaybackException(
-        'This track is not saved for offline listening yet.',
+        'This track is not available locally for offline listening.',
       );
     }
     final source = queue ??
-        (track.isDownloaded ? downloadedTracks : discoverTracks);
+        (track.isDeviceTrack
+            ? deviceTracks
+            : track.isDownloaded
+                ? downloadedTracks
+                : discoverTracks);
 
     // The selected recording must always be part of the queue. This matters
     // for tracks opened from playlists, favourites, recent history, or a
@@ -654,7 +659,7 @@ class AurelController extends ChangeNotifier {
 
     final tracks = offlineMode
         ? sourceWithSelection
-            .where((item) => item.isDownloaded)
+            .where((item) => item.isDownloaded || item.isDeviceTrack)
             .toList(growable: false)
         : sourceWithSelection;
     final prepared = await catalog.prepareQueue(
@@ -697,7 +702,9 @@ class AurelController extends ChangeNotifier {
       discoverError = null;
 
       // Never leave an online stream playing after entering offline mode.
-      if (playback.currentTrack?.isDownloaded != true) {
+      final currentTrack = playback.currentTrack;
+      if (currentTrack?.isDownloaded != true &&
+          currentTrack?.isDeviceTrack != true) {
         await playback.player.stop();
         playback.queue = const [];
         playback.currentIndex = -1;
