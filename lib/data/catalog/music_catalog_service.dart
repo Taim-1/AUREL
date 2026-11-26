@@ -233,7 +233,11 @@ class MusicCatalogService {
     CancelToken? cancelToken,
   }) async {
     if (cancelToken?.isCancelled ?? false) {
-      return _SourceResult.success(const []);
+      throw DioException(
+        requestOptions: RequestOptions(path: 'commons-search'),
+        type: DioExceptionType.cancel,
+        message: 'Open audio search cancelled.',
+      );
     }
     try {
       final tracks = await wikimediaCommons.search(
