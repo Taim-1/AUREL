@@ -69,3 +69,8 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 ## Current implementation note
 
 The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking rules are centralized in `lib/data/catalog/catalog_ranking.dart`; same-recording alternatives are retained for controlled fallback. Last.fm is a gated metadata adapter and is omitted unless the API key and written-approval flag are present. Its artwork is not reused, its data is excluded from the generic catalogue cache, and public use still requires the provider-approved attribution button and catalogue links. The automated CI suite validates the current model, ranking, identity, provider parser and Android debug-build paths; real provider authorization, item rights and account-specific services still require their credentials and approval before a public release.
+
+
+## Device library priority and privacy
+
+Android MediaStore tracks are local playable copies, ranked ahead of all online providers. They are queried only after the user opens Library → Songs and grants the scoped audio permission. AUREL uses MediaStore content URIs directly, excludes Snaptube paths, and does not copy, move, modify, or upload device audio. AUREL-managed downloads remain a separate local tier and the only entries in the Downloads tab. When Offline mode is active, playback, search, queue and fallback are restricted to currently playable on-device tracks and AUREL-managed downloads.
