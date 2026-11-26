@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../models/track.dart';
+import 'catalog_identity.dart';
 import 'providers/apple_music_catalog_service.dart';
 import 'providers/audius_service.dart';
 import 'providers/jamendo_service.dart';
@@ -316,22 +317,81 @@ class MusicCatalogService {
         .where((track) => track.id.isNotEmpty)
         .toList(growable: false);
 
-    final groups = <String, List<Track>>{};
+    // Group by verified recording identity, not a rounded duration bucket.
+    // This avoids both duplicate rows at bucket boundaries and accidental
+    // merges when two unrelated tracks happen to have no duration metadata.
+    final groups = <List<Track>>[];
     for (final track in allTracks) {
-      final identity = _identity(track);
-      groups.putIfAbsent(identity, () => <Track>[]).add(track);
+      final matchingGroups = <int>[];
+      for (var index = 0; index < groups.length; index++) {
+        if (groups[index].any(
+          (candidate) => CatalogIdentity.matches(candidate, track),
+        )) {
+          matchingGroups.add(index);
+        }
+      }
+
+      if (matchingGroups.isEmpty) {
+        groups.add([track]);
+      } else {
+        final targetIndex = matchingGroups.first;
+        groups[targetIndex].add(track);
+        // A newly arrived bridge match may connect groups that were separate
+        // before this track supplied stronger identity information.
+        for (final index in matchingGroups.skip(1).toList().reversed) {
+          groups[targetIndex].addAll(groups.removeAt(index));
+        }
+      }
     }
 
     final ranked = <Track>[];
-    for (final group in groups.values) {
+    for (final group in groups) {
       final best = [...group]..sort(_compareTracks);
       final selected = best.first;
       final sources = group
           .map((track) => track.providerName)
           .toSet()
           .toList(growable: false);
+
+      // Metadata catalogues can improve a playable recording's presentation,
+      // but must never replace its stream, download rights or attribution.
+      final artwork = best
+          .firstWhere(
+            (track) => track.artworkUrl.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .artworkUrl;
+      final album = best
+          .firstWhere(
+            (track) => track.album.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .album;
+      final duration = best
+          .firstWhere(
+            (track) => track.durationMs > 0,
+            orElse: () => selected,
+          )
+          .durationMs;
+      final recordingId = best
+          .firstWhere(
+            (track) => track.recordingId.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .recordingId;
+
       ranked.add(
         selected.copyWith(
+          artworkUrl: selected.artworkUrl.trim().isEmpty
+              ? artwork
+              : selected.artworkUrl,
+          album: selected.album.trim().isEmpty ? album : selected.album,
+          durationMs: selected.durationMs > 0
+              ? selected.durationMs
+              : duration,
+          recordingId: selected.recordingId.trim().isEmpty
+              ? recordingId
+              : selected.recordingId,
           matchedSources: sources,
         ),
       );
@@ -368,35 +428,6 @@ class MusicCatalogService {
       sourceErrors: sourceErrors,
     );
   }
-
-  String _identity(Track track) {
-    final isrc = track.recordingId
-        .trim()
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    if (isrc.isNotEmpty) return 'isrc:$isrc';
-
-    final title = _normalize(track.title);
-    final artist = _normalize(track.artist);
-    if (track.durationMs <= 0) {
-      final album = _normalize(track.album);
-      if (album.isNotEmpty) {
-        return 'title:$title|artist:$artist|album:$album';
-      }
-      // Without an ISRC or duration, avoid merging different recordings that
-      // happen to share the same title and artist.
-      return 'unverified:${track.providerId}:${track.id}';
-    }
-    final durationBucket = (track.durationMs / 10000).round().toString();
-    return 'title:$title|artist:$artist|duration:$durationBucket';
-  }
-
-  String _normalize(String value) => value
-      .toLowerCase()
-      // Keep version labels such as (Live), (Remix), and (Acoustic).
-      .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
 
   int _compareTracks(Track a, Track b) {
     // Never let a metadata-only catalogue outrank a playable recording.
