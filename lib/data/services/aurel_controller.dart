@@ -15,6 +15,7 @@ import '../catalog/providers/jamendo_service.dart';
 import '../catalog/music_catalog_service.dart';
 import 'lyrics_service.dart';
 import 'playback_controller.dart';
+import 'device_library_service.dart';
 
 class AurelController extends ChangeNotifier {
   AurelController({
@@ -25,7 +26,8 @@ class AurelController extends ChangeNotifier {
     required this.lyrics,
     required this.account,
     required this.catalog,
-  }) {
+    DeviceLibraryService? deviceLibrary,
+  }) : deviceLibrary = deviceLibrary ?? DeviceLibraryService() {
     playback.setFallbackResolver(catalog.prepareTrack);
     playback.addListener(_onPlaybackChanged);
   }
@@ -114,6 +116,7 @@ class AurelController extends ChangeNotifier {
   final LyricsService lyrics;
   final AurelAccountService account;
   final MusicCatalogService catalog;
+  final DeviceLibraryService deviceLibrary;
 
   Map<String, String> sourceErrors = const {};
   Map<String, int> sourceCounts = const {};
@@ -121,6 +124,11 @@ class AurelController extends ChangeNotifier {
   String? cloudSyncError;
 
   List<Track> discoverTracks = [];
+  List<Track> deviceTracks = [];
+  bool hasDeviceAudioPermission = false;
+  bool isLoadingDeviceTracks = false;
+  String? deviceLibraryError;
+  int _deviceLibraryGeneration = 0;
   List<Track> searchResults = [];
   List<Track> favoriteTracks = [];
   List<Track> downloadedTracks = [];
@@ -169,8 +177,43 @@ class AurelController extends ChangeNotifier {
       await restoreCloudLibrary();
     }
     notifyListeners();
+    unawaited(refreshDeviceLibrary());
     if (!offlineMode) {
       await refreshDiscover();
+    }
+  }
+
+  /// Refreshes the phone's indexed audio. Permission is requested only when
+  /// the user explicitly opens the On Device library.
+  Future<void> refreshDeviceLibrary({bool requestPermission = false}) async {
+    final generation = ++_deviceLibraryGeneration;
+    isLoadingDeviceTracks = true;
+    deviceLibraryError = null;
+    notifyListeners();
+
+    try {
+      final granted = requestPermission
+          ? await deviceLibrary.requestAudioPermission()
+          : await deviceLibrary.hasAudioPermission();
+      if (generation != _deviceLibraryGeneration) return;
+      hasDeviceAudioPermission = granted;
+      if (!granted) {
+        deviceTracks = [];
+        return;
+      }
+
+      final tracks = await deviceLibrary.loadTracks();
+      if (generation != _deviceLibraryGeneration) return;
+      deviceTracks = tracks;
+    } catch (error) {
+      if (generation == _deviceLibraryGeneration) {
+        deviceLibraryError = error.toString().replaceFirst('Exception: ', '');
+      }
+    } finally {
+      if (generation == _deviceLibraryGeneration) {
+        isLoadingDeviceTracks = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -783,6 +826,7 @@ class AurelController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _deviceLibraryGeneration++;
     _discoverCancelToken?.cancel('AUREL is closing');
     _searchCancelToken?.cancel('AUREL is closing');
     for (final token in _downloadTokens.values) {
