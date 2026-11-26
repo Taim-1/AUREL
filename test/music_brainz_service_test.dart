@@ -75,10 +75,10 @@ class _BlockingAdapter implements HttpClientAdapter {
 
   @override
   Future<ResponseBody> fetch(
-    RequestOptions options, {
+    RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
-  }) {
+  ) {
     requestCount++;
     return onFetch(options);
   }
