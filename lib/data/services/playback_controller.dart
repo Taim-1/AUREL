@@ -142,12 +142,12 @@ class PlaybackController extends ChangeNotifier {
       _attemptedFallbackIds.add(candidate.id);
       try {
         final prepared = await resolver(candidate);
-        final remaining = failed.alternatives
-            .where((item) => item.id != candidate.id)
-            .toList(growable: false);
+        // The resolver may have tried and consumed more than one
+        // underlying provider while preparing this candidate. Preserve its
+        // remaining list rather than reintroducing an already-failed source.
         final replacement = prepared.copyWith(
           id: failed.id,
-          alternatives: remaining,
+          alternatives: prepared.alternatives,
         );
         final updatedQueue = List<Track>.of(queue);
         updatedQueue[index] = replacement;
