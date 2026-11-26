@@ -93,9 +93,9 @@ users/{uid}/library/favorites/items/{encodedTrackId}
   track
   sortOrder
 
-users/{uid}/library/recentlyPlayed/items/{encodedTrackId}
-  track
-  sortOrder
+users/{uid}/library/recentlyPlayed
+  tracks: [track metadata maps, newest first]
+  updatedAt
 
 users/{uid}/library/playlists/items/{encodedPlaylistId}
   playlist
