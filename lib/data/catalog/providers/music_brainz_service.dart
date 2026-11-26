@@ -45,7 +45,8 @@ class MusicBrainzService {
     if (normalized.isEmpty) return const [];
     _throwIfCancelled(cancelToken);
 
-    final key = '${normalized.toLowerCase()}:${offset.clamp(0, 100000)}';
+    final key =
+        '${normalized.toLowerCase()}:${limit.clamp(1, 100)}:${offset.clamp(0, 100000)}';
     final cached = _cache[key];
     if (cached != null &&
         DateTime.now().difference(cached.savedAt) < _cacheDuration) {
