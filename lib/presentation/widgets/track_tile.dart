@@ -150,7 +150,9 @@ class TrackTile extends StatelessWidget {
     final controller = context.watch<AurelController>();
     final favorite = controller.isFavorite(track);
     final downloading = controller.downloadingIds.contains(track.id);
-    final alreadyDownloaded = controller.hasLocalPlayableCopy(track);
+    final alreadyDownloaded =
+        controller.downloadedTracks.any((item) => item.id == track.id) ||
+            controller.hasLocalPlayableCopy(track);
 
     return InkWell(
       borderRadius: BorderRadius.circular(17),
