@@ -7,6 +7,7 @@ import '../models/lyrics_document.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
 import '../catalog/catalog_identity.dart';
+import '../catalog/catalog_ranking.dart';
 import '../repositories/library_repository.dart';
 import 'aurel_account_service.dart';
 import 'download_service.dart';
@@ -416,22 +417,20 @@ class AurelController extends ChangeNotifier {
     List<Track> current,
     List<Track> incoming,
   ) {
-    final groups = CatalogIdentity.group([...current, ...incoming]);
+    // Pagination must retain alternatives already found on earlier pages.
+    final byId = <String, Track>{};
+    for (final track in [...current, ...incoming]) {
+      byId[track.id] = track;
+      for (final alternative in track.alternatives) {
+        byId[alternative.id] = alternative;
+      }
+    }
+
+    final groups = CatalogIdentity.group(byId.values.toList(growable: false));
     return groups.map((group) {
-      final ranked = [...group]..sort((a, b) {
-          final playable = (b.canPlay ? 1 : 0).compareTo(a.canPlay ? 1 : 0);
-          if (playable != 0) return playable;
-          final identity = (b.recordingId.trim().isNotEmpty ? 1 : 0)
-              .compareTo(a.recordingId.trim().isNotEmpty ? 1 : 0);
-          if (identity != 0) return identity;
-          final artwork = (b.artworkUrl.trim().isNotEmpty ? 1 : 0)
-              .compareTo(a.artworkUrl.trim().isNotEmpty ? 1 : 0);
-          if (artwork != 0) return artwork;
-          return (b.durationMs > 0 ? 1 : 0)
-              .compareTo(a.durationMs > 0 ? 1 : 0);
-        });
+      final ranked = [...group]..sort(CatalogRanking.compare);
       final selected = ranked.first;
-      final sources = group
+      final sources = ranked
           .expand((track) => [
                 ...track.matchedSources,
                 track.providerName,
@@ -469,9 +468,11 @@ class AurelController extends ChangeNotifier {
             : selected.artworkUrl,
         album: selected.album.trim().isEmpty ? album : selected.album,
         durationMs: selected.durationMs > 0 ? selected.durationMs : duration,
-        recordingId:
-            selected.recordingId.trim().isEmpty ? recordingId : selected.recordingId,
+        recordingId: selected.recordingId.trim().isEmpty
+            ? recordingId
+            : selected.recordingId,
         matchedSources: sources,
+        alternatives: ranked.skip(1).toList(growable: false),
       );
     }).toList(growable: false);
   }
