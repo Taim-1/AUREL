@@ -298,6 +298,19 @@ void main() {
       expect(restored.playbackUri, startsWith('file:'));
     });
   group('Expanded catalogue metadata', () {
+    test('preserves exact MusicBrainz artist-credit join phrases', () {
+      final track = Track.fromMusicBrainz({
+        'id': 'recording-joinphrase',
+        'title': 'A Song',
+        'artist-credit': [
+          {'name': 'Lana Del Rey', 'joinphrase': ' & '},
+          {'name': 'Featured Artist', 'joinphrase': ''},
+        ],
+      });
+
+      expect(track.artist, 'Lana Del Rey & Featured Artist');
+    });
+
     test('normalizes recording metadata and preserves ISRC', () {
       final track = Track.fromMusicBrainz({
         'id': 'recording-123',
