@@ -638,7 +638,7 @@ class AurelController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final preparedTrack = await catalog.prepareTrack(track);
+      final preparedTrack = await catalog.prepareTrackForDownload(track);
       final saved = await downloads.download(
         preparedTrack,
         cancelToken: token,
