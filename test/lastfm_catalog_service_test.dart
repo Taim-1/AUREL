@@ -22,6 +22,13 @@ void main() {
       expect(track.artist, 'M83');
       expect(track.album, 'Hurry Up, We’re Dreaming');
       expect(track.durationMs, 244000);
+
+      final secondsDuration = Track.fromLastFm({
+        'name': 'Short metadata result',
+        'duration': '244',
+        'artist': 'M83',
+      });
+      expect(secondsDuration.durationMs, 244000);
       expect(track.recordingId, isEmpty);
       expect(track.artworkUrl, 'https://img.example/large.jpg');
       expect(track.providerId, 'lastfm');
