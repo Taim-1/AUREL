@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/aurel_theme.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
+import 'library_screen.dart';
 import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
 
@@ -306,7 +307,13 @@ class _SearchScreenState extends State<SearchScreen> {
                     title: playlist.name,
                     subtitle: '${playlist.tracks.length} songs',
                     artworkUrl: firstTrack?.artworkUrl ?? '',
-                    onTap: () => controller.selectTab(2),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => PlaylistDetailScreen(
+                          playlistId: playlist.id,
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
