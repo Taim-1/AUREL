@@ -646,6 +646,7 @@ class Track {
       };
 
   Track copyWith({
+    String? id,
     String? title,
     String? artist,
     String? album,
@@ -660,7 +661,7 @@ class Track {
     Map<String, String>? playbackHeaders,
   }) =>
       Track(
-        id: id,
+        id: id ?? this.id,
         title: title ?? this.title,
         artist: artist ?? this.artist,
         album: album ?? this.album,
