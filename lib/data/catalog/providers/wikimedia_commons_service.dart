@@ -41,7 +41,13 @@ class WikimediaCommonsService {
   }) async {
     final normalized = query.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) return const [];
-    if (cancelToken?.isCancelled ?? false) return const [];
+    if (cancelToken?.isCancelled ?? false) {
+      throw DioException(
+        requestOptions: RequestOptions(path: ''),
+        type: DioExceptionType.cancel,
+        message: 'Open audio search cancelled.',
+      );
+    }
 
     final cacheKey = '${normalized.toLowerCase()}:${page.clamp(0, 50)}';
     final cached = _cache[cacheKey];
