@@ -177,14 +177,14 @@ class MainActivity : AudioServiceActivity() {
                 val rawArtist = media.getString(artistIndex).orEmpty().trim()
                 val artist = if (
                     rawArtist.isEmpty() ||
-                    rawArtist == MediaStore.UNKNOWN_STRING
+                    rawArtist.equals("<unknown>", ignoreCase = true)
                 ) {
                     "Unknown artist"
                 } else {
                     rawArtist
                 }
                 val rawAlbum = media.getString(albumIndex).orEmpty().trim()
-                val album = if (rawAlbum == MediaStore.UNKNOWN_STRING) "" else rawAlbum
+                val album = if (rawAlbum.equals("<unknown>", ignoreCase = true)) "" else rawAlbum
                 val uri = ContentUris.withAppendedId(collection, id)
 
                 rows.add(
