@@ -287,6 +287,21 @@ class MusicCatalogService {
     return track;
   }
 
+  /// Prepares authorization for an allowed offline copy independently of
+  /// streaming eligibility. Some providers permit downloads for tracks that
+  /// are not available as live streams.
+  Future<Track> prepareTrackForDownload(Track track) async {
+    if (!track.downloadAllowed || track.downloadUrl.trim().isEmpty) {
+      throw const CatalogPlaybackException(
+        'Offline download is not permitted for this recording.',
+      );
+    }
+    if (track.providerId == 'soundcloud') {
+      return soundcloud.prepareForDownload(track);
+    }
+    return track;
+  }
+
   Future<_CollectedSources> _collect(
     List<_SourceRequest> requests,
   ) async {
