@@ -653,6 +653,15 @@ class AurelController extends ChangeNotifier {
             (saved.id == track.id || CatalogIdentity.matches(saved, track)),
       );
 
+  /// Distinguishes AUREL-managed downloads from songs only indexed by Android.
+  bool hasDownloadedCopy(Track track) =>
+      downloadedTracks.any(
+        (saved) =>
+            saved.isDownloaded &&
+            saved.canPlay &&
+            (saved.id == track.id || CatalogIdentity.matches(saved, track)),
+      );
+
   /// Whether this recording can actually start in the current mode.
   /// Online alternatives are never advertised as playable while offline.
   bool hasPlayableSource(Track track) {
