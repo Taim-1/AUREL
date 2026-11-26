@@ -463,6 +463,12 @@ class AurelController extends ChangeNotifier {
             orElse: () => selected,
           )
           .recordingId;
+      final recordingMbid = ranked
+          .firstWhere(
+            (track) => track.recordingMbid.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .recordingMbid;
       return selected.copyWith(
         artworkUrl: selected.artworkUrl.trim().isEmpty
             ? artwork
@@ -472,6 +478,9 @@ class AurelController extends ChangeNotifier {
         recordingId: selected.recordingId.trim().isEmpty
             ? recordingId
             : selected.recordingId,
+        recordingMbid: selected.recordingMbid.trim().isEmpty
+            ? recordingMbid
+            : selected.recordingMbid,
         matchedSources: sources,
         alternatives: ranked.skip(1).toList(growable: false),
       );
