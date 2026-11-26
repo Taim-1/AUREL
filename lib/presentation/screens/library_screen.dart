@@ -63,6 +63,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     for (final track in [
       ...controller.favoriteTracks,
       ...controller.downloadedTracks,
+      ...controller.deviceTracks,
       ...controller.recentlyPlayed,
     ]) {
       unique.putIfAbsent(track.id, () => track);
@@ -154,6 +155,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 selected: _selectedTab == 3,
                 onTap: () => setState(() => _selectedTab = 3),
               ),
+              _LibraryTab(
+                label: 'Songs',
+                selected: _selectedTab == 4,
+                onTap: () {
+                  setState(() => _selectedTab = 4);
+                  controller.refreshDeviceLibrary(requestPermission: true);
+                },
+              ),
             ],
           ),
         ),
@@ -228,11 +237,62 @@ class _LibraryScreenState extends State<LibraryScreen> {
             _groupTracks(saved, (track) => track.artist),
           ),
         ] else ...[
-          const _LibrarySectionHeading(title: 'Artists', count: 'Saved music'),
-          ..._buildGroups(
-            context,
-            _groupTracks(saved, (track) => track.artist),
+          _LibrarySectionHeading(
+            title: 'Songs on this device',
+            count: '${controller.deviceTracks.length} songs',
           ),
+          if (controller.isLoadingDeviceTracks)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 34),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: AurelColors.champagne,
+                ),
+              ),
+            )
+          else if (!controller.hasDeviceAudioPermission)
+            _LibraryEmptyState(
+              title: 'Your music, in one place',
+              message:
+                  'Allow AUREL to read the music catalogue on this device. Your files stay where they are and are never copied into Downloads.',
+              action: 'Allow audio access',
+              onTap: () => controller.refreshDeviceLibrary(
+                requestPermission: true,
+              ),
+            )
+          else if (controller.deviceLibraryError != null)
+            _LibraryEmptyState(
+              title: 'Could not read your music',
+              message: controller.deviceLibraryError!,
+              action: 'Try again',
+              onTap: () => controller.refreshDeviceLibrary(),
+            )
+          else if (controller.deviceTracks.isEmpty)
+            _LibraryEmptyState(
+              title: 'No songs found',
+              message:
+                  'Music indexed by Android will appear here. Snaptube folders are excluded from this library.',
+              action: 'Scan again',
+              onTap: () => controller.refreshDeviceLibrary(),
+            )
+          else ...[
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: controller.isLoadingDeviceTracks
+                    ? null
+                    : () => controller.refreshDeviceLibrary(),
+                icon: const Icon(Icons.refresh_rounded, size: 17),
+                label: const Text('Refresh'),
+              ),
+            ),
+            ...controller.deviceTracks.map(
+              (track) => TrackTile(
+                track: track,
+                queue: controller.deviceTracks,
+              ),
+            ),
+          ],
         ],
       ],
     );
