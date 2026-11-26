@@ -108,4 +108,4 @@ The rules allow a signed-in user to read and write only documents underneath the
 
 After reinstall, the user signs in with the same Google or email account. AUREL downloads the cloud metadata for that UID and merges it with any existing local library. The Home greeting and Profile name use the saved username.
 
-This restores the listening-history list, favourites and playlists. It does not restore the raw audio bytes for local device files or app-private downloads. Those files must be re-imported or downloaded again through an authorized provider.
+This restores the listening-history list, favourites and playlists. It does not restore the raw audio bytes for AUREL-managed offline downloads. AUREL can offer a fresh in-app download only when the original provider still permits it; the app does not import or browse unrelated phone files.
