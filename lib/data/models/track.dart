@@ -17,6 +17,7 @@ class Track {
     this.providerName = 'Jamendo',
     this.sourceUrl = '',
     this.recordingId = '',
+    this.recordingMbid = '',
     this.licenseName = '',
     this.attribution = '',
     this.isPlayable = true,
@@ -49,6 +50,9 @@ class Track {
 
   /// ISRC when the provider exposes one. Used for exact cross-source matches.
   final String recordingId;
+
+  /// MusicBrainz recording UUID, distinct from an ISRC.
+  final String recordingMbid;
   final String licenseName;
   final String attribution;
 
@@ -461,6 +465,7 @@ class Track {
       providerName: 'Recording metadata',
       sourceUrl: id.isEmpty ? '' : 'https://musicbrainz.org/recording/$id',
       recordingId: recordingId,
+      recordingMbid: _isValidMusicBrainzId(id) ? id : '',
       isPlayable: false,
       isMetadataOnly: true,
     );
@@ -517,7 +522,7 @@ class Track {
       providerName: 'Last.fm',
       sourceUrl: safeSource,
       // Last.fm's MBID is a MusicBrainz recording UUID, not an ISRC.
-      // Keep it in the stable Last.fm item ID; never mislabel it as an ISRC.
+      recordingMbid: _isValidMusicBrainzId(mbid) ? mbid : '',
       isPlayable: false,
       isMetadataOnly: true,
     );
@@ -557,6 +562,7 @@ class Track {
       providerName: 'ListenBrainz',
       sourceUrl: sourceUrl,
       // A MusicBrainz recording MBID is not an ISRC.
+      recordingMbid: validRecordingMbid ? recordingMbid : '',
       isPlayable: false,
       isMetadataOnly: true,
     );
@@ -598,6 +604,7 @@ class Track {
         providerName: (json['providerName'] ?? 'Jamendo').toString(),
         sourceUrl: (json['sourceUrl'] ?? '').toString(),
         recordingId: (json['recordingId'] ?? '').toString(),
+        recordingMbid: (json['recordingMbid'] ?? '').toString(),
         licenseName: (json['licenseName'] ?? '').toString(),
         attribution: (json['attribution'] ?? '').toString(),
         isPlayable: json['isPlayable'] != false,
@@ -634,6 +641,7 @@ class Track {
         'providerName': providerName,
         'sourceUrl': sourceUrl,
         'recordingId': recordingId,
+        'recordingMbid': recordingMbid,
         'licenseName': licenseName,
         'attribution': attribution,
         'isPlayable': isPlayable,
@@ -656,6 +664,7 @@ class Track {
     String? streamUrl,
     int? durationMs,
     String? recordingId,
+    String? recordingMbid,
     List<String>? matchedSources,
     List<Track>? alternatives,
     Map<String, String>? playbackHeaders,
@@ -678,6 +687,7 @@ class Track {
         providerName: providerName,
         sourceUrl: sourceUrl,
         recordingId: recordingId ?? this.recordingId,
+        recordingMbid: recordingMbid ?? this.recordingMbid,
         licenseName: licenseName,
         attribution: attribution,
         isPlayable: isPlayable,
