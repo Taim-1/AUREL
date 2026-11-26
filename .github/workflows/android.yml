@@ -58,7 +58,7 @@ jobs:
         run: dart run flutter_launcher_icons
 
       - name: Format Dart sources
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: dart format lib test
 
       - name: Analyze
         run: flutter analyze
