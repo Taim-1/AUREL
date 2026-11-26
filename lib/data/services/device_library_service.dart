@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 import '../models/track.dart';
 
@@ -9,7 +10,12 @@ class DeviceLibraryService {
       : _channel = channel ?? const MethodChannel(_channelName);
 
   static const String _channelName = 'com.aurel.music/device_library';
+  static const EventChannel _changesChannel =
+      EventChannel('com.aurel.music/device_library/changes');
   final MethodChannel _channel;
+
+  Stream<void> get changes =>
+      _changesChannel.receiveBroadcastStream().map<void>((_) {});
 
   Future<bool> hasAudioPermission() async {
     try {
