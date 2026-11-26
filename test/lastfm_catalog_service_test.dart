@@ -25,6 +25,8 @@ void main() {
       expect(track.recordingId, isEmpty);
       expect(track.artworkUrl, 'https://img.example/large.jpg');
       expect(track.providerId, 'lastfm');
+      expect(track.attribution, contains('Last.fm'));
+      expect(track.sourceUrl, 'https://www.last.fm/music/M83/_/Midnight+City');
       expect(track.isMetadataOnly, isTrue);
       expect(track.canPlay, isFalse);
       expect(track.streamUrl, isEmpty);
