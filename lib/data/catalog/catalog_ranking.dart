@@ -53,6 +53,7 @@ class CatalogRanking {
   static int _qualityScore(Track track) {
     var score = 0;
     if (track.recordingId.trim().isNotEmpty) score += 8;
+    if (track.recordingMbid.trim().isNotEmpty) score += 8;
     if (track.artworkUrl.trim().isNotEmpty) score += 4;
     if (track.album.trim().isNotEmpty) score += 3;
     if (track.durationMs > 0) score += 2;
