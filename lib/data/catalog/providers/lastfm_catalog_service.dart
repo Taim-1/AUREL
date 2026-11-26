@@ -118,7 +118,7 @@ class LastFmCatalogService {
     int page = 1,
     CancelToken? cancelToken,
   }) async {
-    final normalized = query.trim().replaceAll(RegExp(r'\\s+'), ' ');
+    final normalized = query.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) return const [];
     if (!isConfigured) {
       throw const LastFmCatalogException(
@@ -144,14 +144,17 @@ class LastFmCatalogService {
       final artists = matches is Map ? matches['artist'] : null;
       if (artists is! List) return const [];
 
-      String normalize(String value) =>
-          value.toLowerCase().replaceAll(RegExp(r'\\s+'), ' ').trim();
-      final exactArtist = artists
-          .whereType<Map>()
-          .map((item) => (item['name'] ?? '').toString().trim())
-          .where((name) => name.isNotEmpty)
-          .where((name) => normalize(name) == normalize(normalized))
-          .firstOrNull;
+      String? exactArtist;
+      final target = normalized.toLowerCase();
+      for (final item in artists.whereType<Map>()) {
+        final name = (item['name'] ?? '').toString().trim();
+        final normalizedName =
+            name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+        if (name.isNotEmpty && normalizedName == target) {
+          exactArtist = name;
+          break;
+        }
+      }
       if (exactArtist == null) return const [];
 
       return artistTopTracks(
