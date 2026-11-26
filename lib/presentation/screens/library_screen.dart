@@ -53,7 +53,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void _openPlaylist(BuildContext context, String id) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => _PlaylistDetailPage(playlistId: id),
+        builder: (_) => PlaylistDetailScreen(playlistId: id),
       ),
     );
   }
@@ -660,8 +660,8 @@ class _PlaylistCard extends StatelessWidget {
   }
 }
 
-class _PlaylistDetailPage extends StatelessWidget {
-  const _PlaylistDetailPage({required this.playlistId});
+class PlaylistDetailScreen extends StatelessWidget {
+  const PlaylistDetailScreen({super.key, required this.playlistId});
 
   final String playlistId;
 
