@@ -5,11 +5,14 @@ import android.content.ContentUris
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
+import android.database.ContentObserver
+import android.net.Uri
 import android.os.Looper
 import android.provider.MediaStore
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -22,9 +25,29 @@ class MainActivity : AudioServiceActivity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val mediaExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private var pendingPermissionResult: MethodChannel.Result? = null
+    private var audioChangeObserver: ContentObserver? = null
+    private var audioChangeSink: EventChannel.EventSink? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        EventChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "com.aurel.music/device_library/changes",
+        ).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(
+                arguments: Any?,
+                events: EventChannel.EventSink?,
+            ) {
+                audioChangeSink = events
+                if (hasAudioPermission()) registerAudioChangeObserver()
+            }
+
+            override fun onCancel(arguments: Any?) {
+                audioChangeSink = null
+                unregisterAudioChangeObserver()
+            }
+        })
+
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             DEVICE_LIBRARY_CHANNEL,
@@ -117,6 +140,7 @@ class MainActivity : AudioServiceActivity() {
     }
 
     private fun queryAudioTracks(): List<Map<String, Any?>> {
+        registerAudioChangeObserver()
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val projection = mutableListOf(
             MediaStore.Audio.Media._ID,
@@ -202,7 +226,31 @@ class MainActivity : AudioServiceActivity() {
         return rows
     }
 
+    private fun registerAudioChangeObserver() {
+        if (audioChangeObserver != null || audioChangeSink == null) return
+        val observer = object : ContentObserver(mainHandler) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+                audioChangeSink?.success(uri?.toString())
+            }
+        }
+        audioChangeObserver = observer
+        contentResolver.registerContentObserver(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            true,
+            observer,
+        )
+    }
+
+    private fun unregisterAudioChangeObserver() {
+        val observer = audioChangeObserver ?: return
+        contentResolver.unregisterContentObserver(observer)
+        audioChangeObserver = null
+    }
+
     override fun onDestroy() {
+        unregisterAudioChangeObserver()
+        audioChangeSink = null
         if (!mediaExecutor.isShutdown) {
             mediaExecutor.shutdownNow()
         }
