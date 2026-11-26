@@ -105,6 +105,13 @@ class Track {
             uri.authority == 'media'
         ? rawUri
         : '';
+    final rawArtwork = (json['artworkUri'] ?? '').toString().trim();
+    final artworkUri = Uri.tryParse(rawArtwork);
+    final safeArtworkUri = artworkUri != null &&
+            artworkUri.scheme == 'content' &&
+            artworkUri.authority == 'media'
+        ? rawArtwork
+        : '';
     final title = (json['title'] ?? '').toString().trim();
     final rawArtist = (json['artist'] ?? '').toString().trim();
     final rawAlbum = (json['album'] ?? '').toString().trim();
@@ -118,6 +125,7 @@ class Track {
       title: title.isEmpty ? 'Unknown track' : title,
       artist: rawArtist.isEmpty ? 'Unknown artist' : rawArtist,
       album: rawAlbum,
+      artworkUrl: safeArtworkUri,
       durationMs: duration > 0 ? duration : 0,
       providerId: 'device',
       providerName: 'On device',
