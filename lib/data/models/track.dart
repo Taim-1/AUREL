@@ -467,6 +467,10 @@ class Track {
     final artist = rawArtist is Map
         ? (rawArtist['name'] ?? '').toString().trim()
         : (rawArtist ?? '').toString().trim();
+    final rawAlbum = json['album'];
+    final album = rawAlbum is Map
+        ? (rawAlbum['title'] ?? rawAlbum['name'] ?? '').toString().trim()
+        : '';
     final rawImages = json['image'];
     var artworkUrl = '';
     if (rawImages is List) {
@@ -501,12 +505,14 @@ class Track {
       id: 'lastfm-$stableKey',
       title: title.isEmpty ? 'Unknown recording' : title,
       artist: artist.isEmpty ? 'Unknown artist' : artist,
+      album: album,
       artworkUrl: artworkUrl,
       durationMs: duration,
       providerId: 'lastfm',
       providerName: 'Last.fm',
       sourceUrl: safeSource,
-      recordingId: mbid,
+      // Last.fm's MBID is a MusicBrainz recording UUID, not an ISRC.
+      // Keep it in the stable Last.fm item ID; never mislabel it as an ISRC.
       isPlayable: false,
       isMetadataOnly: true,
     );
