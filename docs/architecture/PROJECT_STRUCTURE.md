@@ -58,7 +58,7 @@ AUREL/
 
 ## Library and offline boundary
 
-The Downloads tab contains only audio saved through AUREL into app-managed storage. It is not a phone file browser, device music importer or whole-device storage viewer. A saved record is playable only while its local URI is present.
+The Library → Songs tab is the permission-gated, read-only Android MediaStore view. AUREL requests `READ_MEDIA_AUDIO` (or `READ_EXTERNAL_STORAGE` on Android 12 and below) only when the user opens Songs, queries music entries in the background, excludes Snaptube paths and plays `content://media/...` URIs in place. It never copies, moves, edits or uploads device audio. The Downloads tab remains separate and contains only items saved through AUREL into app-managed storage; it is not a whole-device storage dashboard.
 
 ## Verification and release
 
