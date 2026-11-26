@@ -342,6 +342,17 @@ void main() {
       expect(preview.canPlay, isFalse);
     });
 
+    test('rejects insecure remote playback URLs', () {
+      const insecure = Track(
+        id: 'insecure',
+        title: 'Insecure stream',
+        artist: 'Artist',
+        streamUrl: 'http://example.com/audio.mp3',
+      );
+
+      expect(insecure.canPlay, isFalse);
+    });
+
     test('metadata-only recordings are not playable even with a URL', () {
       const metadata = Track(
         id: 'metadata',
