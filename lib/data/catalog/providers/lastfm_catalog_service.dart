@@ -56,6 +56,50 @@ class LastFmCatalogService {
     }
   }
 
+  /// Returns an artist's most-played recordings from Last.fm's global
+  /// listening data. Results remain metadata-only until a playback provider
+  /// independently supplies an authorized stream.
+  Future<List<Track>> artistTopTracks(
+    String artist, {
+    int limit = 30,
+    CancelToken? cancelToken,
+  }) async {
+    final normalized = artist.trim();
+    if (normalized.isEmpty) return const [];
+    if (!isConfigured) {
+      throw const LastFmCatalogException(
+        'Last.fm discovery is not configured for this build.',
+      );
+    }
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '',
+        queryParameters: {
+          'method': 'artist.gettoptracks',
+          'artist': normalized,
+          'api_key': _apiKey,
+          'format': 'json',
+          'limit': limit.clamp(1, 100),
+        },
+        cancelToken: cancelToken,
+      );
+      final topTracks = response.data?['toptracks'];
+      final rawTracks = topTracks is Map ? topTracks['track'] : null;
+      return _parseTracks(rawTracks);
+    } on DioException catch (error) {
+      if (error.type == DioExceptionType.cancel) rethrow;
+      final status = error.response?.statusCode;
+      throw LastFmCatalogException(
+        status == 429
+            ? 'Last.fm artist discovery is busy. Try again shortly.'
+            : status == 403
+                ? 'Last.fm API access is unavailable for this key.'
+                : 'Artist recordings could not be reached.',
+      );
+    }
+  }
+
   Future<List<Track>> search(
     String query, {
     int limit = 30,
