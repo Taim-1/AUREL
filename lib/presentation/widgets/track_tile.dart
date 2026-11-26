@@ -154,7 +154,7 @@ class TrackTile extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(17),
       onTap: () async {
-        if (!track.canPlay) {
+        if (!controller.hasPlayableSource(track)) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -230,8 +230,7 @@ class TrackTile extends StatelessWidget {
               ),
               onSelected: (value) => _handlePlaylistAction(context, value),
               itemBuilder: (_) => [
-                if (track.canPlay ||
-                    track.alternatives.any((item) => item.canPlay)) ...[
+                if (controller.hasPlayableSource(track)) ...[
                   const PopupMenuItem<String>(
                     value: '__play_next__',
                     child: Text('Play next'),
