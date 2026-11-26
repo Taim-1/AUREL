@@ -55,6 +55,7 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 - Keep API credentials out of source control and client-visible logs.
 - Validate the actual playback URL and authorization immediately before playback.
 - Download only when the item-level license and provider terms explicitly allow it.
+- Validate successful HTTP status, reject explicit non-audio content types, and inspect the downloaded file signature before saving. Write to a temporary file and only promote a verified audio payload into AUREL's offline library.
 - Treat catalogue metadata, artwork, audio streams, and download permission as separate capabilities.
 - Re-review each provider's current developer terms before release.
 
