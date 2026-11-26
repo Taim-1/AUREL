@@ -105,7 +105,7 @@ class PlaybackController extends ChangeNotifier {
   Future<void> _recoverFromSourceError(PlayerException error) async {
     if (_recoveringSource || queue.isEmpty) return;
     final index = error.index ?? currentIndex;
-    if (index < 0 || index >= queue.length) return;
+    if (index != currentIndex || index < 0 || index >= queue.length) return;
 
     final failed = queue[index];
     final resolver = _fallbackResolver;
@@ -141,7 +141,7 @@ class PlaybackController extends ChangeNotifier {
           );
           queue = updatedQueue;
           currentIndex = index;
-          await player.play();
+          unawaited(player.play());
           notifyListeners();
           return;
         } catch (_) {
