@@ -55,7 +55,7 @@ See [Music catalogue architecture](docs/architecture/MUSIC_CATALOG.md) and [Fire
 - Openverse: anonymous read access works by default; optional registered API credentials can be stored in Firebase Secret Manager for its authenticated rate-limit tier.
 - Wikimedia Commons and Internet Archive: public read APIs are used with per-item licence and request-policy checks.
 - MusicBrainz: public non-commercial read API; requests are serialized to one per second.
-- Last.fm: register an API account/application and pass its API key as `--dart-define=LASTFM_API_KEY=...` when building. This key is a public client identifier embedded in the app; do not put a Last.fm API secret in the APK. Last.fm contributes discovery metadata and charts only.
+- Last.fm: register an API account/application and pass its API key as `--dart-define=LASTFM_API_KEY=...` when building. This key is a public client identifier embedded in the app; do not put a Last.fm API secret in the APK. Add it as the `LASTFM_API_KEY` GitHub Actions secret for release builds. Last.fm contributes discovery metadata and charts only.
 - Firebase email/Google accounts and cloud restore: create the Firebase project, enable sign-in methods, apply `firestore.rules`, add GitHub Actions secrets and deploy the token-broker function.
 
 If a provider or account credential is absent, AUREL shows that source as unavailable and continues using the remaining configured sources. It never shows a fake successful sign-in or a false Play/Download action.
