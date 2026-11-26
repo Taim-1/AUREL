@@ -494,11 +494,15 @@ class Track {
         : reportedDuration;
     final mbid = (json['mbid'] ?? '').toString().trim();
     final source = (json['url'] ?? '').toString().trim();
-    final sourceUri = Uri.tryParse(source);
+    final parsedSource = Uri.tryParse(source);
+    final sourceUri = parsedSource != null && parsedSource.scheme.isEmpty
+        ? Uri.tryParse('https://$source')
+        : parsedSource;
+    final sourceHost = sourceUri?.host.toLowerCase() ?? '';
     final safeSource = sourceUri != null &&
             sourceUri.scheme == 'https' &&
-            sourceUri.host.isNotEmpty
-        ? source
+            (sourceHost == 'last.fm' || sourceHost.endsWith('.last.fm'))
+        ? sourceUri.toString()
         : '';
     final title = (json['name'] ?? 'Unknown recording').toString().trim();
     final stableKey = mbid.isNotEmpty
