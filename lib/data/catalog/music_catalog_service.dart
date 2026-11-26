@@ -367,6 +367,10 @@ class MusicCatalogService {
   /// grouped by recording identity before this method is called, so fallback
   /// can never silently switch to a different song, remix or live version.
   Future<Track> prepareTrack(Track track) async {
+    // AUREL-managed downloads are already authorized local files. Never ask
+    // an online provider for a token while playing a saved offline copy.
+    if (track.isLocal && track.canPlay) return track;
+
     final candidates = <Track>[
       track,
       ...track.alternatives,
@@ -376,9 +380,11 @@ class MusicCatalogService {
     final attemptedIds = <String>{};
     for (final candidate in candidates) {
       try {
-        final prepared = candidate.providerId == 'soundcloud'
-            ? await soundcloud.prepareForPlayback(candidate)
-            : candidate;
+        final prepared = candidate.isLocal && candidate.canPlay
+            ? candidate
+            : candidate.providerId == 'soundcloud'
+                ? await soundcloud.prepareForPlayback(candidate)
+                : candidate;
         attemptedIds.add(candidate.id);
 
         // Keep the selected catalogue identity stable while removing every
