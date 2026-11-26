@@ -38,8 +38,8 @@ class CatalogIdentity {
 
   static String normalizeText(String value) => value
       .toLowerCase()
-      .replaceAll(RegExp(r'[^\\p{L}\\p{N}]+', unicode: true), ' ')
-      .replaceAll(RegExp(r'\\s+'), ' ')
+      .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 
   static String _normalizeIsrc(String value) =>
