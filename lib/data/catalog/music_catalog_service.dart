@@ -125,6 +125,7 @@ class MusicCatalogService {
         () => appleMusic.search(
           normalized,
           limit: 15,
+          offset: page * 15,
           cancelToken: cancelToken,
         ),
       ),
