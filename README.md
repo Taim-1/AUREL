@@ -56,7 +56,7 @@ Providers that expose only an embed widget, restricted metadata, or unsupported 
 
 ## Internal catalogue setup
 
-See [Music catalogue architecture](docs/architecture/MUSIC_CATALOG.md) and [Firebase/provider setup](docs/setup/FIREBASE_AUTH_AND_SYNC.md).
+See [Music catalogue architecture](docs/architecture/MUSIC_CATALOG.md), [Firebase/provider setup](docs/setup/FIREBASE_AUTH_AND_SYNC.md), and the [step-by-step Firebase and Google account activation guide](docs/setup/CLOUD_ACCOUNT_ACTIVATION.md).
 
 - Jamendo: register an AUREL application and set `JAMENDO_CLIENT_ID`.
 - Audius: public catalogue access is used; an `AUDIUS_API_KEY` can be supplied to improve the authorized API rate limit.
