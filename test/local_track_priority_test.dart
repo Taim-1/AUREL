@@ -157,6 +157,37 @@ void main() {
       );
     });
 
+    test('does not match two unrelated recordings with empty IDs', () {
+      final onlineWithoutId = recording(
+        id: '',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
+        title: 'First Recording',
+        artist: 'Aurel Ensemble',
+        streamUrl: 'https://audio.example/first.mp3',
+        durationMs: 180000,
+      );
+      final unrelatedLocal = recording(
+        id: '',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
+        title: 'Different Recording',
+        artist: 'Another Artist',
+        localPath:
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/different.mp3',
+        isDownloaded: true,
+        durationMs: 205000,
+      );
+
+      expect(
+        LocalTrackPriority.findLocalCopy(
+          onlineWithoutId,
+          [unrelatedLocal],
+        ),
+        isNull,
+      );
+    });
+
     test('never substitutes a different recording version', () {
       final liveVersion = recording(
         id: 'download-live',
