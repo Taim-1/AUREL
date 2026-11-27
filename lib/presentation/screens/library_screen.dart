@@ -44,7 +44,7 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen> {
   int _selectedTab = 0;
   String _query = '';
-  LibrarySort _sort = LibrarySort.recentlyAdded;
+  LibrarySort _sort = LibrarySort.savedOrder;
   final TextEditingController _searchController = TextEditingController();
 
   void _clearSearch() {
@@ -275,7 +275,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               itemBuilder: (_) => const [
                 PopupMenuItem(
                   value: LibrarySort.recentlyAdded,
-                  child: Text('Recently added'),
+                  child: Text('Saved order'),
                 ),
                 PopupMenuItem(
                   value: LibrarySort.titleAscending,
