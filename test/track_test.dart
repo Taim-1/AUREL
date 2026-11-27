@@ -408,19 +408,7 @@ void main() {
       expect(track.canPlay, isFalse);
     });
 
-    test('does not treat a device record without a URI as playable', () {
-      const track = Track(
-        id: 'broken-device-track',
-        title: 'Missing URI',
-        artist: 'Artist',
-        isDeviceTrack: true,
-      );
-
-      expect(track.isLocal, isFalse);
-      expect(track.canPlay, isFalse);
-    });
-
-    test('allows downloaded files and device content URIs', () {
+    test('only an AUREL-managed download becomes a local playable track', () {
       const downloaded = Track(
         id: 'saved-track',
         title: 'Saved',
@@ -428,63 +416,17 @@ void main() {
         isDownloaded: true,
         localPath: '/data/user/0/com.aurel.aurel/files/saved.mp3',
       );
-      const device = Track(
-        id: 'device-track',
-        title: 'Device',
+      const externalFile = Track(
+        id: 'external-file',
+        title: 'Not downloaded in AUREL',
         artist: 'Artist',
-        isDeviceTrack: true,
-        localPath: 'content://media/external/audio/media/42',
+        localPath: '/storage/emulated/0/Music/external.mp3',
       );
 
       expect(downloaded.isLocal, isTrue);
       expect(downloaded.canPlay, isTrue);
-      expect(device.isLocal, isTrue);
-      expect(device.canPlay, isTrue);
-    });
-  });
-
-  group('Device library tracks', () {
-    test('maps a MediaStore content URI to a playable local track', () {
-      final track = Track.fromDevice({
-        'id': '42',
-        'uri': 'content://media/external/audio/media/42',
-        'title': 'Local Song',
-        'artist': 'Local Artist',
-        'album': 'Local Album',
-        'duration': 187000,
-        'artworkUri': 'content://media/external/audio/albumart/8',
-      });
-
-      expect(track.id, 'device-42');
-      expect(
-        track.artworkUrl,
-        'content://media/external/audio/albumart/8',
-      );
-      expect(track.providerId, 'device');
-      expect(track.title, 'Local Song');
-      expect(track.artist, 'Local Artist');
-      expect(track.album, 'Local Album');
-      expect(track.durationMs, 187000);
-      expect(track.isDeviceTrack, isTrue);
-      expect(track.isLocal, isTrue);
-      expect(track.canPlay, isTrue);
-      expect(track.playbackUri, 'content://media/external/audio/media/42');
-      expect(track.downloadAllowed, isFalse);
-    });
-
-    test('does not make untrusted or malformed device URIs playable', () {
-      final track = Track.fromDevice({
-        'id': '43',
-        'uri': 'https://example.com/audio.mp3',
-        'artworkUri': 'https://attacker.example/image.jpg',
-        'title': 'Not a local content URI',
-        'artist': 'Unknown artist',
-      });
-
-      expect(track.isDeviceTrack, isTrue);
-      expect(track.localPath, isNull);
-      expect(track.artworkUrl, isEmpty);
-      expect(track.canPlay, isFalse);
+      expect(externalFile.isLocal, isFalse);
+      expect(externalFile.canPlay, isFalse);
     });
   });
 
