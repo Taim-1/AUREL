@@ -75,10 +75,12 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
     final hasQuery = controller.searchQuery.isNotEmpty;
-    final artists = _popularArtists(controller.discoverTracks);
     final offlineTracks = controller.downloadedTracks
         .where((track) => track.isDownloaded && track.isLocal && track.canPlay)
         .toList(growable: false);
+    final artistTracks =
+        controller.offlineMode ? offlineTracks : controller.discoverTracks;
+    final artists = _popularArtists(artistTracks);
 
     if (!_searchFocus.hasFocus &&
         _searchController.text != controller.searchQuery) {
