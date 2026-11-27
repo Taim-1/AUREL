@@ -360,12 +360,22 @@ class LyricsService {
         final text = (item['text'] ?? '').toString().trim();
         final time = item['time'];
         if (text.isEmpty || time is! Map<String, dynamic>) continue;
+        final minutes = _int(time['minutes']);
+        final seconds = _int(time['seconds']);
+        final hundredths = _int(time['hundredths']);
+        if (minutes < 0 ||
+            seconds < 0 ||
+            seconds >= 60 ||
+            hundredths < 0 ||
+            hundredths >= 100) {
+          continue;
+        }
         lines.add(
           LyricsLine(
             start: Duration(
-              minutes: _int(time['minutes']),
-              seconds: _int(time['seconds']),
-              milliseconds: _int(time['hundredths']) * 10,
+              minutes: minutes,
+              seconds: seconds,
+              milliseconds: hundredths * 10,
             ),
             text: text,
           ),
