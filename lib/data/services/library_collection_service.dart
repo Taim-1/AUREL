@@ -4,7 +4,7 @@ import '../models/track.dart';
 
 /// Deterministic sorting modes for the user's private AUREL library.
 enum LibrarySort {
-  recentlyAdded,
+  savedOrder,
   titleAscending,
   artistAscending,
   albumAscending,
@@ -68,7 +68,7 @@ class LibraryCollectionService {
   static List<Track> filterTracks(
     Iterable<Track> tracks, {
     String query = '',
-    LibrarySort sort = LibrarySort.recentlyAdded,
+    LibrarySort sort = LibrarySort.savedOrder,
   }) {
     final terms = _searchTerms(query);
     final result = tracks
@@ -76,7 +76,7 @@ class LibraryCollectionService {
         .toList(growable: true);
 
     switch (sort) {
-      case LibrarySort.recentlyAdded:
+      case LibrarySort.savedOrder:
         // The repository/controller already supplies this order. Keeping it
         // intact makes this mode stable and avoids inventing timestamps.
         break;
