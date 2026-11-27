@@ -63,6 +63,9 @@ class AurelAccountService {
           .toList(growable: false) ??
       const [];
 
+  String _usernameStorageKey([User? user]) =>
+      user == null ? _usernameKey : '$_usernameKey.${user.uid}';
+
   Future<void> initialize() async {
     userName = await _preferences.getString(_usernameKey) ?? 'Music Lover';
 
@@ -210,7 +213,10 @@ class AurelAccountService {
     }
 
     userName = normalized;
-    await _preferences.setString(_usernameKey, normalized);
+    await _preferences.setString(
+      _usernameStorageKey(currentUser),
+      normalized,
+    );
 
     final user = currentUser;
     final firestore = _firestore;
@@ -228,6 +234,18 @@ class AurelAccountService {
 
   Future<String> loadUserName() async {
     final user = currentUser;
+    final storedName =
+        await _preferences.getString(_usernameStorageKey(user));
+    if (storedName != null && storedName.trim().isNotEmpty) {
+      userName = storedName.trim();
+    } else if (user == null) {
+      userName = await _preferences.getString(_usernameKey) ?? 'Music Lover';
+    } else {
+      userName = user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!.trim()
+          : 'Music Lover';
+    }
+
     final firestore = _firestore;
     if (user != null && firestore != null) {
       try {
@@ -235,7 +253,10 @@ class AurelAccountService {
         final cloudName = profile.data()?['username']?.toString().trim();
         if (cloudName != null && cloudName.isNotEmpty) {
           userName = cloudName;
-          await _preferences.setString(_usernameKey, cloudName);
+          await _preferences.setString(
+            _usernameStorageKey(user),
+            cloudName,
+          );
           return userName;
         }
       } catch (error) {
@@ -247,7 +268,10 @@ class AurelAccountService {
           displayName != null &&
           displayName.isNotEmpty) {
         userName = displayName;
-        await _preferences.setString(_usernameKey, displayName);
+        await _preferences.setString(
+          _usernameStorageKey(user),
+          displayName,
+        );
       }
     }
     return userName;
@@ -561,6 +585,7 @@ class AurelAccountService {
       await _googleSignIn?.signOut();
     }
     await _auth?.signOut();
+    userName = await _preferences.getString(_usernameKey) ?? 'Music Lover';
   }
 
   void _requireConfigured() {
