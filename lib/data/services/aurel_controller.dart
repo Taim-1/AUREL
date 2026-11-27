@@ -148,6 +148,7 @@ class AurelController extends ChangeNotifier {
   List<Track> favoriteTracks = [];
   List<Track> downloadedTracks = [];
   List<Track> recentlyPlayed = [];
+  List<Track> previouslyDownloadedTracks = [];
   List<MusicPlaylist> playlists = [];
   bool offlineMode = false;
 
@@ -190,6 +191,12 @@ class AurelController extends ChangeNotifier {
     downloadedTracks = await downloads.validateSavedDownloads(storedDownloads);
     await repository.saveDownloads(downloadedTracks);
     recentlyPlayed = await repository.loadRecentlyPlayed();
+    previouslyDownloadedTracks = await repository.loadDownloadHistory();
+    previouslyDownloadedTracks = _appendUnique(
+      previouslyDownloadedTracks,
+      downloadedTracks,
+    );
+    await repository.saveDownloadHistory(previouslyDownloadedTracks);
     playlists = await repository.loadPlaylists();
     offlineMode = await repository.loadOfflineMode();
     if (account.isSignedIn) {
@@ -211,6 +218,7 @@ class AurelController extends ChangeNotifier {
       await repository.setAccountScope(userId);
       favoriteTracks = await repository.loadFavorites();
       recentlyPlayed = await repository.loadRecentlyPlayed();
+      previouslyDownloadedTracks = await repository.loadDownloadHistory();
       playlists = await repository.loadPlaylists();
       _activeLibraryUid = userId;
     }
@@ -226,6 +234,10 @@ class AurelController extends ChangeNotifier {
       recentlyPlayed = _appendUnique(recentlyPlayed, cloud.recentlyPlayed)
           .take(100)
           .toList(growable: false);
+      previouslyDownloadedTracks = _appendUnique(
+        previouslyDownloadedTracks,
+        cloud.downloadHistory,
+      );
 
       final mergedPlaylists = <String, MusicPlaylist>{
         for (final playlist in cloud.playlists) playlist.id: playlist,
@@ -235,6 +247,7 @@ class AurelController extends ChangeNotifier {
 
       await repository.saveFavorites(favoriteTracks);
       await repository.saveRecentlyPlayed(recentlyPlayed);
+      await repository.saveDownloadHistory(previouslyDownloadedTracks);
       await repository.savePlaylists(playlists);
       await syncCloudLibrary();
     } catch (error) {
@@ -252,6 +265,8 @@ class AurelController extends ChangeNotifier {
         favorites: List<Track>.unmodifiable(favoriteTracks),
         playlists: List<MusicPlaylist>.unmodifiable(playlists),
         recentlyPlayed: List<Track>.unmodifiable(recentlyPlayed),
+        downloadHistory:
+            List<Track>.unmodifiable(previouslyDownloadedTracks),
       );
     });
   }
@@ -933,6 +948,16 @@ class AurelController extends ChangeNotifier {
       final updated = [...downloadedTracks, saved];
       await repository.saveDownloads(updated);
       downloadedTracks = updated;
+      previouslyDownloadedTracks = _appendUnique(
+        previouslyDownloadedTracks,
+        [saved],
+      );
+      await repository.saveDownloadHistory(previouslyDownloadedTracks);
+      try {
+        await syncCloudLibrary();
+      } catch (error) {
+        cloudSyncError = error.toString().replaceFirst('Exception: ', '');
+      }
       return null;
     } catch (error) {
       if (saved != null) {
@@ -978,6 +1003,48 @@ class AurelController extends ChangeNotifier {
       rethrow;
     }
     _notifySafely();
+  }
+
+  Future<void> removeDownloadHistoryTrack(Track track) async {
+    final key = CatalogIdentity.providerKeyOf(track);
+    previouslyDownloadedTracks = previouslyDownloadedTracks
+        .where((saved) => CatalogIdentity.providerKeyOf(saved) != key)
+        .toList(growable: false);
+    await repository.saveDownloadHistory(previouslyDownloadedTracks);
+    await syncCloudLibrary();
+    _notifySafely();
+  }
+
+  /// Rechecks a previous download against current catalogue permissions and
+  /// refreshes expiring provider URLs before downloading again.
+  Future<String?> redownloadPreviousTrack(Track previous) async {
+    if (offlineMode) {
+      return 'Turn off Offline mode before downloading this track again.';
+    }
+
+    try {
+      final query = '${previous.title} ${previous.artist}'.trim();
+      final page = await catalog.search(query, page: 0);
+      final candidates = page.tracks
+          .where((candidate) => CatalogIdentity.matches(previous, candidate))
+          .where((candidate) => candidate.hasDownloadableSource)
+          .toList(growable: false);
+
+      if (candidates.isEmpty) {
+        return 'This recording no longer has a permitted AUREL download source.';
+      }
+
+      Object? lastError;
+      for (final candidate in candidates) {
+        final message = await downloadTrack(candidate);
+        if (message == null) return null;
+        lastError = message;
+      }
+      return lastError?.toString() ??
+          'AUREL could not find a permitted download source for this recording.';
+    } catch (error) {
+      return error.toString().replaceFirst('Exception: ', '');
+    }
   }
 
   bool get hasLyricsApiKey => lyrics.hasApiKey;
