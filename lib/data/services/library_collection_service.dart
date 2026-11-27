@@ -140,7 +140,15 @@ class LibraryCollectionService {
         () => _MutableLibraryTrackGroup(visibleLabel),
       );
       final trackKey = track.id.isEmpty
-          ? '${track.providerId}:${track.title}:${track.artist}:${track.album}'
+          ? [
+              track.providerId,
+              track.recordingMbid,
+              track.recordingId,
+              track.title,
+              track.artist,
+              track.album,
+              track.durationMs,
+            ].join(':')
           : '${track.providerId}:${track.id}';
       group.tracks.putIfAbsent(trackKey, () => track);
     }
