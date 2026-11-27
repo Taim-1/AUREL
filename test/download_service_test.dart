@@ -273,4 +273,88 @@ void main() {
     });
   });
 
+  group('AUREL-managed deletion boundaries', () {
+    test('never deletes a file outside the private downloads directory', () async {
+      final sandbox = await Directory.systemTemp.createTemp(
+        'aurel-download-delete-',
+      );
+      addTearDown(() => sandbox.delete(recursive: true));
+
+      final documents = Directory(
+        '${sandbox.path}${Platform.pathSeparator}app-documents',
+      );
+      final downloads = Directory(
+        '${documents.path}${Platform.pathSeparator}AUREL Downloads',
+      );
+      final music = Directory(
+        '${sandbox.path}${Platform.pathSeparator}Music',
+      );
+      await downloads.create(recursive: true);
+      await music.create(recursive: true);
+
+      final outsideFile = File(
+        '${music.path}${Platform.pathSeparator}keep.mp3',
+      );
+      await outsideFile.writeAsBytes([
+        0x49, 0x44, 0x33, 0x04, 0x00, 0x00,
+      ]);
+
+      final service = DownloadService(
+        documentsDirectoryProvider: () async => documents,
+      );
+      const untrustedRecord = Track(
+        id: 'outside-file',
+        title: 'Outside file',
+        artist: 'Untrusted metadata',
+        isDownloaded: true,
+        localPath: null,
+      );
+      final forgedPath = untrustedRecord.copyWith(
+        isDownloaded: true,
+        localPath: outsideFile.path,
+      );
+
+      await service.delete(forgedPath);
+
+      expect(await outsideFile.exists(), isTrue);
+    });
+
+    test('deletes an owned AUREL file using its canonical path', () async {
+      final sandbox = await Directory.systemTemp.createTemp(
+        'aurel-download-delete-owned-',
+      );
+      addTearDown(() => sandbox.delete(recursive: true));
+
+      final documents = Directory(
+        '${sandbox.path}${Platform.pathSeparator}app-documents',
+      );
+      final downloads = Directory(
+        '${documents.path}${Platform.pathSeparator}AUREL Downloads',
+      );
+      await downloads.create(recursive: true);
+
+      final ownedFile = File(
+        '${downloads.path}${Platform.pathSeparator}owned.mp3',
+      );
+      await ownedFile.writeAsBytes([
+        0x49, 0x44, 0x33, 0x04, 0x00, 0x00,
+      ]);
+
+      final service = DownloadService(
+        documentsDirectoryProvider: () async => documents,
+      );
+      final ownedTrack = Track(
+        id: 'owned-file',
+        title: 'Owned file',
+        artist: 'AUREL',
+        isDownloaded: true,
+        localPath: ownedFile.path,
+      );
+
+      await service.delete(ownedTrack);
+
+      expect(await ownedFile.exists(), isFalse);
+    });
+  });
+
 }
