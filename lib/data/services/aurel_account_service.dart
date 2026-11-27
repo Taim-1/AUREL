@@ -16,11 +16,13 @@ class CloudLibrarySnapshot {
     required this.favorites,
     required this.playlists,
     required this.recentlyPlayed,
+    required this.downloadHistory,
   });
 
   final List<Track> favorites;
   final List<MusicPlaylist> playlists;
   final List<Track> recentlyPlayed;
+  final List<Track> downloadHistory;
 }
 
 /// Firebase-backed identity and cross-install library sync.
@@ -292,6 +294,7 @@ class AurelAccountService {
       library.doc('recentlyPlayed').get(),
       library.doc('recentlyPlayed').collection('items').get(),
       library.doc('playlists').collection('items').get(),
+      library.doc('downloads').collection('items').get(),
     ]);
 
     List<Track> readTrackValues(Iterable<dynamic> values) {
@@ -372,6 +375,9 @@ class AurelAccountService {
       }),
     );
     final playlists = loadedPlaylists.whereType<MusicPlaylist>().toList();
+    final downloadHistory = readTracks(
+      results[4] as QuerySnapshot<Map<String, dynamic>>,
+    );
 
     return CloudLibrarySnapshot(
       favorites: readTracks(
@@ -379,6 +385,7 @@ class AurelAccountService {
       ),
       recentlyPlayed: recentlyPlayed,
       playlists: playlists,
+      downloadHistory: downloadHistory,
     );
   }
 
@@ -386,6 +393,7 @@ class AurelAccountService {
     required List<Track> favorites,
     required List<MusicPlaylist> playlists,
     required List<Track> recentlyPlayed,
+    required List<Track> downloadHistory,
   }) async {
     final user = currentUser;
     final firestore = _firestore;
@@ -411,6 +419,10 @@ class AurelAccountService {
     await _replaceTrackCollection(
       library.doc('favorites').collection('items'),
       remoteFavorites,
+    );
+    await _replaceTrackCollection(
+      library.doc('downloads').collection('items'),
+      downloadHistory,
     );
     await _writeCloudRecentlyPlayed(
       library.doc('recentlyPlayed'),
