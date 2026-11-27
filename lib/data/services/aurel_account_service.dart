@@ -344,11 +344,11 @@ class AurelAccountService {
         .collection('library');
 
     final remoteFavorites = favorites
-        .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
+        .where((track) => track.id.isNotEmpty)
         .toList(growable: false);
     final remotePlaylists = playlists.map((playlist) {
       final tracks = playlist.tracks
-          .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
+          .where((track) => track.id.isNotEmpty)
           .map(_trackForCloudModel)
           .toList(growable: false);
       return MusicPlaylist(
@@ -386,7 +386,7 @@ class AurelAccountService {
     if (user == null || firestore == null) return;
 
     final remoteHistory = tracks
-        .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
+        .where((track) => track.id.isNotEmpty)
         .take(100)
         .map(_trackForCloud)
         .toList(growable: false);
@@ -475,7 +475,6 @@ class AurelAccountService {
         ...track.toJson(),
         'localPath': null,
         'isDownloaded': false,
-        'isDeviceTrack': false,
       });
 
   Map<String, dynamic> _trackForCloud(Track track) {
@@ -484,7 +483,6 @@ class AurelAccountService {
     // restored after uninstall and must never be mistaken for cloud files.
     json['localPath'] = null;
     json['isDownloaded'] = false;
-    json['isDeviceTrack'] = false;
     return json;
   }
 
