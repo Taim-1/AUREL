@@ -408,6 +408,45 @@ void main() {
       expect(track.canPlay, isFalse);
     });
 
+    test('rejects legacy tracks imported from Android MediaStore', () {
+      expect(
+        () => Track.fromJson({
+          'id': 'device-42',
+          'title': 'Old imported song',
+          'artist': 'Phone library',
+          'providerId': 'device',
+          'providerName': 'On device',
+          'isDeviceTrack': true,
+          'localPath': 'content://media/external/audio/media/42',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('skips legacy device alternatives while restoring an online recording', () {
+      final track = Track.fromJson({
+        'id': 'jamendo-42',
+        'title': 'AUREL recording',
+        'artist': 'AUREL artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/track.mp3',
+        'alternatives': [
+          {
+            'id': 'device-42',
+            'title': 'Old imported song',
+            'artist': 'Phone library',
+            'providerId': 'device',
+            'isDeviceTrack': true,
+            'localPath': 'content://media/external/audio/media/42',
+          },
+        ],
+      });
+
+      expect(track.id, 'jamendo-42');
+      expect(track.alternatives, isEmpty);
+      expect(track.canPlay, isTrue);
+    });
+
     test('only an AUREL-managed download becomes a local playable track', () {
       const downloaded = Track(
         id: 'saved-track',
