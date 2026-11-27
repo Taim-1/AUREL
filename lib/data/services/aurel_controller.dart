@@ -1015,13 +1015,20 @@ class AurelController extends ChangeNotifier {
     _notifySafely();
   }
 
+  final Set<String> restoringDownloadIds = {};
+
   /// Rechecks a previous download against current catalogue permissions and
   /// refreshes expiring provider URLs before downloading again.
   Future<String?> redownloadPreviousTrack(Track previous) async {
     if (offlineMode) {
       return 'Turn off Offline mode before downloading this track again.';
     }
+    if (restoringDownloadIds.contains(previous.id)) {
+      return 'This download is already being restored.';
+    }
 
+    restoringDownloadIds.add(previous.id);
+    _notifySafely();
     try {
       final query = '${previous.title} ${previous.artist}'.trim();
       final page = await catalog.search(query, page: 0);
@@ -1044,6 +1051,9 @@ class AurelController extends ChangeNotifier {
           'AUREL could not find a permitted download source for this recording.';
     } catch (error) {
       return error.toString().replaceFirst('Exception: ', '');
+    } finally {
+      restoringDownloadIds.remove(previous.id);
+      _notifySafely();
     }
   }
 
