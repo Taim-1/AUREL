@@ -1080,9 +1080,12 @@ class AurelController extends ChangeNotifier {
 
   Future<void> saveLyricsApiKey(String value) async {
     await lyrics.saveApiKey(value);
-    lyricsError = null;
+    _lyricsRequestGeneration++;
+    _lyricsTrackId = null;
     currentLyrics = null;
+    lyricsError = null;
     _notifySafely();
+    unawaited(loadLyricsForCurrentTrack(forceRefresh: true));
   }
 
   Future<void> clearLyricsApiKey() async {
