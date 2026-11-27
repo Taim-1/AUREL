@@ -595,8 +595,8 @@ class Track {
       licenseUrl: (json['licenseUrl'] ?? '').toString(),
       durationMs: (json['durationMs'] as num?)?.round() ?? 0,
       downloadAllowed: json['downloadAllowed'] == true,
-      isDownloaded: json['isDownloaded'] == true,
-      localPath: json['localPath']?.toString(),
+      isDownloaded: false,
+      localPath: null,
       providerId: providerId,
       providerName: (json['providerName'] ?? 'Jamendo').toString(),
       sourceUrl: (json['sourceUrl'] ?? '').toString(),
@@ -625,6 +625,27 @@ class Track {
               .whereType<Track>()
               .toList(growable: false) ??
           const [],
+    );
+  }
+
+  factory Track.fromDownloadedJson(Map<String, dynamic> json) {
+    if (json['isDownloaded'] != true) {
+      throw const FormatException(
+        'Only AUREL-managed downloaded recordings can enter the offline library.',
+      );
+    }
+
+    final track = Track.fromJson(json);
+    final path = (json['localPath'] ?? '').toString().trim();
+    if (path.isEmpty) {
+      throw const FormatException(
+        'The saved AUREL download does not have a local file path.',
+      );
+    }
+
+    return track.copyWith(
+      isDownloaded: true,
+      localPath: path,
     );
   }
 
