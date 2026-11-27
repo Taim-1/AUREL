@@ -75,7 +75,7 @@ class AurelController extends ChangeNotifier {
     await repository.saveRecentlyPlayed(recentlyPlayed);
     if (_disposed) return;
     try {
-      await syncCloudLibrary();
+      await syncCloudRecentlyPlayed();
     } catch (error) {
       cloudSyncError = error.toString().replaceFirst('Exception: ', '');
     }
@@ -247,22 +247,39 @@ class AurelController extends ChangeNotifier {
     final accountUid = account.currentUser?.uid;
     if (accountUid == null) return Future<void>.value();
 
-    final revision = ++_cloudSyncRevision;
-    final operation = _cloudSyncTail.then((_) async {
-      // A queued operation from account A must not run after account B signs in.
-      if (account.currentUser?.uid != accountUid) return;
-
-      // Take the snapshot only when this operation reaches the head of the
-      // queue. Multiple taps then collapse naturally onto the latest state.
-      await account.saveCloudLibrary(
+    return _enqueueCloudWrite(accountUid, () {
+      return account.saveCloudLibrary(
         favorites: List<Track>.unmodifiable(favoriteTracks),
         playlists: List<MusicPlaylist>.unmodifiable(playlists),
         recentlyPlayed: List<Track>.unmodifiable(recentlyPlayed),
       );
+    });
+  }
 
-      if (revision == _cloudSyncRevision) {
-        cloudSyncError = null;
-      }
+  /// History changes are frequent, so they update only the compact history
+  /// document instead of rewriting favorites and every playlist on each song.
+  Future<void> syncCloudRecentlyPlayed() {
+    final accountUid = account.currentUser?.uid;
+    if (accountUid == null) return Future<void>.value();
+
+    return _enqueueCloudWrite(accountUid, () {
+      return account.saveCloudRecentlyPlayed(
+        List<Track>.unmodifiable(recentlyPlayed),
+      );
+    });
+  }
+
+  Future<void> _enqueueCloudWrite(
+    String accountUid,
+    Future<void> Function() write,
+  ) {
+    final revision = ++_cloudSyncRevision;
+    final operation = _cloudSyncTail.then((_) async {
+      // Never replay a pending write under a different Firebase identity.
+      if (account.currentUser?.uid != accountUid) return;
+
+      await write();
+      if (revision == _cloudSyncRevision) cloudSyncError = null;
       _notifySafely();
     });
 
