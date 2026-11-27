@@ -22,7 +22,13 @@ void main() {
       find.bySemanticsLabel('Harmony music visualizer'),
       findsOneWidget,
     );
-    expect(find.byType(CustomPaint), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(HarmonyVisualizer),
+        matching: find.byType(CustomPaint),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('animates while playing and remains mounted when paused', (
