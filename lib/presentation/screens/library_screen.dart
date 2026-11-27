@@ -1190,7 +1190,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                         controller.offlineMode
                             ? 'No tracks from this playlist have been downloaded inside AUREL yet.'
                             : 'No tracks yet. Add music from Search or Discover.',
-                        style: TextStyle(color: AurelColors.muted),
+                        style: const TextStyle(color: AurelColors.muted),
                       ),
                     ),
                   )
