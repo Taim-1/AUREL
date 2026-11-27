@@ -606,9 +606,10 @@ class AurelController extends ChangeNotifier {
     final targetIndex = trackIndex + offset;
     if (targetIndex < 0 || targetIndex >= tracks.length) return;
 
-    final moved = tracks.removeAt(trackIndex);
-    tracks.insert(targetIndex, moved);
-    final updated = playlist.copyWith(tracks: tracks);
+    final updated = playlist.moveTrack(
+      fromIndex: trackIndex,
+      toIndex: targetIndex,
+    );
     playlists = [
       for (var i = 0; i < playlists.length; i++)
         if (i == playlistIndex) updated else playlists[i],
