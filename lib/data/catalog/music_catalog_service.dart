@@ -366,7 +366,12 @@ class MusicCatalogService {
         // Keep the selected catalogue identity stable while removing every
         // source already tried during preparation from future playback retry.
         final remaining = track.alternatives
-            .where((alternative) => !attemptedIds.contains(alternative.id))
+            .where(
+              (alternative) =>
+                  !attemptedSources.contains(
+                    CatalogIdentity.providerKeyOf(alternative),
+                  ),
+            )
             .toList(growable: false);
         return prepared.copyWith(
           id: track.id,
@@ -400,9 +405,10 @@ class MusicCatalogService {
     ].where((candidate) => candidate.canDownloadDirectly);
 
     Object? lastError;
-    final attemptedIds = <String>{};
+    final attemptedSources = <String>{};
     for (final candidate in candidates) {
-      if (!attemptedIds.add(candidate.id)) continue;
+      final sourceKey = CatalogIdentity.providerKeyOf(candidate);
+      if (!attemptedSources.add(sourceKey)) continue;
       try {
         final prepared = candidate.providerId == 'soundcloud'
             ? await soundcloud.prepareForDownload(candidate)
