@@ -75,8 +75,7 @@ class AurelController extends ChangeNotifier {
     await repository.saveRecentlyPlayed(recentlyPlayed);
     if (_disposed) return;
     try {
-      await account.saveCloudRecentlyPlayed(recentlyPlayed);
-      cloudSyncError = null;
+      await syncCloudLibrary();
     } catch (error) {
       cloudSyncError = error.toString().replaceFirst('Exception: ', '');
     }
@@ -136,6 +135,12 @@ class AurelController extends ChangeNotifier {
   Map<String, int> sourceCounts = const {};
 
   String? cloudSyncError;
+
+  // Cloud saves are serialized. Every queued operation reads the latest
+  // in-memory collections when it starts, so rapid edits cannot be replayed
+  // out of order and restore operations cannot leave older snapshots last.
+  Future<void> _cloudSyncTail = Future<void>.value();
+  int _cloudSyncRevision = 0;
 
   List<Track> discoverTracks = [];
   List<Track> searchResults = [];
@@ -223,29 +228,51 @@ class AurelController extends ChangeNotifier {
     _notifySafely();
   }
 
-  Future<void> syncCloudLibrary() async {
-    if (!account.isSignedIn) return;
-    try {
+  Future<void> syncCloudLibrary() {
+    if (!account.isSignedIn) return Future<void>.value();
+
+    final revision = ++_cloudSyncRevision;
+    final operation = _cloudSyncTail.then((_) async {
+      if (!account.isSignedIn) return;
+
+      // Take the snapshot only when this operation reaches the head of the
+      // queue. Multiple taps then collapse naturally onto the latest state.
       await account.saveCloudLibrary(
-        favorites: favoriteTracks,
-        playlists: playlists,
-        recentlyPlayed: recentlyPlayed,
+        favorites: List<Track>.unmodifiable(favoriteTracks),
+        playlists: List<MusicPlaylist>.unmodifiable(playlists),
+        recentlyPlayed: List<Track>.unmodifiable(recentlyPlayed),
       );
-      cloudSyncError = null;
-    } catch (error) {
-      cloudSyncError = error.toString().replaceFirst('Exception: ', '');
-      rethrow;
-    }
-    _notifySafely();
+
+      if (revision == _cloudSyncRevision) {
+        cloudSyncError = null;
+      }
+      _notifySafely();
+    });
+
+    _cloudSyncTail = operation.catchError((Object error) {
+      if (revision == _cloudSyncRevision) {
+        cloudSyncError = error.toString().replaceFirst('Exception: ', '');
+      }
+      _notifySafely();
+    });
+
+    return operation;
   }
 
   void notifyAccountChanged() => _notifySafely();
 
   List<Track> _appendUnique(List<Track> current, List<Track> incoming) {
-    final ids = current.map((track) => track.id).toSet();
+    // IDs are not guaranteed to be present in every metadata-only catalogue.
+    // Use the provider-aware identity key so two empty IDs do not collapse
+    // into one record and providers do not overwrite each other's copies.
+    final keys = current
+        .map(CatalogIdentity.providerKeyOf)
+        .toSet();
     return [
       ...current,
-      ...incoming.where((track) => ids.add(track.id)),
+      ...incoming.where((track) => keys.add(
+            CatalogIdentity.providerKeyOf(track),
+          )),
     ];
   }
 
