@@ -8,7 +8,6 @@ import '../widgets/lyrics_sheet.dart';
 import '../widgets/playback_settings_sheet.dart';
 import '../widgets/up_next_sheet.dart';
 import '../widgets/waveform_seek_bar.dart';
-import '../widgets/harmony_visualizer.dart';
 
 class NowPlayingScreen extends StatelessWidget {
   const NowPlayingScreen({super.key});
@@ -230,20 +229,6 @@ class NowPlayingScreen extends StatelessWidget {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      HarmonyVisualizer(
-                        isPlaying: playback.isPlaying,
-                        position: position,
-                      ),
-                      const Text(
-                        'HARMONY',
-                        style: TextStyle(
-                          color: AurelColors.muted,
-                          fontSize: 8,
-                          letterSpacing: 2.2,
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
