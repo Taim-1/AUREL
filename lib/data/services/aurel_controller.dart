@@ -968,10 +968,12 @@ class AurelController extends ChangeNotifier {
         previouslyDownloadedTracks,
         [saved],
       );
-      await repository.saveDownloadHistory(previouslyDownloadedTracks);
       try {
+        await repository.saveDownloadHistory(previouslyDownloadedTracks);
         await syncCloudLibrary();
       } catch (error) {
+        // A cloud-history write must not undo a successfully downloaded local
+        // file. The actual AUREL download remains usable on this device.
         cloudSyncError = error.toString().replaceFirst('Exception: ', '');
       }
       return null;
