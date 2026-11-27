@@ -25,6 +25,7 @@ class LyricsService {
   final Map<String, LyricsDocument?> _cache = {};
   final Map<String, Future<LyricsDocument?>> _inFlight = {};
   String? _apiKey;
+  int _cacheGeneration = 0;
 
   bool get hasApiKey => _apiKey?.isNotEmpty == true;
 
@@ -39,61 +40,91 @@ class LyricsService {
     }
     await _storage.write(key: _storageKey, value: key);
     _apiKey = key;
+    _cacheGeneration++;
     _cache.clear();
+    _inFlight.clear();
   }
 
   Future<void> clearApiKey() async {
     await _storage.delete(key: _storageKey);
     _apiKey = null;
+    _cacheGeneration++;
     _cache.clear();
+    _inFlight.clear();
   }
 
   Future<LyricsDocument?> fetchFor(
     Track track, {
     bool forceRefresh = false,
     bool allowNetwork = true,
-  }) {
-    if (!hasApiKey) {
-      return Future.error(
-        const LyricsServiceException(
-          'Add your Musixmatch API key in Profile to load licensed lyrics.',
-        ),
+  }) async {
+    final apiKey = _apiKey;
+    if (apiKey == null || apiKey.isEmpty) {
+      throw const LyricsServiceException(
+        'Add your Musixmatch API key in Profile to load licensed lyrics.',
       );
     }
-    // Offline mode may reuse a result already held in this session, even
-    // when the user taps refresh. It never opens a network request or stores
-    // copyrighted lyrics persistently without rights.
-    if (!allowNetwork) return Future.value(_cache[track.id]);
-    if (!forceRefresh && _cache.containsKey(track.id)) {
-      return Future.value(_cache[track.id]);
+
+    final cacheKey = _cacheKey(track);
+    // Offline mode can reuse only the in-memory result for this exact
+    // recording/version. Lyrics are never written to persistent storage.
+    if (!allowNetwork) return _cache[cacheKey];
+    if (!forceRefresh && _cache.containsKey(cacheKey)) {
+      return _cache[cacheKey];
     }
-    if (!forceRefresh && _inFlight.containsKey(track.id)) {
-      return _inFlight[track.id]!;
+
+    // A refresh never races an existing fetch for the same recording.
+    final existing = _inFlight[cacheKey];
+    if (existing != null) return existing;
+
+    final generation = _cacheGeneration;
+    final request = _fetch(
+      track,
+      cacheKey: cacheKey,
+      cacheGeneration: generation,
+      apiKey: apiKey,
+    );
+    _inFlight[cacheKey] = request;
+    try {
+      return await request;
+    } finally {
+      if (identical(_inFlight[cacheKey], request)) {
+        _inFlight.remove(cacheKey);
+      }
     }
-    final request = _fetch(track);
-    _inFlight[track.id] = request;
-    return request.whenComplete(() {
-      _inFlight.remove(track.id);
-    });
   }
 
-  Future<LyricsDocument?> _fetch(Track track) async {
+  String _cacheKey(Track track) => [
+        track.providerId.trim(),
+        track.id.trim(),
+        _normalize(track.title),
+        _normalize(track.artist),
+        _normalize(track.album),
+        track.durationMs.toString(),
+      ].join('|');
+
+  Future<LyricsDocument?> _fetch(
+    Track track, {
+    required String cacheKey,
+    required int cacheGeneration,
+    required String apiKey,
+  }) async {
     final search = await _request('track.search', {
       'q_track': track.title,
       'q_artist': track.artist,
       'page': 1,
       'page_size': 10,
       's_track_rating': 'desc',
-    });
+    }, apiKey: apiKey);
     final list = _body(search)['track_list'];
     if (list is! List) {
-      _cache[track.id] = null;
+      _storeCache(cacheKey, null, cacheGeneration);
       return null;
     }
 
     final title = _normalize(track.title);
     final artist = _normalize(track.artist);
-    final matches = list
+    final exactMatches = list
         .whereType<Map<String, dynamic>>()
         .map((item) => item['track'])
         .whereType<Map<String, dynamic>>()
@@ -102,20 +133,40 @@ class LyricsService {
             _normalize((item['artist_name'] ?? '').toString()) == artist)
         .toList(growable: false);
 
-    if (matches.isEmpty) {
-      _cache[track.id] = null;
+    if (exactMatches.isEmpty) {
+      _storeCache(cacheKey, null, cacheGeneration);
       return null;
     }
 
-    final match = matches.first;
-    if (_int(match['restricted']) == 1) {
+    final permittedMatches = exactMatches
+        .where((item) => _int(item['restricted']) != 1)
+        .toList(growable: false);
+    if (permittedMatches.isEmpty) {
       throw const LyricsServiceException(
         'Lyrics for this track are restricted by the rights holder.',
       );
     }
+
+    // Never attach lyrics from a different edit, live take or extended
+    // version just because its title and credited artist happen to match.
+    final durationMatches = permittedMatches.where((item) {
+      final providerSeconds = _int(item['track_length']);
+      if (track.durationMs <= 0 || providerSeconds <= 0) return true;
+      return (providerSeconds * 1000 - track.durationMs).abs() <= 8000;
+    }).toList(growable: false);
+
+    if (durationMatches.isEmpty) {
+      _storeCache(cacheKey, null, cacheGeneration);
+      return null;
+    }
+
+    final orderedMatches = durationMatches.toList()
+      ..sort((a, b) => _compareMatchQuality(track, a, b));
+    final match = orderedMatches.first;
+
     final providerTrackId = match['track_id']?.toString() ?? '';
     if (providerTrackId.isEmpty) {
-      _cache[track.id] = null;
+      _storeCache(cacheKey, null, cacheGeneration);
       return null;
     }
 
@@ -127,7 +178,7 @@ class LyricsService {
         durationSeconds: (track.durationMs / 1000).round(),
         instrumental: true,
       );
-      _cache[track.id] = instrumental;
+      _storeCache(cacheKey, instrumental, cacheGeneration);
       return instrumental;
     }
 
@@ -136,7 +187,7 @@ class LyricsService {
     if (_int(match['has_lyrics']) == 1) {
       final response = await _request('track.lyrics.get', {
         'track_id': providerTrackId,
-      });
+      }, apiKey: apiKey);
       final lyrics = _body(response)['lyrics'];
       if (lyrics is Map<String, dynamic>) {
         if (_int(lyrics['restricted']) == 1) {
@@ -161,11 +212,12 @@ class LyricsService {
           'subtitle_format': 'lrc',
           if (seconds > 0) 'f_subtitle_length': seconds,
           'f_subtitle_length_max_deviation': 8,
-        });
+        }, apiKey: apiKey);
         final subtitle = _subtitle(_body(response));
         if (subtitle != null && _int(subtitle['restricted']) != 1) {
           synced = _parseSubtitle(
             (subtitle['subtitle_body'] ?? '').toString(),
+            durationSeconds: seconds,
           );
           final rights =
               (subtitle['lyrics_copyright'] ?? '').toString().trim();
@@ -190,15 +242,16 @@ class LyricsService {
       lyricsCopyright: copyright,
       syncedLines: synced,
     );
-    _cache[track.id] = document;
+    _storeCache(cacheKey, document, cacheGeneration);
     return document;
   }
 
   Future<Map<String, dynamic>> _request(
     String endpoint,
-    Map<String, dynamic> parameters,
-  ) async {
-    final key = _apiKey;
+    Map<String, dynamic> parameters, {
+    required String apiKey,
+  }) async {
+    final key = apiKey;
     if (key == null || key.isEmpty) {
       throw const LyricsServiceException(
         'Add your Musixmatch API key in Profile.',
@@ -292,9 +345,13 @@ class LyricsService {
     return null;
   }
 
-  List<LyricsLine> _parseSubtitle(String source) {
+  List<LyricsLine> _parseSubtitle(
+    String source, {
+    required int durationSeconds,
+  }) {
     final lrc = LyricsDocument.parseLrc(source);
-    if (lrc.isNotEmpty) return lrc;
+    if (lrc.isNotEmpty) return _withinDuration(lrc, durationSeconds);
+
     try {
       final decoded = jsonDecode(source);
       if (decoded is! List) return const [];
@@ -315,9 +372,67 @@ class LyricsService {
         );
       }
       lines.sort((a, b) => a.start.compareTo(b.start));
-      return List.unmodifiable(lines);
+      return _withinDuration(lines, durationSeconds);
     } on FormatException {
       return const [];
+    }
+  }
+
+  List<LyricsLine> _withinDuration(
+    List<LyricsLine> lines,
+    int durationSeconds,
+  ) {
+    final latestAllowed = Duration(seconds: durationSeconds + 5);
+    return List.unmodifiable(
+      lines.where((line) =>
+          line.text.trim().isNotEmpty &&
+          !line.start.isNegative &&
+          (durationSeconds <= 0 || line.start <= latestAllowed)),
+    );
+  }
+
+  int _compareMatchQuality(
+    Track requested,
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    int albumRank(Map<String, dynamic> item) {
+      if (requested.album.trim().isEmpty) return 1;
+      final album = _normalize((item['album_name'] ?? '').toString());
+      return album == _normalize(requested.album) ? 0 : 1;
+    }
+
+    final album = albumRank(a).compareTo(albumRank(b));
+    if (album != 0) return album;
+
+    int durationDifference(Map<String, dynamic> item) {
+      final seconds = _int(item['track_length']);
+      return requested.durationMs <= 0 || seconds <= 0
+          ? 1 << 30
+          : (seconds * 1000 - requested.durationMs).abs();
+    }
+
+    final duration = durationDifference(a).compareTo(durationDifference(b));
+    if (duration != 0) return duration;
+
+    final subtitles = _int(b['has_subtitles']).compareTo(
+      _int(a['has_subtitles']),
+    );
+    if (subtitles != 0) return subtitles;
+
+    final lyrics = _int(b['has_lyrics']).compareTo(_int(a['has_lyrics']));
+    if (lyrics != 0) return lyrics;
+
+    return _int(b['track_rating']).compareTo(_int(a['track_rating']));
+  }
+
+  void _storeCache(
+    String cacheKey,
+    LyricsDocument? document,
+    int generation,
+  ) {
+    if (generation == _cacheGeneration) {
+      _cache[cacheKey] = document;
     }
   }
 
