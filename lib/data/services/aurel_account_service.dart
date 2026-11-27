@@ -363,12 +363,11 @@ class AurelAccountService {
             tracks: List<Track>.unmodifiable(tracks),
           );
         } catch (error) {
+          // Do not turn a temporary network/read failure into an empty
+          // playlist. The controller must not overwrite healthy cloud data
+          // with an incomplete snapshot.
           debugPrint('AUREL playlist restore failed for $id: $error');
-          return MusicPlaylist(
-            id: id,
-            name: name,
-            tracks: const [],
-          );
+          rethrow;
         }
       }),
     );
