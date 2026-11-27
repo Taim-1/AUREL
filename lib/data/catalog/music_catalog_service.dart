@@ -394,15 +394,39 @@ class MusicCatalogService {
   /// streaming eligibility. Some providers permit downloads for tracks that
   /// are not available as live streams.
   Future<Track> prepareTrackForDownload(Track track) async {
-    if (!track.downloadAllowed || track.downloadUrl.trim().isEmpty) {
-      throw const CatalogPlaybackException(
-        'Offline download is not permitted for this recording.',
+    final candidates = <Track>[
+      track,
+      ...track.alternatives,
+    ].where((candidate) => candidate.hasDownloadableSource);
+
+    Object? lastError;
+    final attemptedIds = <String>{};
+    for (final candidate in candidates) {
+      if (!attemptedIds.add(candidate.id)) continue;
+      try {
+        final prepared = candidate.providerId == 'soundcloud'
+            ? await soundcloud.prepareForDownload(candidate)
+            : candidate;
+        final remaining = track.alternatives
+            .where((alternative) => !attemptedIds.contains(alternative.id))
+            .toList(growable: false);
+        return prepared.copyWith(
+          id: track.id,
+          alternatives: remaining,
+        );
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError != null) {
+      throw CatalogPlaybackException(
+        'No permitted download source could prepare this recording: $lastError',
       );
     }
-    if (track.providerId == 'soundcloud') {
-      return soundcloud.prepareForDownload(track);
-    }
-    return track;
+    throw const CatalogPlaybackException(
+      'Offline download is not permitted for this recording.',
+    );
   }
 
   Future<_CollectedSources> _collect(
