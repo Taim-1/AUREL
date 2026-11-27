@@ -1192,32 +1192,78 @@ class PlaylistDetailScreen extends StatelessWidget {
                     ),
                   )
                 else
-                  ...playlistTracks.map(
-                    (track) => Row(
-                      children: [
-                        Expanded(
-                          child: TrackTile(
-                            track: track,
-                            queue: playlistTracks,
+                  ...List<Widget>.generate(playlistTracks.length, (index) {
+                    final track = playlistTracks[index];
+                    return Padding(
+                      key: ValueKey('${track.providerId}:${track.id}'),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TrackTile(
+                              track: track,
+                              queue: playlistTracks,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: 'Remove from playlist',
-                          onPressed: () => context
-                              .read<AurelController>()
-                              .removeTrackFromPlaylist(
-                                playlistId,
-                                track.id,
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Move up',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: index == 0
+                                    ? null
+                                    : () => context
+                                        .read<AurelController>()
+                                        .moveTrackInPlaylist(
+                                          playlistId,
+                                          track,
+                                          -1,
+                                        ),
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_up_rounded,
+                                  size: 20,
+                                ),
                               ),
-                          icon: const Icon(
-                            Icons.remove_circle_outline_rounded,
-                            color: AurelColors.muted,
-                            size: 20,
+                              IconButton(
+                                tooltip: 'Remove from playlist',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => context
+                                    .read<AurelController>()
+                                    .removeTrackFromPlaylist(
+                                      playlistId,
+                                      track.id,
+                                      providerId: track.providerId,
+                                    ),
+                                icon: const Icon(
+                                  Icons.remove_circle_outline_rounded,
+                                  color: AurelColors.muted,
+                                  size: 18,
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Move down',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: index == playlistTracks.length - 1
+                                    ? null
+                                    : () => context
+                                        .read<AurelController>()
+                                        .moveTrackInPlaylist(
+                                          playlistId,
+                                          track,
+                                          1,
+                                        ),
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 20,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                        ],
+                      ),
+                    );
+                  }),
               ],
             ),
     );
