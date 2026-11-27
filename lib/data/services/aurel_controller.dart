@@ -168,7 +168,9 @@ class AurelController extends ChangeNotifier {
     await jamendo.initialize();
     await lyrics.initialize();
     favoriteTracks = await repository.loadFavorites();
-    downloadedTracks = await repository.loadDownloads();
+    final storedDownloads = await repository.loadDownloads();
+    downloadedTracks = await downloads.validateSavedDownloads(storedDownloads);
+    await repository.saveDownloads(downloadedTracks);
     recentlyPlayed = await repository.loadRecentlyPlayed();
     playlists = await repository.loadPlaylists();
     offlineMode = await repository.loadOfflineMode();
