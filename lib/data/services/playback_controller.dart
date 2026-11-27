@@ -18,7 +18,7 @@ class PlaybackController extends ChangeNotifier {
   bool _disposed = false;
 
   void _notifySafely() {
-    if (!_disposed) super._notifySafely();
+    if (!_disposed) super.notifyListeners();
   }
 
   PlaybackController() {
@@ -26,11 +26,11 @@ class PlaybackController extends ChangeNotifier {
       player.errorStream.listen((error) {
         unawaited(_recoverFromSourceError(error).then<void>((_) {}));
       }),
-      player.playerStateStream.listen((_) => notifyListeners()),
-      player.shuffleModeEnabledStream.listen((_) => notifyListeners()),
-      player.loopModeStream.listen((_) => notifyListeners()),
-      player.speedStream.listen((_) => notifyListeners()),
-      equalizer.enabledStream.listen((_) => notifyListeners()),
+      player.playerStateStream.listen((_) => _notifySafely()),
+      player.shuffleModeEnabledStream.listen((_) => _notifySafely()),
+      player.loopModeStream.listen((_) => _notifySafely()),
+      player.speedStream.listen((_) => _notifySafely()),
+      equalizer.enabledStream.listen((_) => _notifySafely()),
       player.currentIndexStream.listen((index) {
         if (index != null && index >= 0 && index < queue.length) {
           currentIndex = index;
