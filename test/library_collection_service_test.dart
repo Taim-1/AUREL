@@ -250,12 +250,12 @@ void main() {
 
     test('normalizes artist names and ignores blank artist metadata', () {
       final groups = LibraryCollectionService.groupByArtist([
-        track(
+        const Track(
           id: 'one',
           title: 'First',
           artist: 'Lana Del Rey',
         ),
-        track(
+        const Track(
           id: 'two',
           title: 'Second',
           artist: ' lana   del rey ',
@@ -303,7 +303,7 @@ void main() {
 
       expect(
         () => groups.add(
-          LibraryTrackGroup(name: 'Another', tracks: const []),
+          const LibraryTrackGroup(name: 'Another', tracks: []),
         ),
         throwsUnsupportedError,
       );
