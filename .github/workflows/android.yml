@@ -72,14 +72,21 @@ jobs:
               echo
               echo "Add these repository Actions secrets to enable the corresponding account features:"
               for key in "${missing[@]}"; do
-                echo "- `$key`"
-                echo "::warning title=Missing cloud account setting::$key is not configured"
+                printf '%s\\n' "- $key"
               done
               echo
               echo "No secret values are printed by this check."
-            echo "AUREL cloud account configuration is incomplete. Missing: ${missing[*]}"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( ${#missing[@]} > 0 )); then
+            echo "AUREL cloud account configuration is incomplete. Missing: ${missing[*]}"
+            for key in "${missing[@]}"; do
+              echo "::warning title=Missing cloud account setting::$key is not configured"
+            done
+          else
+            echo "AUREL cloud account configuration is present."
+          fi
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
