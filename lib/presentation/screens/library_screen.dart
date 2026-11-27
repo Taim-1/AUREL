@@ -246,6 +246,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   value: LibrarySort.artistAscending,
                   child: Text('Artist A–Z'),
                 ),
+                PopupMenuItem(
+                  value: LibrarySort.albumAscending,
+                  child: Text('Album A–Z'),
+                ),
               ],
             ),
           ],
