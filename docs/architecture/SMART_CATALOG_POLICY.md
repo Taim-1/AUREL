@@ -16,19 +16,18 @@ The current deterministic preference in `MusicCatalogService` is:
 
 | Rank | Source | Intended role |
 |---:|---|---|
-| 1 | AUREL-managed offline download | Highest priority for a permitted recording already saved inside AUREL |
-| 2 | Android MediaStore library | Read-only local playback through the user's granted device-audio permission |
-| 3 | Audius | Eligible in-app streams where the specific recording and API terms permit |
-| 4 | Jamendo | Licensed catalogue streams where the account/API terms permit |
-| 5 | SoundCloud | Only tracks and playback methods explicitly allowed by the integration |
-| 6 | Internet Archive | Item-by-item rights and file validation required |
-| 7 | Wikimedia Commons | Item-by-item license and attribution validation required |
-| 8 | Openverse | Discovery/indexing; verify the underlying work and license before playback/download |
-| 9 | Apple Music catalogue metadata | Metadata fallback; not a free stream |
-| 10 | Spotify catalogue metadata | Metadata fallback; not a free stream |
-| 11 | Last.fm | Track search, artist discovery and popularity metadata only |
-| 12 | ListenBrainz | Community listening-popularity metadata only |
-| 13 | MusicBrainz | Recording/artist metadata only |
+| 1 | AUREL-managed offline download | Highest priority for a permitted recording already downloaded inside AUREL |
+| 2 | Audius | Eligible in-app streams where the specific recording and API terms permit |
+| 3 | Jamendo | Licensed catalogue streams where the account/API terms permit |
+| 4 | SoundCloud | Only tracks and playback methods explicitly allowed by the integration |
+| 5 | Internet Archive | Item-by-item rights and file validation required |
+| 6 | Wikimedia Commons | Item-by-item license and attribution validation required |
+| 7 | Openverse | Discovery/indexing; verify the underlying work and license before playback/download |
+| 8 | Apple Music catalogue metadata | Metadata fallback; not a free stream |
+| 9 | Spotify catalogue metadata | Metadata fallback; not a free stream |
+| 10 | Last.fm | Track search, artist discovery and popularity metadata only |
+| 11 | ListenBrainz | Community listening-popularity metadata only |
+| 12 | MusicBrainz | Recording/artist metadata only |
 
 Downloaded copies are created only by AUREL's in-app download action when the item and provider explicitly permit offline saving. The Downloads tab lists only those AUREL-managed copies; it is not a phone-file browser or device-music importer. This is a product fallback order, not a claim that every item from a source is legally playable or has superior audio quality. Track-level eligibility and verified audio quality always override the default rank.
 
@@ -43,7 +42,7 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 7. Do not merge different recordings merely because title and artist match.
 8. When duration is absent or unreliable and no exact recording identifier exists, keep separate entries rather than risk a false merge.
 9. If both entries have ISRCs and they differ, never merge them through title/duration fallback.
-10. Choose the best eligible playable candidate using: playback eligibility, local-copy preference, deterministic source priority, then metadata completeness within the same source tier.
+10. Choose the best eligible playable candidate using: playback eligibility, AUREL-download preference, deterministic source priority, then metadata completeness within the same source tier.
 11. Preserve matched catalogue identifiers internally for diagnostics and future fallback, but do not display provider names as user-facing labels.
 12. Metadata-only matches may enrich an existing recording (artist spelling, album, artwork, ISRC or recording MBID) but must not replace a playable candidate.
 
@@ -69,9 +68,9 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 
 ## Current implementation note
 
-The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking rules are centralized in `lib/data/catalog/catalog_ranking.dart`. `lib/data/catalog/local_track_priority.dart` promotes an available local recording to the active copy while retaining playable same-recording online alternatives in deterministic order, so a missing local file does not erase recovery choices. Last.fm is a gated metadata adapter and is omitted unless the API key and written-approval flag are present. Its artwork is not reused, its data is excluded from the generic catalogue cache, and public use still requires the provider-approved attribution button and catalogue links. The automated CI suite validates the current model, ranking, identity, provider parser and Android debug-build paths; real provider authorization, item rights and account-specific services still require their credentials and approval before a public release.
+The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking rules are centralized in `lib/data/catalog/catalog_ranking.dart`. `lib/data/catalog/local_track_priority.dart` promotes an eligible AUREL-managed downloaded file to the active copy while retaining playable same-recording online alternatives in deterministic order, so a missing or removed download does not erase recovery choices. Last.fm is a gated metadata adapter and is omitted unless the API key and written-approval flag are present. Its artwork is not reused, its data is excluded from the generic catalogue cache, and public use still requires the provider-approved attribution button and catalogue links. The automated CI suite validates the current model, ranking, identity, provider parser and Android debug-build paths; real provider authorization, item rights and account-specific services still require their credentials and approval before a public release.
 
 
-## Device library priority and privacy
+## Offline library and privacy
 
-Android MediaStore tracks are local playable copies, ranked ahead of all online providers. They are queried only after the user opens Library → Songs and grants the scoped audio permission. AUREL uses MediaStore content URIs directly, excludes Snaptube paths, and does not copy, move, modify, or upload device audio. AUREL-managed downloads remain a separate local tier and the only entries in the Downloads tab. When Offline mode is active, playback, search, queue and fallback are restricted to currently playable on-device tracks and AUREL-managed downloads.
+AUREL's only local music files are audio copies the user explicitly downloads through the in-app download action after the provider and item licence allow offline saving. These files live in AUREL's private application storage and are listed in the Downloads collection. The app does not request Android audio-library permissions, query MediaStore, scan phone folders, import unrelated music files or play music from other apps. Enabling Offline mode restricts search, queue, playback and fallback to verified AUREL-managed downloads already present in private storage.
