@@ -47,6 +47,7 @@ class AurelController extends ChangeNotifier {
   String? _lastHistoryTrackId;
 
   void _onPlaybackChanged() {
+    if (_disposed) return;
     final track = playback.currentTrack;
     final trackId = track?.id;
     if (trackId != _lyricsTrackId) {
@@ -59,6 +60,7 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> _recordRecentlyPlayed(Track track) async {
+    if (_disposed) return;
     if (_lastHistoryTrackId == track.id &&
         recentlyPlayed.isNotEmpty &&
         recentlyPlayed.first.id == track.id) {
@@ -70,6 +72,7 @@ class AurelController extends ChangeNotifier {
       ...recentlyPlayed.where((item) => item.id != track.id),
     ].take(100).toList(growable: false);
     await repository.saveRecentlyPlayed(recentlyPlayed);
+    if (_disposed) return;
     try {
       await account.saveCloudRecentlyPlayed(recentlyPlayed);
       cloudSyncError = null;
