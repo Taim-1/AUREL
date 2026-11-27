@@ -9,8 +9,6 @@ class CatalogRanking {
   const CatalogRanking._();
 
   static const Map<String, int> sourcePriority = {
-    'device': 120,
-    'local': 120,
     'audius': 100,
     'jamendo': 90,
     'soundcloud': 80,
