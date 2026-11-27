@@ -75,6 +75,13 @@ class _SearchScreenState extends State<SearchScreen> {
     final controller = context.watch<AurelController>();
     final hasQuery = controller.searchQuery.isNotEmpty;
     final artists = _popularArtists(controller.discoverTracks);
+    final offlineTracks = <String, Track>{
+      for (final track in [
+        ...controller.downloadedTracks,
+        ...controller.deviceTracks,
+      ])
+        if (track.isLocal && track.canPlay) track.id: track,
+    }.values.toList(growable: false);
 
     if (!_searchFocus.hasFocus &&
         _searchController.text != controller.searchQuery) {
@@ -100,7 +107,7 @@ class _SearchScreenState extends State<SearchScreen> {
           onSubmitted: (_) => _submit(),
           decoration: InputDecoration(
             hintText: controller.offlineMode
-                ? 'Search downloaded music...'
+                ? 'Search your offline music...'
                 : 'Search artists, songs...',
             prefixIcon: const Icon(
               Icons.search_rounded,
@@ -221,16 +228,16 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
         ] else if (controller.offlineMode) ...[
-          const _SectionHeading(title: 'Your Downloaded Music'),
-          if (controller.downloadedTracks.isEmpty)
+          const _SectionHeading(title: 'Your Offline Music'),
+          if (offlineTracks.isEmpty)
             const _SearchMessage(
-              'No AUREL downloads yet. Your saved music will appear here.',
+              'No music is available offline yet. Download tracks through AUREL or allow access to the songs on this device.',
             )
           else
-            ...controller.downloadedTracks.map(
+            ...offlineTracks.map(
               (track) => TrackTile(
                 track: track,
-                queue: controller.downloadedTracks,
+                queue: offlineTracks,
                 showDownload: false,
               ),
             ),
