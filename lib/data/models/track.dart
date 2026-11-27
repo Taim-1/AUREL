@@ -10,7 +10,6 @@ class Track {
     this.licenseUrl = '',
     this.durationMs = 0,
     this.downloadAllowed = false,
-    this.isDeviceTrack = false,
     this.isDownloaded = false,
     this.localPath,
     this.providerId = 'jamendo',
@@ -38,12 +37,11 @@ class Track {
   final String licenseUrl;
   final int durationMs;
   final bool downloadAllowed;
-  final bool isDeviceTrack;
   final bool isDownloaded;
   final String? localPath;
 
-  /// Stable provider key: jamendo, audius, soundcloud, spotify, apple_music
-  /// or device. The key is not inferred from a display label.
+  /// Stable provider key for the authorized catalogue adapter. The key is
+  /// not inferred from a display label.
   final String providerId;
   final String providerName;
   final String sourceUrl;
@@ -75,16 +73,15 @@ class Track {
 
   bool get hasLocalPlaybackUri => localPath?.trim().isNotEmpty == true;
 
-  bool get isLocal =>
-      hasLocalPlaybackUri && (isDeviceTrack || isDownloaded);
+  bool get isLocal => isDownloaded && hasLocalPlaybackUri;
 
   bool get canPlay {
     // Previews and metadata-only records are never full playable recordings.
     if (isPreviewOnly || isMetadataOnly || !isPlayable) return false;
 
-    // A device/downloaded item must use its real local URI. Never fall back
-    // to a network stream for a broken offline entry.
-    if (isDeviceTrack || isDownloaded) return hasLocalPlaybackUri;
+    // An AUREL-managed download must use its saved local file. Never fall
+    // back to a network stream for a broken offline entry.
+    if (isDownloaded) return hasLocalPlaybackUri;
     return _isSecureHttpsUrl(streamUrl);
   }
 
@@ -94,45 +91,6 @@ class Track {
       return Uri.file(localPath!).toString();
     }
     return streamUrl;
-  }
-
-  factory Track.fromDevice(Map<String, dynamic> json) {
-    final rawId = (json['id'] ?? '').toString().trim();
-    final rawUri = (json['uri'] ?? '').toString().trim();
-    final uri = Uri.tryParse(rawUri);
-    final safeUri = uri != null &&
-            uri.scheme == 'content' &&
-            uri.authority == 'media'
-        ? rawUri
-        : '';
-    final rawArtwork = (json['artworkUri'] ?? '').toString().trim();
-    final artworkUri = Uri.tryParse(rawArtwork);
-    final safeArtworkUri = artworkUri != null &&
-            artworkUri.scheme == 'content' &&
-            artworkUri.authority == 'media'
-        ? rawArtwork
-        : '';
-    final title = (json['title'] ?? '').toString().trim();
-    final rawArtist = (json['artist'] ?? '').toString().trim();
-    final rawAlbum = (json['album'] ?? '').toString().trim();
-    final rawDuration = json['duration'];
-    final duration = rawDuration is num
-        ? rawDuration.round()
-        : int.tryParse(rawDuration?.toString() ?? '') ?? 0;
-
-    return Track(
-      id: 'device-$rawId',
-      title: title.isEmpty ? 'Unknown track' : title,
-      artist: rawArtist.isEmpty ? 'Unknown artist' : rawArtist,
-      album: rawAlbum,
-      artworkUrl: safeArtworkUri,
-      durationMs: duration > 0 ? duration : 0,
-      providerId: 'device',
-      providerName: 'On device',
-      isDeviceTrack: true,
-      localPath: safeUri.isEmpty ? null : safeUri,
-      isPlayable: safeUri.isNotEmpty,
-    );
   }
 
   factory Track.fromJamendo(Map<String, dynamic> json) {
@@ -619,7 +577,6 @@ class Track {
         licenseUrl: (json['licenseUrl'] ?? '').toString(),
         durationMs: (json['durationMs'] as num?)?.round() ?? 0,
         downloadAllowed: json['downloadAllowed'] == true,
-        isDeviceTrack: json['isDeviceTrack'] == true,
         isDownloaded: json['isDownloaded'] == true,
         localPath: json['localPath']?.toString(),
         providerId: (json['providerId'] ?? 'jamendo').toString(),
@@ -656,7 +613,6 @@ class Track {
         'licenseUrl': licenseUrl,
         'durationMs': durationMs,
         'downloadAllowed': downloadAllowed,
-        'isDeviceTrack': isDeviceTrack,
         'isDownloaded': isDownloaded,
         'localPath': localPath,
         'providerId': providerId,
@@ -702,7 +658,6 @@ class Track {
         licenseUrl: licenseUrl,
         durationMs: durationMs ?? this.durationMs,
         downloadAllowed: downloadAllowed,
-        isDeviceTrack: isDeviceTrack,
         isDownloaded: isDownloaded ?? this.isDownloaded,
         localPath: localPath ?? this.localPath,
         providerId: providerId,
