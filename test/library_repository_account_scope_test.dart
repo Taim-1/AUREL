@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:aurel/data/models/music_playlist.dart';
 import 'package:aurel/data/models/track.dart';
 import 'package:aurel/data/repositories/library_repository.dart';
 
@@ -26,23 +27,45 @@ void main() {
       final accountATrack = savedTrack('account-a', 'Account A Song');
       final accountBTrack = savedTrack('account-b', 'Account B Song');
 
+      final playlistA = MusicPlaylist(
+        id: 'playlist-a',
+        name: 'Account A',
+        tracks: [accountATrack],
+      );
+      final playlistB = MusicPlaylist(
+        id: 'playlist-b',
+        name: 'Account B',
+        tracks: [accountBTrack],
+      );
+
       await repository.setAccountScope('firebase-user-a');
       await repository.saveFavorites([accountATrack]);
+      await repository.savePlaylists([playlistA]);
 
       await repository.setAccountScope('firebase-user-b');
       expect(await repository.loadFavorites(), isEmpty);
+      expect(await repository.loadPlaylists(), isEmpty);
       await repository.saveFavorites([accountBTrack]);
+      await repository.savePlaylists([playlistB]);
 
       await repository.setAccountScope('firebase-user-a');
       expect(
         (await repository.loadFavorites()).map((track) => track.id),
         ['account-a'],
       );
+      expect(
+        (await repository.loadPlaylists()).map((playlist) => playlist.id),
+        ['playlist-a'],
+      );
 
       await repository.setAccountScope('firebase-user-b');
       expect(
         (await repository.loadFavorites()).map((track) => track.id),
         ['account-b'],
+      );
+      expect(
+        (await repository.loadPlaylists()).map((playlist) => playlist.id),
+        ['playlist-b'],
       );
     });
 
