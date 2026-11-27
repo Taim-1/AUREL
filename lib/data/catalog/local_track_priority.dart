@@ -47,7 +47,8 @@ class LocalTrackPriority {
               candidate.providerId == local.providerId)) {
         continue;
       }
-      candidates[candidate.id] = candidate.copyWith(alternatives: const []);
+      candidates[CatalogIdentity.providerKeyOf(candidate)] =
+          candidate.copyWith(alternatives: const []);
     }
 
     final alternatives = candidates.values.toList(growable: false)
