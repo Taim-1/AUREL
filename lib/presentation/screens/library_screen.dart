@@ -274,7 +274,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
               itemBuilder: (_) => const [
                 PopupMenuItem(
-                  value: LibrarySort.recentlyAdded,
+                  value: LibrarySort.savedOrder,
                   child: Text('Saved order'),
                 ),
                 PopupMenuItem(
