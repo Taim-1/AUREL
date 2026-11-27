@@ -22,28 +22,7 @@ class LibraryCollectionService {
 
   /// Stable local identity for one catalogue entry or verified recording.
   /// Strong cross-provider IDs win; otherwise the provider's own ID is used.
-  static String trackKey(Track track) {
-    final mbid = track.recordingMbid.trim().toLowerCase();
-    if (mbid.isNotEmpty) return 'mbid:$mbid';
-
-    final isrc = track.recordingId.trim().toUpperCase().replaceAll(
-          RegExp(r'[^A-Z0-9]'),
-          '',
-        );
-    if (isrc.isNotEmpty) return 'isrc:$isrc';
-
-    if (track.id.trim().isNotEmpty) {
-      return '${track.providerId}:${track.id.trim()}';
-    }
-
-    return [
-      track.providerId,
-      CatalogIdentity.normalizeText(track.title),
-      CatalogIdentity.normalizeText(track.artist),
-      CatalogIdentity.normalizeText(track.album),
-      track.durationMs,
-    ].join(':');
-  }
+  static String trackKey(Track track) => CatalogIdentity.keyOf(track);
 
   static bool isFavorite(Iterable<Track> favorites, Track track) =>
       containsTrack(favorites, track);
