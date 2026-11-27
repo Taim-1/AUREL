@@ -102,9 +102,9 @@ class _SearchScreenState extends State<SearchScreen> {
         AurelGlassPanel(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 1),
           radius: 18,
-          blur: 15,
-          tint: const Color(0xCC15161B),
-          shadowOpacity: 0.06,
+          blur: 6,
+          tint: const Color(0xE815161B),
+          shadowOpacity: 0.035,
           child: TextField(
             controller: _searchController,
             focusNode: _searchFocus,
