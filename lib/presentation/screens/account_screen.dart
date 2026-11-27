@@ -145,6 +145,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _signOut() => _run(() async {
         final controller = context.read<AurelController>();
         await controller.account.signOut();
+        await controller.onAccountSignedOut();
         controller.notifyAccountChanged();
         if (mounted) {
           setState(() {
