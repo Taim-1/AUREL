@@ -51,6 +51,7 @@ class AurelAccountService {
   bool _firebaseReady = false;
   bool _googleReady = false;
   String? initializationError;
+  String? emailVerificationNotice;
   String userName = 'Music Lover';
 
   bool get isConfigured => _firebaseReady && _auth != null && _firestore != null;
@@ -157,12 +158,46 @@ class AurelAccountService {
     required String username,
   }) async {
     _requireConfigured();
+    final normalizedName = username.trim().replaceAll(RegExp(r'\\s+'), ' ');
+    if (normalizedName.length < 2 || normalizedName.length > 24) {
+      throw const FormatException(
+        'Choose a username between 2 and 24 characters.',
+      );
+    }
+
     final result = await _auth!.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
-    await setUserName(username);
-    await result.user?.sendEmailVerification();
+    final user = result.user;
+    if (user == null) {
+      throw StateError('Firebase created no AUREL user profile.');
+    }
+
+    // Record the selected name locally immediately. A temporary Firestore
+    // outage must not turn a successfully-created Auth account into a
+    // misleading sign-up failure.
+    await _preferences.setString(
+      _usernameStorageKey(user),
+      normalizedName,
+    );
+    userName = normalizedName;
+
+    try {
+      await setUserName(normalizedName);
+    } catch (error) {
+      debugPrint('AUREL profile sync deferred after account creation: $error');
+    }
+
+    emailVerificationNotice = null;
+    try {
+      await _auth!.setLanguageCode('en');
+      await user.sendEmailVerification();
+    } catch (error) {
+      emailVerificationNotice =
+          'Your account was created, but the verification email could not be sent. Use Resend verification email from Account & Sync.';
+      debugPrint('AUREL verification email send failed: $error');
+    }
     return result;
   }
 
@@ -176,13 +211,22 @@ class AurelAccountService {
       password: password,
     );
     await currentUser!.linkWithCredential(credential);
-    await currentUser!.sendEmailVerification();
+    emailVerificationNotice = null;
+    try {
+      await sendVerificationEmail();
+    } catch (error) {
+      emailVerificationNotice =
+          'Email sign-in is connected, but verification could not be sent. You can retry it from Account & Sync.';
+      debugPrint('AUREL linked-email verification failed: $error');
+    }
+    await refreshCurrentUser();
   }
 
   Future<void> linkGoogle() async {
     _requireSignedIn();
     final credential = await _googleCredential();
     await currentUser!.linkWithCredential(credential);
+    await refreshCurrentUser();
   }
 
   Future<void> sendPasswordReset(String email) async {
@@ -193,9 +237,13 @@ class AurelAccountService {
   Future<void> sendVerificationEmail() async {
     _requireSignedIn();
     final user = currentUser!;
-    if (user.emailVerified) return;
+    if (user.emailVerified) {
+      emailVerificationNotice = null;
+      return;
+    }
     await _auth!.setLanguageCode('en');
     await user.sendEmailVerification();
+    emailVerificationNotice = null;
   }
 
   /// Refreshes the Firebase profile after a user follows an email action link.
