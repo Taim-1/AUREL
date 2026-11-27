@@ -105,6 +105,14 @@ class DownloadsScreen extends StatelessWidget {
                         fontSize: 11,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_formatDownloadedSize(controller.downloadedBytes)} of audio saved by AUREL',
+                      style: const TextStyle(
+                        color: AurelColors.muted,
+                        fontSize: 10,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -248,4 +256,18 @@ class DownloadsScreen extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatDownloadedSize(int bytes) {
+  if (bytes <= 0) return '0 MB';
+  const kilobyte = 1024;
+  const megabyte = kilobyte * 1024;
+  const gigabyte = megabyte * 1024;
+  if (bytes >= gigabyte) {
+    return '${(bytes / gigabyte).toStringAsFixed(2)} GB';
+  }
+  if (bytes >= megabyte) {
+    return '${(bytes / megabyte).toStringAsFixed(1)} MB';
+  }
+  return '${(bytes / kilobyte).toStringAsFixed(0)} KB';
 }
