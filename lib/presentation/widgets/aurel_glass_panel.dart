@@ -16,10 +16,10 @@ class AurelGlassPanel extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.margin = EdgeInsets.zero,
     this.radius = 20,
-    this.blur = 15,
+    this.blur = 7,
     this.tint = AurelColors.glassSurface,
     this.borderColor = AurelColors.glassEdge,
-    this.shadowOpacity = 0.12,
+    this.shadowOpacity = 0.05,
   });
 
   final Widget child;
@@ -42,8 +42,8 @@ class AurelGlassPanel extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: AurelColors.champagne.withValues(alpha: shadowOpacity),
-            blurRadius: 25,
-            offset: const Offset(0, 8),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -58,13 +58,13 @@ class AurelGlassPanel extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0x1FFFFFFF),
-                  Color(0x0DFFFFFF),
-                  Color(0x09000000),
+                  Color(0x12FFFFFF),
+                  Color(0x08FFFFFF),
+                  Color(0x06000000),
                 ],
                 stops: [0, 0.46, 1],
               ),
-              border: Border.all(color: borderColor, width: 0.85),
+              border: Border.all(color: borderColor, width: 0.7),
             ),
             child: Padding(
               padding: padding,
