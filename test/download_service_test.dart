@@ -30,6 +30,58 @@ void main() {
     });
   });
 
+  group('AUREL downloads directory validation', () {
+    test('accepts files inside the private AUREL downloads folder', () {
+      expect(
+        isWithinAurelDownloadsDirectory(
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads',
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects music folders outside AUREL private storage', () {
+      expect(
+        isWithinAurelDownloadsDirectory(
+          '/storage/emulated/0/Music/song.mp3',
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads',
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects sibling directories that only share the folder name', () {
+      expect(
+        isWithinAurelDownloadsDirectory(
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads-backup/song.mp3',
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads',
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects the downloads directory itself instead of a file', () {
+      expect(
+        isWithinAurelDownloadsDirectory(
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads',
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads',
+        ),
+        isFalse,
+      );
+    });
+
+    test('rejects path traversal outside the downloads directory', () {
+      expect(
+        isWithinAurelDownloadsDirectory(
+          '/data/user/0/com.aurel.aurel/files/Music/song.mp3',
+          '/data/user/0/com.aurel.aurel/files/AUREL Downloads/../AUREL Downloads',
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('download URL security', () {
     test('accepts HTTPS final URLs with a host', () {
       expect(
