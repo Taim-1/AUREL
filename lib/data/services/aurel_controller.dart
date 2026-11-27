@@ -671,8 +671,8 @@ class AurelController extends ChangeNotifier {
   /// Chooses a real on-device or AUREL-managed offline file before any
   /// online stream. Local paths are never copied into the online catalogue.
   List<Track> get _availableLocalTracks => [
-        ...deviceTracks,
         ...downloadedTracks,
+        ...deviceTracks,
       ];
 
   Track _preferLocalCopy(Track track) =>
