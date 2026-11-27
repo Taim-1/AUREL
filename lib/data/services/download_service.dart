@@ -6,13 +6,22 @@ import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 
 class DownloadService {
-  final Dio _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(minutes: 5),
-      sendTimeout: const Duration(seconds: 20),
-    ),
-  );
+  DownloadService({
+    Dio? dio,
+    Future<Directory> Function()? documentsDirectoryProvider,
+  })  : _dio = dio ??
+            Dio(
+              BaseOptions(
+                connectTimeout: const Duration(seconds: 20),
+                receiveTimeout: const Duration(minutes: 5),
+                sendTimeout: const Duration(seconds: 20),
+              ),
+            ),
+        _documentsDirectoryProvider =
+            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+
+  final Dio _dio;
+  final Future<Directory> Function() _documentsDirectoryProvider;
 
   Future<Track> download(
     Track track, {
@@ -29,7 +38,7 @@ class DownloadService {
       );
     }
 
-    final root = await getApplicationDocumentsDirectory();
+    final root = await _documentsDirectoryProvider();
     final folder = Directory('${root.path}/AUREL Downloads');
     if (!await folder.exists()) {
       await folder.create(recursive: true);
@@ -190,7 +199,7 @@ class DownloadService {
   Future<List<Track>> validateSavedDownloads(
     Iterable<Track> tracks,
   ) async {
-    final root = await getApplicationDocumentsDirectory();
+    final root = await _documentsDirectoryProvider();
     final directory = Directory(
       '${root.path}${Platform.pathSeparator}AUREL Downloads',
     );
@@ -259,7 +268,7 @@ class DownloadService {
       return;
     }
 
-    final root = await getApplicationDocumentsDirectory();
+    final root = await _documentsDirectoryProvider();
     final downloadsPath =
         Directory('${root.path}${Platform.pathSeparator}AUREL Downloads')
             .absolute
