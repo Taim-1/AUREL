@@ -5,7 +5,6 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/track_tile.dart';
-import '../widgets/aurel_glass_panel.dart';
 
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
@@ -57,12 +56,13 @@ class DownloadsScreen extends StatelessWidget {
           style: TextStyle(color: AurelColors.muted, fontSize: 13),
         ),
         const SizedBox(height: 24),
-        AurelGlassPanel(
+        Container(
           padding: const EdgeInsets.all(19),
-          radius: 22,
-          blur: 15,
-          tint: const Color(0xCC211D18),
-          shadowOpacity: 0.08,
+          decoration: BoxDecoration(
+            color: AurelColors.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AurelColors.divider),
+          ),
           child: Row(
             children: [
               Container(
