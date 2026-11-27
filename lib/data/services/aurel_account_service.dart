@@ -214,16 +214,11 @@ class AurelAccountService {
       );
     }
 
-    userName = normalized;
-    await _preferences.setString(
-      _usernameStorageKey(currentUser),
-      normalized,
-    );
-
     final user = currentUser;
     final firestore = _firestore;
     if (user != null && firestore != null) {
-      await user.updateDisplayName(normalized);
+      // Commit the cloud profile first. If Firestore is unavailable, keep the
+      // previous username instead of reporting a partial local-only save.
       await firestore.collection('users').doc(user.uid).set(
         {
           'username': normalized,
@@ -231,7 +226,14 @@ class AurelAccountService {
         },
         SetOptions(merge: true),
       );
+      await user.updateDisplayName(normalized);
     }
+
+    await _preferences.setString(
+      _usernameStorageKey(user),
+      normalized,
+    );
+    userName = normalized;
   }
 
   Future<String> loadUserName() async {
