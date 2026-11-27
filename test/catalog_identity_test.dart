@@ -23,6 +23,51 @@ Track recording({
     );
 
 void main() {
+  group('CatalogIdentity keys', () {
+    test('canonical key is shared across providers for a verified MBID', () {
+      final first = recording(
+        id: 'audius-1',
+        provider: 'audius',
+        mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      final second = recording(
+        id: 'jamendo-8',
+        provider: 'jamendo',
+        mbid: '13DD61C7-CE73-4E97-9F0C-9F0E53144411',
+      );
+
+      expect(CatalogIdentity.keyOf(first), CatalogIdentity.keyOf(second));
+      expect(
+        CatalogIdentity.providerKeyOf(first),
+        isNot(CatalogIdentity.providerKeyOf(second)),
+      );
+    });
+
+    test('provider key distinguishes empty-ID records from different providers', () {
+      final first = recording(id: '', provider: 'audius');
+      final second = recording(id: '', provider: 'jamendo');
+
+      expect(
+        CatalogIdentity.providerKeyOf(first),
+        isNot(CatalogIdentity.providerKeyOf(second)),
+      );
+    });
+
+    test('provider key remains stable for one no-ID catalogue result', () {
+      final first = recording(id: '', provider: 'jamendo');
+      final second = recording(
+        id: '',
+        provider: 'jamendo',
+        title: '  blue   hour ',
+      );
+
+      expect(
+        CatalogIdentity.providerKeyOf(first),
+        CatalogIdentity.providerKeyOf(second),
+      );
+    });
+  });
+
   group('CatalogIdentity', () {
     test('matches exact ISRC even when catalogue metadata differs', () {
       expect(
