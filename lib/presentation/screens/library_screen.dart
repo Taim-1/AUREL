@@ -6,6 +6,7 @@ import '../../data/models/music_playlist.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
 import '../../data/services/library_collection_service.dart';
+import '../../data/catalog/local_track_priority.dart';
 import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
 
@@ -17,14 +18,18 @@ List<Track> _tracksAvailableForMode(
     return List<Track>.unmodifiable(tracks);
   }
 
-  final localTracksById = <String, Track>{
-    for (final track in controller.downloadedTracks)
-      if (track.isDownloaded && track.canPlay) track.id: track,
-  };
+  final availableDownloads = controller.downloadedTracks.where(
+    (track) => track.isDownloaded && track.isLocal && track.canPlay,
+  );
 
   return List<Track>.unmodifiable(
     tracks
-        .map((track) => localTracksById[track.id])
+        .map(
+          (track) => LocalTrackPriority.findLocalCopy(
+            track,
+            availableDownloads,
+          ),
+        )
         .whereType<Track>(),
   );
 }
