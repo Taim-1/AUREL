@@ -21,7 +21,7 @@ class AurelController extends ChangeNotifier {
   bool _disposed = false;
 
   void _notifySafely() {
-    if (!_disposed) super._notifySafely();
+    if (!_disposed) super.notifyListeners();
   }
 
   AurelController({
