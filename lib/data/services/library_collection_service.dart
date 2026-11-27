@@ -59,6 +59,57 @@ class LibraryCollectionService {
     return List<MusicPlaylist>.unmodifiable(result);
   }
 
+  static List<LibraryTrackGroup> groupByAlbum(Iterable<Track> tracks) =>
+      _groupTracks(
+        tracks,
+        (track) => track.album.trim().isEmpty ? 'Singles' : track.album,
+        includeEmpty: false,
+      );
+
+  static List<LibraryTrackGroup> groupByArtist(Iterable<Track> tracks) =>
+      _groupTracks(
+        tracks,
+        (track) => track.artist,
+        includeEmpty: false,
+      );
+
+  static List<LibraryTrackGroup> _groupTracks(
+    Iterable<Track> tracks,
+    String Function(Track) labelFor, {
+    required bool includeEmpty,
+  }) {
+    final groups = <String, _MutableLibraryTrackGroup>{};
+    for (final track in tracks) {
+      final label = labelFor(track).trim();
+      if (label.isEmpty && !includeEmpty) continue;
+      final visibleLabel = label.isEmpty ? 'Unknown' : label;
+      final key = visibleLabel
+          .toLowerCase()
+          .replaceAll(RegExp(r'\\s+'), ' ');
+      final group = groups.putIfAbsent(
+        key,
+        () => _MutableLibraryTrackGroup(visibleLabel),
+      );
+      final trackKey = track.id.isEmpty
+          ? '${track.providerId}:${track.title}:${track.artist}:${track.album}'
+          : '${track.providerId}:${track.id}';
+      group.tracks.putIfAbsent(trackKey, () => track);
+    }
+
+    final result = groups.values
+        .map(
+          (group) => LibraryTrackGroup(
+            name: group.name,
+            tracks: List<Track>.unmodifiable(group.tracks.values),
+          ),
+        )
+        .toList()
+      ..sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+    return List<LibraryTrackGroup>.unmodifiable(result);
+  }
+
   static bool _matchesTrack(Track track, List<String> terms) {
     if (terms.isEmpty) return true;
     final metadata = [
@@ -92,4 +143,21 @@ class LibraryCollectionService {
     if (artist != 0) return artist;
     return _compareByTitle(a, b);
   }
+}
+
+class LibraryTrackGroup {
+  const LibraryTrackGroup({
+    required this.name,
+    required this.tracks,
+  });
+
+  final String name;
+  final List<Track> tracks;
+}
+
+class _MutableLibraryTrackGroup {
+  _MutableLibraryTrackGroup(this.name);
+
+  final String name;
+  final Map<String, Track> tracks = {};
 }
