@@ -36,7 +36,7 @@ The search orchestrator:
 
 1. Queries independent catalogue adapters with bounded results and per-source failure isolation.
 2. Applies per-source pagination and request cancellation where supported.
-3. Queries the public open-audio adapter sequentially after the other source batch, respecting its concurrency guidance.
+3. Queries one public open-audio page in the same federated request batch, so the user does not wait for a second network round trip.
 4. Queries Last.fm track search, artist top tracks and global charts as metadata-only results; these records can enrich discovery but can never enter the playback queue as audio.
 5. Queries ListenBrainz site-wide popular recordings for global discovery; this popularity index is metadata-only and does not represent a complete recording database.
 6. Queries the recording metadata catalogue through a single serialized one-request-per-second queue.
@@ -59,7 +59,7 @@ The priority order is internal and deterministic; it is not exposed as a provide
 - Jamendo requires a real registered application client ID for production; the public sample client ID is test-only and is not included as the release default.
 - Openverse searches only the accepted reusable licence set currently enabled by this build.
 - Internet Archive items are resolved individually. Only public audio files with an explicit accepted licence are exposed.
-- Wikimedia Commons audio is accepted only when the item's metadata identifies CC BY, CC BY-SA, CC0 or Public Domain. The adapter uses a descriptive User-Agent, caches queries, and avoids fanning out concurrent API requests.
+- Wikimedia Commons audio is accepted only when the item's metadata identifies CC BY, CC BY-SA, CC0 or Public Domain. The adapter uses a descriptive User-Agent, caches query pages and makes one bounded search request per page.
 - A MusicBrainz recording is metadata only. Its recording MBID and any supplied ISRC are separate exact matching identifiers; neither supplies an audio stream.
 - Spotify and Apple Music metadata are not treated as audio. The Spotify Web API does not expose protected source audio for AUREL to copy into its own player. Apple Music playback requires the separate native MusicKit authorization and entitlement path.
 - Audio is downloaded only when the item-level permission and licence allow it. A stream URL by itself is not permission to download.
