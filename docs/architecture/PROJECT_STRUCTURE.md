@@ -16,7 +16,9 @@ AUREL/
 │   ├── data/
 │   │   ├── catalog/
 │   │   │   ├── catalog_identity.dart
-│   │   │   ├── music_catalog_service.dart
+│   │   │   ├── catalog_ranking.dart
+│   │   │   ├── local_track_priority.dart
+│   │   │   └── music_catalog_service.dart
 │   │   │   └── providers/          # One isolated adapter per catalogue
 │   │   ├── models/                 # Track, playlist and lyrics models
 │   │   ├── repositories/           # Local library and user-state persistence
@@ -41,6 +43,7 @@ AUREL/
 - `AurelController` coordinates user actions and local state.
 - `MusicCatalogService` coordinates adapters, error isolation, canonical identity, deduplication and ranking.
 - `CatalogIdentity` owns cross-source recording matching and is covered by unit tests.
+- AUREL's local-first playback selection lives in `lib/data/catalog/local_track_priority.dart`. It replaces a matching online catalogue row with a valid device/download URI while keeping only same-recording playable online alternatives available for automatic recovery.
 - Each provider adapter converts one external API into the shared `Track` model.
 - Repositories own persistence. Provider adapters never write to user libraries.
 - Playback, account, downloads and lyrics services remain independent from catalogue adapters.
