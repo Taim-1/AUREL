@@ -196,57 +196,6 @@ class DownloadService {
     return clean.length > 64 ? clean.substring(0, 64) : clean;
   }
 
-  /// Calculates the bytes occupied by already-validated AUREL downloads.
-  /// It never scans shared storage or any music files outside AUREL's folder.
-  Future<int> calculateDownloadedBytes(Iterable<Track> tracks) async {
-    final root = await _documentsDirectoryProvider();
-    final directory = Directory(
-      '${root.path}${Platform.pathSeparator}AUREL Downloads',
-    );
-    if (!await directory.exists()) return 0;
-
-    final resolvedDirectory = await directory.resolveSymbolicLinks();
-    var totalBytes = 0;
-
-    for (final track in tracks) {
-      if (!track.isDownloaded || !track.hasLocalPlaybackUri) continue;
-
-      final rawPath = track.localPath?.trim() ?? '';
-      if (rawPath.isEmpty) continue;
-
-      final uri = Uri.tryParse(rawPath);
-      if (uri == null) continue;
-
-      final candidate = uri.scheme == 'file'
-          ? File.fromUri(uri)
-          : uri.scheme.isEmpty
-              ? File(rawPath)
-              : null;
-      if (candidate == null) continue;
-
-      try {
-        final resolvedPath = await candidate.resolveSymbolicLinks();
-        if (!isWithinAurelDownloadsDirectory(
-          resolvedPath,
-          resolvedDirectory,
-        )) {
-          continue;
-        }
-
-        final file = File(resolvedPath);
-        if (!await file.exists()) continue;
-        final length = await file.length();
-        if (length > 0) totalBytes += length;
-      } on FileSystemException {
-        continue;
-      } on FormatException {
-        continue;
-      }
-    }
-
-    return totalBytes;
-  }
-
   Future<List<Track>> validateSavedDownloads(
     Iterable<Track> tracks,
   ) async {
