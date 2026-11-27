@@ -272,4 +272,84 @@ void main() {
       expect(audioFileExtensionFromSignature([0xFF, 0xF1, 0x50, 0x80]), 'aac');
     });
   });
+
+  group('AUREL-only offline storage accounting', () {
+    test('counts only downloaded files inside AUREL private storage', () async {
+      final root = await Directory.systemTemp.createTemp(
+        'aurel-download-usage-',
+      );
+      addTearDown(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
+
+      final downloadsDirectory = Directory(
+        '${root.path}${Platform.pathSeparator}AUREL Downloads',
+      );
+      await downloadsDirectory.create(recursive: true);
+
+      final savedBytes = <int>[
+        0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x00, 0x00,
+      ];
+      final savedFile = File(
+        '${downloadsDirectory.path}${Platform.pathSeparator}saved.mp3',
+      );
+      await savedFile.writeAsBytes(savedBytes);
+
+      final outsideFile = File(
+        '${root.path}${Platform.pathSeparator}outside.mp3',
+      );
+      await outsideFile.writeAsBytes(List<int>.filled(128, 0x01));
+
+      final service = DownloadService(
+        documentsDirectoryProvider: () async => root,
+      );
+
+      final total = await service.calculateDownloadedBytes([
+        Track(
+          id: 'aurel-saved',
+          title: 'Saved by AUREL',
+          artist: 'Artist',
+          isDownloaded: true,
+          localPath: savedFile.path,
+        ),
+        Track(
+          id: 'outside-file',
+          title: 'Outside file',
+          artist: 'Artist',
+          isDownloaded: true,
+          localPath: outsideFile.path,
+        ),
+        Track(
+          id: 'not-downloaded',
+          title: 'Not downloaded',
+          artist: 'Artist',
+          localPath: savedFile.path,
+        ),
+        Track(
+          id: 'content-uri',
+          title: 'External content URI',
+          artist: 'Artist',
+          isDownloaded: true,
+          localPath: 'content://media/external/audio/media/42',
+        ),
+      ]);
+
+      expect(total, savedBytes.length);
+    });
+
+    test('returns zero when the AUREL downloads folder is absent', () async {
+      final root = await Directory.systemTemp.createTemp(
+        'aurel-download-usage-empty-',
+      );
+      addTearDown(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
+
+      final service = DownloadService(
+        documentsDirectoryProvider: () async => root,
+      );
+
+      expect(await service.calculateDownloadedBytes(const []), 0);
+    });
+  });
 }
