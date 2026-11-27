@@ -6,7 +6,7 @@
 - Google sign-in through the official Google Sign-In Flutter plugin.
 - Linking Google and email/password credentials to the same Firebase account.
 - User-selected AUREL username.
-- Cloud sync for favourites, playlists and recently played track metadata.
+- Cloud sync for favourites, playlists, recently played tracks and previous-download metadata.
 - Merge of the current device library with cloud data after sign-in.
 - A private Firestore path scoped to the authenticated Firebase UID.
 
@@ -97,6 +97,10 @@ users/{uid}/library/recentlyPlayed
   tracks: [track metadata maps, newest first]
   updatedAt
 
+users/{uid}/library/downloads/items/{encodedTrackKey}
+  track
+  sortOrder
+
 users/{uid}/library/playlists/items/{encodedPlaylistId}
   id
   name
@@ -118,4 +122,4 @@ The rules allow a signed-in user to read and write only documents underneath the
 
 After reinstall, the user signs in with the same Google or email account. AUREL downloads the cloud metadata for that UID and merges it with that account's local namespace. Favourites, playlists, history and the AUREL username are stored separately for each UID, so switching accounts on one phone does not mix private libraries. Pre-account guest collections are migrated to the first account that claims them.
 
-This restores the listening-history list, favourites and playlists. It does not restore the raw audio bytes for AUREL-managed offline downloads. AUREL can offer a fresh in-app download only when the original provider still permits it; the app does not import or browse unrelated phone files.
+This restores the listening-history list, favourites, playlists and the list of tracks previously downloaded through AUREL. It does not restore the raw audio bytes for AUREL-managed offline downloads. The Downloads screen offers to recheck the original recording and download a fresh copy when a provider and its licence still permit it. AUREL can offer a fresh in-app download only when the original provider still permits it; the app does not import or browse unrelated phone files.
