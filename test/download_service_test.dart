@@ -325,7 +325,7 @@ void main() {
           artist: 'Artist',
           localPath: savedFile.path,
         ),
-        Track(
+        const Track(
           id: 'content-uri',
           title: 'External content URI',
           artist: 'Artist',
