@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
 import 'album_art.dart';
+import 'aurel_glass_panel.dart';
 import '../screens/now_playing_screen.dart';
 
 class MiniPlayer extends StatelessWidget {
@@ -18,10 +19,15 @@ class MiniPlayer extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-      child: Material(
-        color: AurelColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
+      child: AurelGlassPanel(
+        radius: 18,
+        blur: 16,
+        tint: const Color(0xCD17181D),
+        shadowOpacity: 0.08,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
@@ -84,6 +90,7 @@ class MiniPlayer extends StatelessWidget {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ),
