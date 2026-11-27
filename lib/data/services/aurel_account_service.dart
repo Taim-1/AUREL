@@ -586,7 +586,10 @@ class AurelAccountService {
     );
 
     await firestore.collection('users').doc(user.uid).set(
-      {'lastLibrarySyncAt': FieldValue.serverTimestamp()},
+      {
+        'username': userName,
+        'lastLibrarySyncAt': FieldValue.serverTimestamp(),
+      },
       SetOptions(merge: true),
     );
   }
