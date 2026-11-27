@@ -24,6 +24,108 @@ Track track({
     );
 
 void main() {
+  group('LibraryCollectionService collection mutations', () {
+    test('toggles a cross-provider favorite using recording identity', () {
+      const primary = Track(
+        id: 'audius-1',
+        title: 'Golden Hour',
+        artist: 'AUREL Artist',
+        providerId: 'audius',
+        recordingMbid: 'recording-001',
+      );
+      const matchedAlternative = Track(
+        id: 'jamendo-1',
+        title: 'Golden Hour',
+        artist: 'AUREL Artist',
+        providerId: 'jamendo',
+        recordingMbid: 'recording-001',
+      );
+
+      final saved = LibraryCollectionService.toggleFavorite([], primary);
+      expect(LibraryCollectionService.isFavorite(saved, matchedAlternative), isTrue);
+
+      final removed = LibraryCollectionService.toggleFavorite(
+        saved,
+        matchedAlternative,
+      );
+      expect(removed, isEmpty);
+    });
+
+    test('adds a matched recording only once to a playlist', () {
+      const primary = Track(
+        id: 'audius-2',
+        title: 'Evening Light',
+        artist: 'AUREL Artist',
+        providerId: 'audius',
+        recordingMbid: 'recording-002',
+      );
+      const alternative = Track(
+        id: 'jamendo-2',
+        title: 'Evening Light',
+        artist: 'AUREL Artist',
+        providerId: 'jamendo',
+        recordingMbid: 'recording-002',
+      );
+      final playlist = MusicPlaylist(
+        id: 'one',
+        name: 'Evening',
+        tracks: [primary],
+      );
+
+      final unchanged = LibraryCollectionService.addTrackToPlaylist(
+        playlist,
+        alternative,
+      );
+
+      expect(identical(unchanged, playlist), isTrue);
+      expect(unchanged.tracks, hasLength(1));
+    });
+
+    test('removes only the selected provider entry when requested', () {
+      const jamendo = Track(
+        id: 'shared-id',
+        title: 'Same title',
+        artist: 'AUREL Artist',
+        providerId: 'jamendo',
+      );
+      const audius = Track(
+        id: 'shared-id',
+        title: 'Same title',
+        artist: 'AUREL Artist',
+        providerId: 'audius',
+      );
+      final playlist = MusicPlaylist(
+        id: 'two',
+        name: 'Sources',
+        tracks: [jamendo, audius],
+      );
+
+      final updated = LibraryCollectionService.removeTrackFromPlaylist(
+        playlist,
+        'shared-id',
+        providerId: 'jamendo',
+      );
+
+      expect(updated.tracks, [audius]);
+    });
+
+    test('returns the original playlist if no matching entry exists', () {
+      final playlist = MusicPlaylist(
+        id: 'three',
+        name: 'Untouched',
+        tracks: [track(id: 'one', title: 'First', artist: 'Artist')],
+      );
+
+      final updated = LibraryCollectionService.removeTrackFromPlaylist(
+        playlist,
+        'missing',
+        providerId: 'jamendo',
+      );
+
+      expect(identical(updated, playlist), isTrue);
+    });
+  });
+
   group('LibraryCollectionService.filterTracks', () {
     final collection = [
       track(
