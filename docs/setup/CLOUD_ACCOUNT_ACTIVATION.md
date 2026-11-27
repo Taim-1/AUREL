@@ -87,3 +87,20 @@ Provider credentials are separate from account sign-in:
 - A licensed lyrics API key can be configured from AUREL's own settings.
 
 See `FIREBASE_AUTH_AND_SYNC.md` and `../architecture/MUSIC_CATALOG.md` for provider-specific behavior.
+
+## 8. Verify account security flows
+
+After email/password and Google are enabled in Firebase Authentication and the build has the required client configuration:
+
+1. Create a new email/password account with a username, an eight-character-or-longer password and matching confirmation.
+2. Open the verification email and follow its link. Return to AUREL → Profile → Account & Sync → Refresh account & verification status.
+3. Sign out and sign back in using email/password.
+4. Use Forgot password? to confirm that Firebase sends a password-reset email.
+5. Sign in with Google, then link the email/password method from the same account. Confirm the signed-in account shows both providers as connected.
+6. Change the password and change the email address. Both operations must re-authenticate; the new email becomes active only after its verification link is followed.
+7. Disconnect one provider while the other remains linked. AUREL prevents removing the final sign-in method.
+8. Sign out and sign in again. Confirm the same UID restores the same favourites, playlists and listening history.
+
+Google and email credentials must resolve to the same Firebase UID before the libraries can be merged. If Firebase reports account-exists-with-different-credential, sign in to the existing account first and link the additional provider from Account & Sync; AUREL does not silently merge two separate Firebase users.
+
+Do not use real customer credentials in CI or commit secrets to the repository. For repeatable integration testing, use a Firebase test project and test accounts reserved for development.
