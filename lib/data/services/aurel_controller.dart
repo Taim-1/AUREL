@@ -28,9 +28,9 @@ class AurelController extends ChangeNotifier {
     required this.catalog,
   }) {
     playback.setFallbackResolver((candidate) {
-      if (offlineMode && !candidate.isDownloaded) {
+      if (offlineMode && !_isTrustedDownload(candidate)) {
         throw const PlaybackException(
-          'Only AUREL downloads can play in Offline mode.',
+          'Only verified AUREL downloads can play in Offline mode.',
         );
       }
       return catalog.prepareTrack(candidate);
@@ -596,8 +596,31 @@ class AurelController extends ChangeNotifier {
   /// files stay inside AUREL and never become part of the device music index.
   List<Track> get _availableLocalTracks => downloadedTracks;
 
-  Track _preferLocalCopy(Track track) =>
-      LocalTrackPriority.preferLocalCopy(track, _availableLocalTracks);
+  bool _isTrustedDownload(Track track) => downloadedTracks.any(
+        (saved) =>
+            saved.id == track.id &&
+            saved.localPath == track.localPath &&
+            saved.isDownloaded &&
+            saved.isLocal &&
+            saved.canPlay,
+      );
+
+  Track _preferLocalCopy(Track track) {
+    final local = LocalTrackPriority.findLocalCopy(
+      track,
+      _availableLocalTracks,
+    );
+    if (local != null) {
+      return LocalTrackPriority.preferLocalCopy(
+        track,
+        _availableLocalTracks,
+      );
+    }
+    if (track.isDownloaded) {
+      return Track.fromJson(track.toJson());
+    }
+    return track;
+  }
 
   bool hasLocalPlayableCopy(Track track) =>
       LocalTrackPriority.findLocalCopy(track, _availableLocalTracks) != null;
@@ -612,8 +635,7 @@ class AurelController extends ChangeNotifier {
   /// Whether this recording can actually start in the current mode.
   /// Online alternatives are never advertised as playable while offline.
   bool hasPlayableSource(Track track) {
-    final localCopy =
-        (track.isLocal && track.canPlay) || hasLocalPlayableCopy(track);
+    final localCopy = hasLocalPlayableCopy(track);
     if (offlineMode) return localCopy;
     return track.canPlay ||
         track.alternatives.any((alternative) => alternative.canPlay) ||
@@ -648,7 +670,7 @@ class AurelController extends ChangeNotifier {
       );
     }
     final source = queue ??
-        (track.isDownloaded ? downloadedTracks : discoverTracks);
+        (selectedTrack.isDownloaded ? downloadedTracks : discoverTracks);
 
     // Substitute local copies throughout the queue while preserving one
     // canonical entry per recording and its visible queue identity.
@@ -735,7 +757,7 @@ class AurelController extends ChangeNotifier {
               playback.currentIndex = -1;
             }
           }
-        } else if (!current.isLocal || !current.canPlay) {
+        } else if (!localCopy.isLocal || !localCopy.canPlay) {
           await playback.player.stop();
           playback.queue = const [];
           playback.currentIndex = -1;
