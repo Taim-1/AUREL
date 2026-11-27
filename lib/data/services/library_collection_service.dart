@@ -85,7 +85,7 @@ class LibraryCollectionService {
       final visibleLabel = label.isEmpty ? 'Unknown' : label;
       final key = visibleLabel
           .toLowerCase()
-          .replaceAll(RegExp(r'\\s+'), ' ');
+          .replaceAll(RegExp(r'\s+'), ' ');
       final group = groups.putIfAbsent(
         key,
         () => _MutableLibraryTrackGroup(visibleLabel),
