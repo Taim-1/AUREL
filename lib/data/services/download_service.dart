@@ -187,19 +187,101 @@ class DownloadService {
     return clean.length > 64 ? clean.substring(0, 64) : clean;
   }
 
+  Future<List<Track>> validateSavedDownloads(
+    Iterable<Track> tracks,
+  ) async {
+    final root = await getApplicationDocumentsDirectory();
+    final directory = Directory(
+      '${root.path}${Platform.pathSeparator}AUREL Downloads',
+    );
+    if (!await directory.exists()) return const [];
+
+    final resolvedDirectory = await directory.resolveSymbolicLinks();
+    final validTracks = <Track>[];
+
+    for (final track in tracks) {
+      if (!track.isDownloaded || !track.hasLocalPlaybackUri) continue;
+
+      final rawPath = track.localPath?.trim() ?? '';
+      if (rawPath.isEmpty) continue;
+
+      final uri = Uri.tryParse(rawPath);
+      if (uri == null) continue;
+
+      final candidate = uri.scheme == 'file'
+          ? File.fromUri(uri)
+          : uri.scheme.isEmpty
+              ? File(rawPath)
+              : null;
+      if (candidate == null) continue;
+
+      try {
+        final resolvedPath = await candidate.resolveSymbolicLinks();
+        if (!isWithinAurelDownloadsDirectory(
+          resolvedPath,
+          resolvedDirectory,
+        )) {
+          continue;
+        }
+
+        final file = File(resolvedPath);
+        if (!await file.exists() || await file.length() == 0) continue;
+
+        final handle = await file.open();
+        late final List<int> header;
+        try {
+          header = await handle.read(64);
+        } finally {
+          await handle.close();
+        }
+
+        if (audioFileExtensionFromSignature(header) == null) continue;
+
+        validTracks.add(
+          track.copyWith(
+            isDownloaded: true,
+            localPath: resolvedPath,
+          ),
+        );
+      } on FileSystemException {
+        continue;
+      } on FormatException {
+        continue;
+      }
+    }
+
+    return List.unmodifiable(validTracks);
+  }
+
   Future<void> delete(Track track) async {
     final path = track.localPath;
-    if (path == null || path.startsWith('content://')) return;
+    if (path == null || !track.isDownloaded || !track.hasLocalPlaybackUri) {
+      return;
+    }
 
     final root = await getApplicationDocumentsDirectory();
     final downloadsPath =
-        Directory('${root.path}/AUREL Downloads').absolute.path;
+        Directory('${root.path}${Platform.pathSeparator}AUREL Downloads')
+            .absolute
+            .path;
     final file = File(path).absolute;
-    final allowedPrefix = '$downloadsPath${Platform.pathSeparator}';
-    if (!file.path.startsWith(allowedPrefix)) return;
+    if (!isWithinAurelDownloadsDirectory(file.path, downloadsPath)) return;
 
     if (await file.exists()) await file.delete();
   }
+}
+
+bool isWithinAurelDownloadsDirectory(
+  String candidateFilePath,
+  String downloadsDirectoryPath,
+) {
+  final separator = Platform.pathSeparator;
+  final directory = Directory(downloadsDirectoryPath).absolute.path;
+  final candidate = File(candidateFilePath).absolute.path;
+  final prefix = directory.endsWith(separator)
+      ? directory
+      : '$directory$separator';
+  return candidate.startsWith(prefix) && candidate.length > prefix.length;
 }
 
 /// Reject explicit non-audio responses while allowing generic binary
