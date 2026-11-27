@@ -14,6 +14,7 @@ Release packaging is intentionally deferred while the app is being completed. Gi
 - In-app playback and queue from sources that authorize a playable audio stream.
 - Deterministic song priority: AUREL-managed offline downloads, Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons, then Openverse; metadata-only fallbacks remain below playable audio.
 - Broader artist-led discovery: Last.fm artist top tracks are federated with track search, deduplicated and kept metadata-only unless another provider supplies playable audio.
+- Dedicated artist and album detail pages built from verified catalogue records, with normalized album grouping, paginated artist tracks, and real playback/download eligibility checks.
 - Duplicate recordings collapse into one result while same-recording alternatives stay internal for automatic source fallback.
 - Source ranking, ISRC matching, version-aware de-duplication, and provider attribution.
 - Champagne waveform seek control, background playback, lock-screen controls, mini-player, shuffle and repeat.
