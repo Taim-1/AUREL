@@ -6,6 +6,7 @@ enum LibrarySort {
   recentlyAdded,
   titleAscending,
   artistAscending,
+  albumAscending,
 }
 
 /// Pure filtering and ordering operations for AUREL-owned library data.
@@ -35,6 +36,9 @@ class LibraryCollectionService {
         break;
       case LibrarySort.artistAscending:
         result.sort(_compareByArtist);
+        break;
+      case LibrarySort.albumAscending:
+        result.sort(_compareByAlbum);
         break;
     }
 
@@ -141,6 +145,12 @@ class LibraryCollectionService {
   static int _compareByArtist(Track a, Track b) {
     final artist = a.artist.toLowerCase().compareTo(b.artist.toLowerCase());
     if (artist != 0) return artist;
+    return _compareByTitle(a, b);
+  }
+
+  static int _compareByAlbum(Track a, Track b) {
+    final album = a.album.toLowerCase().compareTo(b.album.toLowerCase());
+    if (album != 0) return album;
     return _compareByTitle(a, b);
   }
 }
