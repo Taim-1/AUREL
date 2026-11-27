@@ -511,10 +511,13 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> toggleFavorite(Track track) async {
-    final exists = favoriteTracks.any((item) => item.id == track.id);
+    final exists = favoriteTracks.any(
+      (item) => CatalogIdentity.matches(item, track),
+    );
     if (exists) {
-      favoriteTracks =
-          favoriteTracks.where((item) => item.id != track.id).toList();
+      favoriteTracks = favoriteTracks
+          .where((item) => !CatalogIdentity.matches(item, track))
+          .toList(growable: false);
     } else {
       favoriteTracks = [...favoriteTracks, track];
     }
@@ -524,7 +527,7 @@ class AurelController extends ChangeNotifier {
   }
 
   bool isFavorite(Track track) =>
-      favoriteTracks.any((item) => item.id == track.id);
+      favoriteTracks.any((item) => CatalogIdentity.matches(item, track));
 
   Future<void> createPlaylist(String name, {Track? initialTrack}) async {
     final normalized = name.trim();
@@ -544,7 +547,7 @@ class AurelController extends ChangeNotifier {
     final index = playlists.indexWhere((playlist) => playlist.id == playlistId);
     if (index < 0) return;
     final playlist = playlists[index];
-    if (playlist.tracks.any((item) => item.id == track.id)) return;
+    if (playlist.tracks.any((item) => CatalogIdentity.matches(item, track))) return;
     final updated = playlist.copyWith(tracks: [...playlist.tracks, track]);
     playlists = [
       for (var i = 0; i < playlists.length; i++)
@@ -557,19 +560,58 @@ class AurelController extends ChangeNotifier {
 
   Future<void> removeTrackFromPlaylist(
     String playlistId,
-    String trackId,
-  ) async {
+    String trackId, {
+    String? providerId,
+  }) async {
     final index = playlists.indexWhere((playlist) => playlist.id == playlistId);
     if (index < 0) return;
     final playlist = playlists[index];
     final updated = playlist.copyWith(
-      tracks: playlist.tracks
-          .where((track) => track.id != trackId)
-          .toList(growable: false),
+      tracks: playlist.tracks.where((track) {
+        if (track.id != trackId) return true;
+        if (providerId == null) return false;
+        return track.providerId != providerId;
+      }).toList(growable: false),
     );
     playlists = [
       for (var i = 0; i < playlists.length; i++)
         if (i == index) updated else playlists[i],
+    ];
+    await repository.savePlaylists(playlists);
+    await syncCloudLibrary();
+    _notifySafely();
+  }
+
+  /// Moves one exact provider entry without collapsing same-ID recordings.
+  Future<void> moveTrackInPlaylist(
+    String playlistId,
+    Track track,
+    int offset,
+  ) async {
+    if (offset == 0) return;
+    final playlistIndex =
+        playlists.indexWhere((playlist) => playlist.id == playlistId);
+    if (playlistIndex < 0) return;
+
+    final playlist = playlists[playlistIndex];
+    final tracks = playlist.tracks.toList(growable: true);
+    final trackIndex = tracks.indexWhere(
+      (item) =>
+          item.providerId == track.providerId &&
+          item.id == track.id &&
+          item.id.isNotEmpty,
+    );
+    if (trackIndex < 0) return;
+
+    final targetIndex = trackIndex + offset;
+    if (targetIndex < 0 || targetIndex >= tracks.length) return;
+
+    final moved = tracks.removeAt(trackIndex);
+    tracks.insert(targetIndex, moved);
+    final updated = playlist.copyWith(tracks: tracks);
+    playlists = [
+      for (var i = 0; i < playlists.length; i++)
+        if (i == playlistIndex) updated else playlists[i],
     ];
     await repository.savePlaylists(playlists);
     await syncCloudLibrary();
