@@ -98,11 +98,21 @@ users/{uid}/library/recentlyPlayed
   updatedAt
 
 users/{uid}/library/playlists/items/{encodedPlaylistId}
-  playlist
+  id
+  name
+  trackCount
+  sortOrder
+  schemaVersion: 2
+  updatedAt
+
+users/{uid}/library/playlists/items/{encodedPlaylistId}/tracks/{encodedTrackKey}
+  track
   sortOrder
 ```
 
-The rules allow a signed-in user to read and write only documents underneath their own UID. Review the rules before production release and add App Check / abuse controls as appropriate.
+Playlist schema version 2 stores each track in a child document rather than embedding every track in one playlist record. This avoids Firestore's per-document size ceiling for long playlists. Older embedded playlist records remain readable; the next successful full sync migrates them to the subcollection format. Track document keys are provider-aware, so metadata-only catalogue results without a numeric provider ID are not silently discarded.
+
+The rules allow a signed-in user to read and write only documents underneath their own UID, including playlist track subcollections. Review the rules before production release and add App Check / abuse controls as appropriate.
 
 ## Reinstall and account recovery behavior
 
