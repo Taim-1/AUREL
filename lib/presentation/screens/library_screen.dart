@@ -1170,8 +1170,8 @@ class PlaylistDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 19),
                 if (playlistTracks.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 25),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 25),
                     child: Center(
                       child: Text(
                         controller.offlineMode
