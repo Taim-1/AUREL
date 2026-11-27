@@ -343,6 +343,14 @@ class _AccountScreenState extends State<AccountScreen> {
             const SizedBox(height: 13),
             _StatusMessage(message: _message!, isError: false),
           ],
+          if (_error == null && controller.cloudSyncError != null) ...[
+            const SizedBox(height: 13),
+            _StatusMessage(
+              message:
+                  'Cloud sync needs attention: ${controller.cloudSyncError}',
+              isError: true,
+            ),
+          ],
           const SizedBox(height: 20),
           const Text(
             'WHAT SYNC DOES',
