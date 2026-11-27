@@ -263,20 +263,38 @@ class DownloadService {
   }
 
   Future<void> delete(Track track) async {
-    final path = track.localPath;
-    if (path == null || !track.isDownloaded || !track.hasLocalPlaybackUri) {
-      return;
-    }
+    final path = track.localPath?.trim();
+    if (path == null || path.isEmpty || !track.isDownloaded) return;
+
+    final uri = Uri.tryParse(path);
+    if (uri == null) return;
+    final file = uri.scheme == 'file'
+        ? File.fromUri(uri)
+        : uri.scheme.isEmpty
+            ? File(path)
+            : null;
+    if (file == null || !await file.exists()) return;
 
     final root = await _documentsDirectoryProvider();
-    final downloadsPath =
-        Directory('${root.path}${Platform.pathSeparator}AUREL Downloads')
-            .absolute
-            .path;
-    final file = File(path).absolute;
-    if (!isWithinAurelDownloadsDirectory(file.path, downloadsPath)) return;
+    final downloadsDirectory = Directory(
+      '${root.path}${Platform.pathSeparator}AUREL Downloads',
+    );
+    if (!await downloadsDirectory.exists()) return;
 
-    if (await file.exists()) await file.delete();
+    try {
+      final resolvedDirectory = await downloadsDirectory.resolveSymbolicLinks();
+      final resolvedFile = await file.resolveSymbolicLinks();
+      if (!isWithinAurelDownloadsDirectory(
+        resolvedFile,
+        resolvedDirectory,
+      )) {
+        return;
+      }
+
+      await File(resolvedFile).delete();
+    } on FileSystemException {
+      // The file may have been removed or replaced while the user was acting.
+    }
   }
 }
 
