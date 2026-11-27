@@ -327,10 +327,11 @@ class AurelController extends ChangeNotifier {
     searchMoreError = null;
 
     if (offlineMode) {
-      final localTracks = <String, Track>{
-        for (final track in downloadedTracks)
-          track.id: track,
-      }.values.toList(growable: false);
+      final localTracksById = <String, Track>{};
+      for (final track in downloadedTracks) {
+        localTracksById[track.id] = track;
+      }
+      final localTracks = localTracksById.values.toList(growable: false);
       final term = normalized.toLowerCase();
       searchResults = term.isEmpty
           ? localTracks
