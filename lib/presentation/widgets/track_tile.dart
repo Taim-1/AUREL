@@ -33,8 +33,8 @@ class TrackTile extends StatelessWidget {
       if (track.providerId == 'lastfm') 'Catalogue source: Last.fm',
       if (track.sourceUrl.isNotEmpty && track.attribution.isNotEmpty)
         'Source page: ${track.sourceUrl}',
-      if (track.downloadAllowed) 'Offline download: Available',
-      if (!track.downloadAllowed) 'Offline download: Not available for this recording',
+      if (track.hasDownloadableSource) 'Offline download: Available',
+      if (!track.hasDownloadableSource) 'Offline download: Not available for this recording',
     ];
 
     showDialog<void>(
@@ -312,7 +312,7 @@ class TrackTile extends StatelessWidget {
                         ? 'Saved offline'
                         : controller.offlineMode
                             ? 'Turn off Offline mode to download'
-                            : track.downloadAllowed
+                             : track.hasDownloadableSource
                                 ? 'Download for offline listening'
                                 : 'Download not allowed',
                 onPressed: downloading
@@ -354,7 +354,7 @@ class TrackTile extends StatelessWidget {
                     : Icon(
                         alreadyDownloaded
                             ? Icons.download_done_rounded
-                            : track.downloadAllowed
+                            : track.hasDownloadableSource
                                 ? Icons.download_rounded
                                 : Icons.download_for_offline_outlined,
                         color: alreadyDownloaded || track.hasDownloadableSource
