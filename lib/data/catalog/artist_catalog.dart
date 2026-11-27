@@ -39,17 +39,25 @@ class ArtistCatalog {
     for (final track in source) {
       if (CatalogIdentity.normalizeText(track.artist) != artistKey) continue;
 
-      final id = track.id.trim();
-      final identity = id.isEmpty
-          ? '${track.providerId}:${CatalogIdentity.normalizeText(track.title)}:'
-              '${track.durationMs}'
-          : '${track.providerId}:$id';
-      unique.putIfAbsent(identity, () => track);
+      unique.putIfAbsent(_trackIdentity(track), () => track);
     }
 
     final result = unique.values.toList(growable: false)
       ..sort(CatalogRanking.compare);
     return List.unmodifiable(result);
+  }
+
+  static String _trackIdentity(Track track) {
+    final provider = track.providerId.trim().isEmpty
+        ? 'unknown'
+        : track.providerId.trim();
+    final id = track.id.trim();
+    if (id.isNotEmpty) return '$provider:$id';
+
+    return '$provider:${CatalogIdentity.normalizeText(track.title)}:'
+        '${CatalogIdentity.normalizeText(track.artist)}:'
+        '${CatalogIdentity.normalizeText(track.album)}:'
+        '${track.durationMs}';
   }
 
   static List<ArtistAlbumGroup> albumsForTracks(Iterable<Track> tracks) {
@@ -63,10 +71,7 @@ class ArtistCatalog {
         key,
         () => _MutableAlbum(title),
       );
-      album.tracks.putIfAbsent(
-        '${track.providerId}:${track.id}',
-        () => track,
-      );
+      album.tracks.putIfAbsent(_trackIdentity(track), () => track);
     }
 
     final albums = grouped.values.map((album) {
