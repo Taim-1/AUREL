@@ -24,6 +24,74 @@ Track track({
     );
 
 void main() {
+  group('LibraryCollectionService.trackKey', () {
+    test('uses verified recording IDs across catalogue providers', () {
+      const first = Track(
+        id: 'audius-1',
+        title: 'Golden Hour',
+        artist: 'AUREL Artist',
+        providerId: 'audius',
+        recordingMbid: 'recording-001',
+      );
+      const second = Track(
+        id: 'jamendo-8',
+        title: 'Golden Hour',
+        artist: 'AUREL Artist',
+        providerId: 'jamendo',
+        recordingMbid: 'recording-001',
+      );
+
+      expect(
+        LibraryCollectionService.trackKey(first),
+        LibraryCollectionService.trackKey(second),
+      );
+    });
+
+    test('keeps same provider track IDs separate from other providers', () {
+      const first = Track(
+        id: 'shared',
+        title: 'First',
+        artist: 'Artist',
+        providerId: 'jamendo',
+      );
+      const second = Track(
+        id: 'shared',
+        title: 'Second',
+        artist: 'Artist',
+        providerId: 'audius',
+      );
+
+      expect(
+        LibraryCollectionService.trackKey(first),
+        isNot(LibraryCollectionService.trackKey(second)),
+      );
+    });
+
+    test('uses title artist album and duration when a provider has no ID', () {
+      const first = Track(
+        id: '',
+        title: 'A Song',
+        artist: 'An Artist',
+        album: 'An Album',
+        providerId: 'jamendo',
+        durationMs: 180000,
+      );
+      const second = Track(
+        id: '',
+        title: 'A Song',
+        artist: 'An Artist',
+        album: 'An Album',
+        providerId: 'jamendo',
+        durationMs: 181000,
+      );
+
+      expect(
+        LibraryCollectionService.trackKey(first),
+        isNot(LibraryCollectionService.trackKey(second)),
+      );
+    });
+  });
+
   group('LibraryCollectionService collection mutations', () {
     test('toggles a cross-provider favorite using recording identity', () {
       const primary = Track(
