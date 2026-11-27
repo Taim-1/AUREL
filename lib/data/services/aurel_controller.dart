@@ -131,7 +131,6 @@ class AurelController extends ChangeNotifier {
   List<Track> searchResults = [];
   List<Track> favoriteTracks = [];
   List<Track> downloadedTracks = [];
-  int downloadedBytes = 0;
   List<Track> recentlyPlayed = [];
   List<MusicPlaylist> playlists = [];
   bool offlineMode = false;
@@ -171,7 +170,6 @@ class AurelController extends ChangeNotifier {
     favoriteTracks = await repository.loadFavorites();
     final storedDownloads = await repository.loadDownloads();
     downloadedTracks = await downloads.validateSavedDownloads(storedDownloads);
-    downloadedBytes = await downloads.calculateDownloadedBytes(downloadedTracks);
     await repository.saveDownloads(downloadedTracks);
     recentlyPlayed = await repository.loadRecentlyPlayed();
     playlists = await repository.loadPlaylists();
@@ -814,7 +812,6 @@ class AurelController extends ChangeNotifier {
       final updated = [...downloadedTracks, saved];
       await repository.saveDownloads(updated);
       downloadedTracks = updated;
-      downloadedBytes = await downloads.calculateDownloadedBytes(downloadedTracks);
       return null;
     } catch (error) {
       if (saved != null) {
@@ -854,7 +851,6 @@ class AurelController extends ChangeNotifier {
         await playback.removeCurrentTrackFromQueue();
       }
       await downloads.delete(track);
-      downloadedBytes = await downloads.calculateDownloadedBytes(downloadedTracks);
     } catch (_) {
       downloadedTracks = previous;
       await repository.saveDownloads(previous);
