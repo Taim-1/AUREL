@@ -17,7 +17,7 @@ Release packaging is intentionally deferred while the app is being completed. Gi
 - Dedicated artist and album detail pages built from verified catalogue records, with normalized album grouping, paginated artist tracks, and real playback/download eligibility checks.
 - Duplicate recordings collapse into one result while same-recording alternatives stay internal for automatic source fallback.
 - Source ranking, ISRC matching, version-aware de-duplication, and provider attribution.
-- Champagne waveform seek control, the compact Harmony radial visualizer, background playback, lock-screen controls, mini-player, shuffle and repeat.
+- Champagne waveform seek control with Harmony's moving spectrum integrated into the progress bar, background playback, lock-screen controls, mini-player, shuffle and repeat.
 - Licensed lyrics when the provider makes them available.
 - Private offline library containing only audio the user explicitly downloads through AUREL; the app does not scan, import or play unrelated music stored elsewhere on the phone.
 - Favourites, playlists, AUREL-managed offline downloads, offline mode and recently played history.
