@@ -42,6 +42,43 @@ jobs:
           npm install --prefix functions --no-audit --no-fund
           npm --prefix functions run build
 
+      - name: Report cloud account configuration
+        env:
+          AUREL_FIREBASE_API_KEY: ${{ secrets.AUREL_FIREBASE_API_KEY }}
+          AUREL_FIREBASE_APP_ID: ${{ secrets.AUREL_FIREBASE_APP_ID }}
+          AUREL_FIREBASE_PROJECT_ID: ${{ secrets.AUREL_FIREBASE_PROJECT_ID }}
+          AUREL_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.AUREL_FIREBASE_MESSAGING_SENDER_ID }}
+          AUREL_GOOGLE_SERVER_CLIENT_ID: ${{ secrets.AUREL_GOOGLE_SERVER_CLIENT_ID }}
+        shell: bash
+        run: |
+          missing=()
+          for key in \
+            AUREL_FIREBASE_API_KEY \
+            AUREL_FIREBASE_APP_ID \
+            AUREL_FIREBASE_PROJECT_ID \
+            AUREL_FIREBASE_MESSAGING_SENDER_ID \
+            AUREL_GOOGLE_SERVER_CLIENT_ID; do
+            if [[ -z "${!key}" ]]; then
+              missing+=("$key")
+            fi
+          done
+
+          {
+            echo "## AUREL cloud accounts"
+            if (( ${#missing[@]} == 0 )); then
+              echo "Firebase and Google client configuration is present."
+            else
+              echo "Cloud account sign-in is not fully configured in this build."
+              echo
+              echo "Add these repository Actions secrets to enable the corresponding account features:"
+              for key in "${missing[@]}"; do
+                echo "- `$key`"
+              done
+              echo
+              echo "No secret values are printed by this check."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
