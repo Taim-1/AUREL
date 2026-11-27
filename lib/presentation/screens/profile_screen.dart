@@ -5,6 +5,7 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
 import 'account_screen.dart';
 import '../widgets/aurel_settings_sheet.dart';
+import '../widgets/aurel_glass_panel.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -125,15 +126,12 @@ class ProfileScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 30),
       children: [
-        Container(
+        AurelGlassPanel(
           padding: const EdgeInsets.fromLTRB(18, 20, 18, 19),
-          decoration: BoxDecoration(
-            color: AurelColors.surface,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: AurelColors.champagne.withValues(alpha: 0.16),
-            ),
-          ),
+          radius: 22,
+          blur: 15,
+          tint: const Color(0xCC15161B),
+          shadowOpacity: 0.08,
           child: Column(
             children: [
               CircleAvatar(
