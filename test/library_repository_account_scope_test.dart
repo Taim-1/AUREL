@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import 'package:aurel/data/models/music_playlist.dart';
 import 'package:aurel/data/models/track.dart';
@@ -18,7 +20,8 @@ Track savedTrack(String id, String title) => Track(
 void main() {
   group('LibraryRepository account isolation', () {
     setUp(() {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
     });
 
     test('keeps each account favorites and playlists in its own namespace',
@@ -72,13 +75,13 @@ void main() {
     test('migrates a legacy guest library only into its first account',
         () async {
       final legacyTrack = savedTrack('legacy-song', 'Legacy Song');
-      SharedPreferences.setMockInitialValues({
-        'aurel.favorites.v1': [
-          jsonEncode(legacyTrack.toJson()),
-        ],
-      });
+      final preferences = SharedPreferencesAsync();
+      await preferences.setStringList(
+        'aurel.favorites.v1',
+        [jsonEncode(legacyTrack.toJson())],
+      );
 
-      final repository = LibraryRepository(SharedPreferencesAsync());
+      final repository = LibraryRepository(preferences);
       await repository.setAccountScope('firebase-user-a');
       expect(
         (await repository.loadFavorites()).single.id,
