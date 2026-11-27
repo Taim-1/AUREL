@@ -188,6 +188,61 @@ void main() {
       );
     });
 
+    test('keeps no-ID alternatives from different providers distinct', () {
+      final onlineWithoutId = recording(
+        id: '',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
+        title: 'Quiet Horizon',
+        artist: 'Aurel Ensemble',
+        streamUrl: 'https://audio.example/jamendo.mp3',
+        recordingMbid: 'recording-no-id-001',
+      );
+      final audiusAlternative = recording(
+        id: '',
+        providerId: 'audius',
+        providerName: 'Audius',
+        title: 'Quiet Horizon',
+        artist: 'Aurel Ensemble',
+        streamUrl: 'https://audio.example/audius.mp3',
+        recordingMbid: 'recording-no-id-001',
+      );
+      final soundcloudAlternative = recording(
+        id: '',
+        providerId: 'soundcloud',
+        providerName: 'SoundCloud',
+        title: 'Quiet Horizon',
+        artist: 'Aurel Ensemble',
+        streamUrl: 'https://audio.example/soundcloud.mp3',
+        recordingMbid: 'recording-no-id-001',
+      );
+      final localDownload = recording(
+        id: '',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
+        title: 'Quiet Horizon',
+        artist: 'Aurel Ensemble',
+        localPath:
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/quiet.mp3',
+        isDownloaded: true,
+        recordingMbid: 'recording-no-id-001',
+      );
+
+      final selected = LocalTrackPriority.preferLocalCopy(
+        onlineWithoutId.copyWith(
+          alternatives: [audiusAlternative, soundcloudAlternative],
+        ),
+        [localDownload],
+      );
+
+      expect(selected.isLocal, isTrue);
+      expect(
+        selected.alternatives.map((item) => item.providerId).toSet(),
+        {'jamendo', 'audius', 'soundcloud'},
+      );
+      expect(selected.alternatives, hasLength(3));
+    });
+
     test('never substitutes a different recording version', () {
       final liveVersion = recording(
         id: 'download-live',
