@@ -24,7 +24,8 @@ Release packaging is intentionally deferred while the app is being completed. Gi
 - User-selected AUREL username.
 - Firebase email/password and Google account sign-in, plus credential linking and per-account usernames.
 - UID-isolated local favourites, playlists and history so switching accounts on one phone never mixes private libraries.
-- Cloud restore for favourites, playlists and the 100 most recently played tracks; playlist entries are stored separately for large collections.
+- Cloud restore for favourites, playlists, the 100 most recently played tracks and previous-download history; playlist entries are stored separately for large collections.
+- After reinstall, previous downloads can be rechecked and fetched again when the original provider still authorizes the recording; audio bytes are never copied to cloud storage.
 - The same approved AUREL ribbon-A artwork on splash and Android launcher icon.
 
 AUREL does not scrape music sites, extract protected streams, record another app's playback, or hand off core playback to an external music app.
