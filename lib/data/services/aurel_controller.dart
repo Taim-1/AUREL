@@ -591,12 +591,12 @@ class AurelController extends ChangeNotifier {
 
     final playlist = playlists[playlistIndex];
     final tracks = playlist.tracks;
-    int indexOf(Track candidate) => tracks.indexWhere(
-          (item) =>
-              item.providerId == candidate.providerId &&
-              item.id == candidate.id &&
-              item.id.isNotEmpty,
-        );
+    int indexOf(Track candidate) {
+      final key = LibraryCollectionService.trackKey(candidate);
+      return tracks.indexWhere(
+        (item) => LibraryCollectionService.trackKey(item) == key,
+      );
+    }
 
     final trackIndex = indexOf(track);
     final targetIndex = indexOf(relativeTrack);
