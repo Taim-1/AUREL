@@ -118,9 +118,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ...controller.downloadedTracks,
       ...controller.recentlyPlayed,
     ]) {
-      final key = track.id.isEmpty
-          ? '${track.providerId}:${track.title}:${track.artist}:${track.album}'
-          : '${track.providerId}:${track.id}';
+      final key = LibraryCollectionService.trackKey(track);
       unique.putIfAbsent(key, () => track);
     }
     return unique.values.toList(growable: false);
@@ -1200,7 +1198,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                   ...List<Widget>.generate(playlistTracks.length, (index) {
                     final track = playlistTracks[index];
                     return Padding(
-                      key: ValueKey('${track.providerId}:${track.id}'),
+                      key: ValueKey(LibraryCollectionService.trackKey(track)),
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
                         children: [
