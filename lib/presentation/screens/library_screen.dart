@@ -578,33 +578,9 @@ class _CollectionRow extends StatelessWidget {
             padding: const EdgeInsets.all(9),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: first.artworkUrl.isEmpty
-                      ? Container(
-                          width: 52,
-                          height: 52,
-                          color: AurelColors.surfaceRaised,
-                          child: const Icon(
-                            Icons.album_rounded,
-                            color: AurelColors.champagne,
-                          ),
-                        )
-                      : Image.network(
-                          first.artworkUrl,
-                          width: 52,
-                          height: 52,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
-                            width: 52,
-                            height: 52,
-                            color: AurelColors.surfaceRaised,
-                            child: const Icon(
-                              Icons.album_rounded,
-                              color: AurelColors.champagne,
-                            ),
-                          ),
-                        ),
+                _LibraryArtwork(
+                  tracks: group.tracks,
+                  size: 52,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -647,6 +623,82 @@ class _CollectionRow extends StatelessWidget {
   }
 }
 
+class _LibraryArtwork extends StatelessWidget {
+  const _LibraryArtwork({
+    required this.tracks,
+    required this.size,
+    this.fallbackIcon = Icons.album_rounded,
+  });
+
+  final List<Track> tracks;
+  final double size;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    if (tracks.isEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AurelColors.surfaceRaised,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AurelColors.divider),
+        ),
+        child: Icon(
+          fallbackIcon,
+          color: AurelColors.champagne,
+          size: size * 0.48,
+        ),
+      );
+    }
+
+    if (tracks.length == 1) {
+      return AlbumArt(
+        imageUrl: tracks.first.artworkUrl,
+        size: size,
+        radius: 12,
+      );
+    }
+
+    final covers = tracks.take(4).toList(growable: false);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(1),
+          itemCount: 4,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+          ),
+          itemBuilder: (context, index) {
+            if (index >= covers.length) {
+              return Container(
+                color: AurelColors.surfaceRaised,
+                child: Icon(
+                  fallbackIcon,
+                  color: AurelColors.champagne.withValues(alpha: 0.7),
+                  size: size * 0.18,
+                ),
+              );
+            }
+            return AlbumArt(
+              imageUrl: covers[index].artworkUrl,
+              size: size / 2,
+              radius: 2,
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class _CollectionDetailPage extends StatelessWidget {
   const _CollectionDetailPage({
     required this.title,
@@ -656,20 +708,134 @@ class _CollectionDetailPage extends StatelessWidget {
   final String title;
   final List<Track> tracks;
 
+  Future<void> _playCollection(
+    BuildContext context,
+    AurelController controller,
+  ) async {
+    final playable = tracks.where(controller.hasPlayableSource).toList(
+      growable: false,
+    );
+    if (playable.isEmpty) return;
+
+    try {
+      await controller.playTrack(playable.first, queue: tracks);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final controller = context.watch<AurelController>();
+    final artwork = tracks
+        .map((track) => track.artworkUrl)
+        .firstWhere((url) => url.isNotEmpty, orElse: () => '');
+    final artists = tracks
+        .map((track) => track.artist.trim())
+        .where((artist) => artist.isNotEmpty)
+        .toSet();
+    final playable = tracks.any(controller.hasPlayableSource);
+
     return Scaffold(
+      backgroundColor: AurelColors.background,
       appBar: AppBar(title: Text(title)),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-        children: tracks
-            .map(
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(23),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF40372E),
+                  Color(0xFF211E1C),
+                  Color(0xFF111114),
+                ],
+              ),
+              border: Border.all(
+                color: AurelColors.champagne.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Column(
+              children: [
+                AlbumArt(
+                  imageUrl: artwork,
+                  size: 188,
+                  radius: 21,
+                ),
+                const SizedBox(height: 17),
+                const Text(
+                  'YOUR COLLECTION',
+                  style: TextStyle(
+                    color: AurelColors.champagne,
+                    fontSize: 9,
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${tracks.length} songs • ${artists.length} artists',
+                  style: const TextStyle(
+                    color: AurelColors.muted,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: playable
+                      ? () => _playCollection(context, controller)
+                      : null,
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('Play collection'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AurelColors.champagne,
+                    foregroundColor: AurelColors.background,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 23),
+          _LibrarySectionHeading(
+            title: 'Tracks',
+            count: '${tracks.length}',
+          ),
+          if (tracks.isEmpty)
+            const _LibraryEmptyState(
+              title: 'No tracks',
+              message: 'This collection is currently empty.',
+            )
+          else
+            ...tracks.map(
               (track) => TrackTile(
                 track: track,
                 queue: tracks,
               ),
-            )
-            .toList(),
+            ),
+        ],
       ),
     );
   }
@@ -759,20 +925,10 @@ class _PlaylistCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 49,
-                height: 49,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(13),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF78614A), Color(0xFF342B2B)],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.queue_music_rounded,
-                  color: AurelColors.champagneLight,
-                  size: 25,
-                ),
+              _LibraryArtwork(
+                tracks: playlist.tracks,
+                size: 49,
+                fallbackIcon: Icons.queue_music_rounded,
               ),
               const SizedBox(width: 13),
               Expanded(
