@@ -252,7 +252,7 @@ void main() {
       expect(restored.playbackHeaders, isEmpty);
     });
 
-    test('keeps provider attribution and matched sources after copy and restore', () {
+    test('keeps provider attribution but strips local file identity from normal restore', () {
       const original = Track(
         id: 'openverse-1',
         title: 'Open Piece',
@@ -276,7 +276,9 @@ void main() {
       expect(restored.licenseName, 'CC BY');
       expect(restored.attribution, 'Open Piece by Composer');
       expect(restored.matchedSources, ['Openverse', 'Jamendo']);
-      expect(restored.isDownloaded, isTrue);
+      expect(restored.isDownloaded, isFalse);
+      expect(restored.localPath, isNull);
+      expect(restored.playbackUri, 'https://example.com/audio.mp3');
     });
 
     test('keeps the downloaded file path when serialised and restored', () {
@@ -288,10 +290,11 @@ void main() {
         downloadUrl: 'https://example.com/download.mp3',
         downloadAllowed: true,
         isDownloaded: true,
-        localPath: '/data/user/0/com.aurel.aurel/app_flutter/song.mp3',
+        localPath:
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
       );
 
-      final restored = Track.fromJson(original.toJson());
+      final restored = Track.fromDownloadedJson(original.toJson());
 
       expect(restored.isDownloaded, isTrue);
       expect(restored.localPath, original.localPath);
