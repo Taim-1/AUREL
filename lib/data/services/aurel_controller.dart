@@ -775,7 +775,7 @@ class AurelController extends ChangeNotifier {
 
   Future<String?> downloadTrack(Track track) async {
     if (offlineMode) return 'Turn off Offline mode to download more music.';
-    if (!track.downloadAllowed) {
+    if (!track.hasDownloadableSource) {
       return 'Downloads are not enabled for this track.';
     }
     if (downloadedTracks.any((item) => item.id == track.id) ||
