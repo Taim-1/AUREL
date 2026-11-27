@@ -314,6 +314,7 @@ class AurelController extends ChangeNotifier {
     await repository.setAccountScope(null);
     favoriteTracks = await repository.loadFavorites();
     recentlyPlayed = await repository.loadRecentlyPlayed();
+    previouslyDownloadedTracks = await repository.loadDownloadHistory();
     playlists = await repository.loadPlaylists();
     _lastHistoryTrackId = null;
     cloudSyncError = null;
