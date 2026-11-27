@@ -58,3 +58,14 @@ These refinements extend the screen reference without changing its composition:
 ## Owner clarification (2026-11-26)
 
 The Downloads clarification above supersedes any earlier visual note suggesting a whole-device storage ring. The Downloads screen reports only the number of tracks saved inside AUREL and manages those offline copies; it is not a device storage dashboard or local-file importer.
+
+## Owner-approved visual refinement (2026-11-27)
+
+The updated AUREL screen image supplied on 2026-11-27 extends the existing reference; it does not replace the fixed brand identity.
+
+- Keep the same ribbon-A mark, AUREL wordmark, “Feel the Music” tagline, near-black surfaces and champagne-gold accents.
+- Introduce a restrained glass treatment only on selected high-value surfaces: the Home/Search entry, Search field, mini player, bottom navigation dock, Profile identity panel, Downloads summary and Now Playing artwork rim.
+- Glass uses a dark translucent charcoal tint, a modest backdrop blur, a fine warm champagne edge and a very soft highlight. Text and controls must remain crisp and readable.
+- Do not blur the whole screen, add a new theme selector, introduce a dominant new colour, or apply glass to every card.
+- “TAIM” in the reference image remains sample identity text; display the account's chosen username.
+- The Downloads area remains limited to audio downloaded inside AUREL. Do not copy the reference mockup's whole-device storage meter or add phone-wide scanning/importing; continue to report only AUREL-managed offline items.
