@@ -113,6 +113,7 @@ class PlaybackController extends ChangeNotifier {
   }
 
   Future<bool> _recoverFromSourceError(PlayerException error) async {
+    if (_disposed) return false;
     final active = _activeRecovery;
     if (active != null) return active;
 
@@ -145,9 +146,11 @@ class PlaybackController extends ChangeNotifier {
     if (candidates.isEmpty) return false;
 
     for (final candidate in candidates) {
+      if (_disposed) return false;
       _attemptedFallbackIds.add(candidate.id);
       try {
         final prepared = await resolver(candidate);
+        if (_disposed) return false;
         // The resolver may have tried and consumed more than one
         // underlying provider while preparing this candidate. Preserve its
         // remaining list rather than reintroducing an already-failed source.
