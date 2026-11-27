@@ -294,7 +294,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         if (_selectedTab == 0) ...[
           _LibrarySummary(
             title: 'Favorites',
-            subtitle: '${controller.favoriteTracks.length} songs',
+            subtitle: '${favorites.length} songs',
             icon: Icons.favorite_rounded,
             tint: const Color(0xFF70445E),
             onTap: () => setState(() => _selectedTab = 1),
@@ -302,7 +302,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const SizedBox(height: 13),
           _LibrarySummary(
             title: 'Downloads',
-            subtitle: '${controller.downloadedTracks.length} songs saved by AUREL',
+            subtitle: '${_filterTracks(controller.downloadedTracks).length} songs saved by AUREL',
             icon: Icons.download_rounded,
             tint: const Color(0xFF594A39),
             onTap: () => controller.selectTab(3),
@@ -310,7 +310,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const SizedBox(height: 9),
           _LibrarySummary(
             title: 'Recently Played',
-            subtitle: '${controller.recentlyPlayed.length} listening memories',
+            subtitle: '${recent.length} listening memories',
             icon: Icons.history_rounded,
             tint: const Color(0xFF394A50),
             onTap: () => setState(() => _selectedTab = 4),
@@ -1218,7 +1218,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                                         .moveTrackInPlaylist(
                                           playlistId,
                                           track,
-                                          -1,
+                                          playlistTracks[index - 1],
                                         ),
                                 icon: const Icon(
                                   Icons.keyboard_arrow_up_rounded,
@@ -1251,7 +1251,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                                         .moveTrackInPlaylist(
                                           playlistId,
                                           track,
-                                          1,
+                                          playlistTracks[index + 1],
                                         ),
                                 icon: const Icon(
                                   Icons.keyboard_arrow_down_rounded,
