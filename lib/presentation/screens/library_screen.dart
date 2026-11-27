@@ -101,9 +101,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
-    final saved = _filterTracks(_savedTracks(controller));
-    final favorites = _filterTracks(controller.favoriteTracks);
-    final recent = _filterTracks(controller.recentlyPlayed);
+    final localTracksById = <String, Track>{
+      for (final track in controller.downloadedTracks)
+        if (track.isDownloaded && track.canPlay) track.id: track,
+    };
+    final savedSource = controller.offlineMode
+        ? controller.downloadedTracks
+        : _savedTracks(controller);
+    final favoriteSource = controller.offlineMode
+        ? controller.favoriteTracks
+            .map((track) => localTracksById[track.id])
+            .whereType<Track>()
+        : controller.favoriteTracks;
+    final recentSource = controller.offlineMode
+        ? controller.recentlyPlayed
+            .map((track) => localTracksById[track.id])
+            .whereType<Track>()
+        : controller.recentlyPlayed;
+    final saved = _filterTracks(savedSource);
+    final favorites = _filterTracks(favoriteSource);
+    final recent = _filterTracks(recentSource);
     final playlists = _filterPlaylists(controller.playlists);
 
     return ListView(
@@ -321,10 +338,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           if (favorites.isEmpty)
             _LibraryEmptyState(
-              title: _query.isEmpty ? 'No liked songs yet' : 'No matching songs',
-              message: _query.isEmpty
-                  ? 'Tap the heart on any track to save it to your collection.'
-                  : 'Try a different title, artist or album name.',
+              title: _query.isNotEmpty
+                  ? 'No matching songs'
+                  : controller.offlineMode
+                      ? 'No liked downloads yet'
+                      : 'No liked songs yet',
+              message: _query.isNotEmpty
+                  ? 'Try a different title, artist or album name.'
+                  : controller.offlineMode
+                      ? 'Liked songs appear here in Offline mode after you save an allowed download inside AUREL.'
+                      : 'Tap the heart on any track to save it to your collection.',
               action: _query.isEmpty ? null : 'Clear search',
               onTap: _query.isEmpty ? null : _clearSearch,
             )
