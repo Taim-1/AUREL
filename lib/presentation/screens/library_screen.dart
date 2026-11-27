@@ -5,6 +5,7 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/models/music_playlist.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
+import '../../data/services/library_collection_service.dart';
 import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
 
@@ -17,6 +18,21 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   int _selectedTab = 0;
+  String _query = '';
+  LibrarySort _sort = LibrarySort.recentlyAdded;
+
+  List<Track> _filterTracks(Iterable<Track> tracks) =>
+      LibraryCollectionService.filterTracks(
+        tracks,
+        query: _query,
+        sort: _sort,
+      );
+
+  List<MusicPlaylist> _filterPlaylists(Iterable<MusicPlaylist> playlists) =>
+      LibraryCollectionService.filterPlaylists(
+        playlists,
+        query: _query,
+      );
 
   Future<void> _createPlaylist(BuildContext context) async {
     final controller = TextEditingController();
@@ -92,7 +108,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
-    final saved = _savedTracks(controller);
+    final saved = _filterTracks(_savedTracks(controller));
+    final favorites = _filterTracks(controller.favoriteTracks);
+    final recent = _filterTracks(controller.recentlyPlayed);
+    final playlists = _filterPlaylists(controller.playlists);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 28),
@@ -154,10 +173,90 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 selected: _selectedTab == 3,
                 onTap: () => setState(() => _selectedTab = 3),
               ),
+              _LibraryTab(
+                label: 'Recently Played',
+                selected: _selectedTab == 4,
+                onTap: () => setState(() => _selectedTab = 4),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AurelColors.surface,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: AurelColors.divider),
+                ),
+                child: TextField(
+                  onChanged: (value) => setState(() => _query = value),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                  cursorColor: AurelColors.champagne,
+                  decoration: InputDecoration(
+                    hintText: 'Search your library',
+                    hintStyle: const TextStyle(
+                      color: AurelColors.muted,
+                      fontSize: 12,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AurelColors.champagne,
+                      size: 20,
+                    ),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear library search',
+                            onPressed: () => setState(() => _query = ''),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: AurelColors.muted,
+                              size: 18,
+                            ),
+                          ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            PopupMenuButton<LibrarySort>(
+              tooltip: 'Sort library',
+              initialValue: _sort,
+              onSelected: (value) => setState(() => _sort = value),
+              color: AurelColors.surfaceRaised,
+              icon: const Icon(
+                Icons.sort_rounded,
+                color: AurelColors.champagneLight,
+              ),
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: LibrarySort.recentlyAdded,
+                  child: Text('Recently added'),
+                ),
+                PopupMenuItem(
+                  value: LibrarySort.titleAscending,
+                  child: Text('Title A–Z'),
+                ),
+                PopupMenuItem(
+                  value: LibrarySort.artistAscending,
+                  child: Text('Artist A–Z'),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 17),
         if (_selectedTab == 0) ...[
           _LibrarySummary(
             title: 'Favorites',
@@ -165,6 +264,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
             icon: Icons.favorite_rounded,
             tint: const Color(0xFF70445E),
             onTap: () => setState(() => _selectedTab = 1),
+          ),
+          const SizedBox(height: 13),
+          _LibrarySummary(
+            title: 'Downloads',
+            subtitle: '${controller.downloadedTracks.length} songs saved by AUREL',
+            icon: Icons.download_rounded,
+            tint: const Color(0xFF594A39),
+            onTap: () => controller.selectTab(3),
+          ),
+          const SizedBox(height: 9),
+          _LibrarySummary(
+            title: 'Recently Played',
+            subtitle: '${controller.recentlyPlayed.length} listening memories',
+            icon: Icons.history_rounded,
+            tint: const Color(0xFF394A50),
+            onTap: () => setState(() => _selectedTab = 4),
           ),
           const SizedBox(height: 13),
           if (controller.playlists.isEmpty)
@@ -175,8 +290,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
               action: 'Create playlist',
               onTap: () => _createPlaylist(context),
             )
+          else if (playlists.isEmpty)
+            _LibraryEmptyState(
+              title: 'No matching playlists',
+              message: 'Try another search to find a playlist or one of its songs.',
+              action: 'Clear search',
+              onTap: () => setState(() => _query = ''),
+            )
           else ...[
-            ...controller.playlists.map(
+            ...playlists.map(
               (playlist) => _PlaylistCard(
                 playlist: playlist,
                 onTap: () => _openPlaylist(context, playlist.id),
@@ -197,19 +319,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ] else if (_selectedTab == 1) ...[
           _LibrarySectionHeading(
             title: 'Liked Songs',
-            count: '${controller.favoriteTracks.length} songs',
+            count: '${favorites.length} songs',
           ),
-          if (controller.favoriteTracks.isEmpty)
+          if (favorites.isEmpty)
             const _LibraryEmptyState(
-              title: 'No liked songs yet',
-              message:
-                  'Tap the heart on any track to save it to your collection.',
+              title: _query.isEmpty ? 'No liked songs yet' : 'No matching songs',
+              message: _query.isEmpty
+                  ? 'Tap the heart on any track to save it to your collection.'
+                  : 'Try a different title, artist or album name.',
+              action: _query.isEmpty ? null : 'Clear search',
+              onTap: _query.isEmpty ? null : () => setState(() => _query = ''),
             )
           else
-            ...controller.favoriteTracks.map(
+            ...favorites.map(
               (track) => TrackTile(
                 track: track,
-                queue: controller.favoriteTracks,
+                queue: favorites,
               ),
             ),
         ] else if (_selectedTab == 2) ...[
@@ -222,11 +347,35 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ),
         ] else if (_selectedTab == 3) ...[
-          const _LibrarySectionHeading(title: 'Artists', count: 'Saved music'),
+          _LibrarySectionHeading(
+            title: 'Artists',
+            count: '${_groupTracks(saved, (track) => track.artist).length} artists',
+          ),
           ..._buildGroups(
             context,
             _groupTracks(saved, (track) => track.artist),
           ),
+        ] else if (_selectedTab == 4) ...[
+          _LibrarySectionHeading(
+            title: 'Recently Played',
+            count: '${recent.length} songs',
+          ),
+          if (recent.isEmpty)
+            _LibraryEmptyState(
+              title: _query.isEmpty ? 'Your listening history starts here' : 'No listening matches',
+              message: _query.isEmpty
+                  ? 'Songs you play in AUREL will appear here, ready to continue where you left off.'
+                  : 'Try a different title, artist or album name.',
+              action: _query.isEmpty ? null : 'Clear search',
+              onTap: _query.isEmpty ? null : () => setState(() => _query = ''),
+            )
+          else
+            ...recent.map(
+              (track) => TrackTile(
+                track: track,
+                queue: recent,
+              ),
+            ),
         ],
       ],
     );
