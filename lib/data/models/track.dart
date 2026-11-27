@@ -71,7 +71,12 @@ class Track {
   /// cloud library persistence.
   final Map<String, String> playbackHeaders;
 
-  bool get hasLocalPlaybackUri => localPath?.trim().isNotEmpty == true;
+  bool get hasLocalPlaybackUri {
+    final path = localPath?.trim();
+    if (path == null || path.isEmpty) return false;
+    final uri = Uri.tryParse(path);
+    return uri != null && (uri.scheme.isEmpty || uri.scheme == 'file');
+  }
 
   bool get isLocal => isDownloaded && hasLocalPlaybackUri;
 
@@ -86,9 +91,10 @@ class Track {
   }
 
   String get playbackUri {
-    if (localPath != null && localPath!.isNotEmpty) {
-      if (localPath!.startsWith('content://')) return localPath!;
-      return Uri.file(localPath!).toString();
+    if (isDownloaded && hasLocalPlaybackUri) {
+      final path = localPath!.trim();
+      final uri = Uri.tryParse(path);
+      return uri?.scheme == 'file' ? uri.toString() : Uri.file(path).toString();
     }
     return streamUrl;
   }
