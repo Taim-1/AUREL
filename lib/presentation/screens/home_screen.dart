@@ -53,11 +53,8 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
     final localTracks = <String, Track>{
-      for (final track in [
-        ...controller.deviceTracks,
-        ...controller.downloadedTracks,
-      ])
-        track.id: track,
+      for (final track in controller.downloadedTracks)
+        if (track.isDownloaded && track.canPlay) track.id: track,
     }.values.toList(growable: false);
     final tracks = controller.offlineMode
         ? localTracks
