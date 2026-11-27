@@ -413,8 +413,12 @@ class MusicCatalogService {
         final prepared = candidate.providerId == 'soundcloud'
             ? await soundcloud.prepareForDownload(candidate)
             : candidate;
+        final preparedSourceKey = CatalogIdentity.providerKeyOf(prepared);
         final remaining = track.alternatives
-            .where((alternative) => !attemptedIds.contains(alternative.id))
+            .where(
+              (alternative) =>
+                  CatalogIdentity.providerKeyOf(alternative) != preparedSourceKey,
+            )
             .toList(growable: false);
         return prepared.copyWith(
           id: track.id,
