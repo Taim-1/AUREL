@@ -11,14 +11,25 @@ class LocalTrackPriority {
   ) {
     final recordings = <Track>[track, ...track.alternatives];
 
-    for (final local in localTracks) {
-      if (!local.isLocal || !local.canPlay) continue;
-      if (recordings.any((recording) => _isSameRecording(local, recording))) {
-        return local;
-      }
-    }
+    final matches = localTracks
+        .where(
+          (local) =>
+              local.isLocal &&
+              local.canPlay &&
+              recordings.any(
+                (recording) => _isSameRecording(local, recording),
+              ),
+        )
+        .toList(growable: false)
+      ..sort((a, b) {
+        final managedDownload =
+            (b.isDownloaded ? 1 : 0).compareTo(a.isDownloaded ? 1 : 0);
+        return managedDownload != 0
+            ? managedDownload
+            : CatalogRanking.compare(a, b);
+      });
 
-    return null;
+    return matches.isEmpty ? null : matches.first;
   }
 
   static Track preferLocalCopy(
