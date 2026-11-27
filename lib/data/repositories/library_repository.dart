@@ -19,7 +19,8 @@ class LibraryRepository {
 
   Future<List<Track>> loadFavorites() => _readTracks(_favoritesKey);
 
-  Future<List<Track>> loadDownloads() => _readTracks(_downloadsKey);
+  Future<List<Track>> loadDownloads() =>
+      _readTracks(_downloadsKey, includeAurelDownloads: true);
 
   Future<List<Track>> loadRecentlyPlayed() => _readTracks(_recentKey);
 
@@ -46,12 +47,20 @@ class LibraryRepository {
     return playlists;
   }
 
-  Future<List<Track>> _readTracks(String key) async {
+  Future<List<Track>> _readTracks(
+    String key, {
+    bool includeAurelDownloads = false,
+  }) async {
     final raw = await _preferences.getStringList(key) ?? const <String>[];
     final tracks = <Track>[];
     for (final item in raw) {
       try {
-        tracks.add(Track.fromJson(jsonDecode(item) as Map<String, dynamic>));
+        final json = jsonDecode(item) as Map<String, dynamic>;
+        tracks.add(
+          includeAurelDownloads
+              ? Track.fromDownloadedJson(json)
+              : Track.fromJson(json),
+        );
       } on FormatException {
         // Ignore a corrupted saved item without losing the rest of the library.
       } on TypeError {
