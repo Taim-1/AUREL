@@ -14,6 +14,7 @@ class LibraryRepository {
   static const _downloadsKey = 'aurel.downloads.v1';
   static const _playlistsKey = 'aurel.playlists.v1';
   static const _recentKey = 'aurel.recent.v1';
+  static const _downloadHistoryKey = 'aurel.download_history.v1';
   static const _clientIdKey = 'aurel.jamendo.client_id';
   static const _offlineModeKey = 'aurel.offline_mode.v1';
   static const _accountScopeKey = 'aurel.library.account_scope.v1';
@@ -38,6 +39,7 @@ class LibraryRepository {
       await _migrateLegacyGuestCollection(_favoritesKey, nextScope);
       await _migrateLegacyGuestCollection(_playlistsKey, nextScope);
       await _migrateLegacyGuestCollection(_recentKey, nextScope);
+      await _migrateLegacyGuestCollection(_downloadHistoryKey, nextScope);
     }
 
     _accountScope = nextScope;
@@ -67,6 +69,9 @@ class LibraryRepository {
 
   Future<List<Track>> loadRecentlyPlayed() =>
       _readTracks(_collectionKey(_recentKey));
+
+  Future<List<Track>> loadDownloadHistory() =>
+      _readTracks(_collectionKey(_downloadHistoryKey));
 
   Future<bool> loadOfflineMode() async =>
       await _preferences.getBool(_offlineModeKey) ?? false;
@@ -123,6 +128,9 @@ class LibraryRepository {
 
   Future<void> saveRecentlyPlayed(List<Track> tracks) =>
       _writeTracks(_collectionKey(_recentKey), tracks);
+
+  Future<void> saveDownloadHistory(List<Track> tracks) =>
+      _writeTracks(_collectionKey(_downloadHistoryKey), tracks);
 
   Future<void> savePlaylists(List<MusicPlaylist> playlists) =>
       _preferences.setStringList(
