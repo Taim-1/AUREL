@@ -12,7 +12,6 @@ Track recording({
   String recordingId = '',
   String recordingMbid = '',
   String? localPath,
-  bool isDeviceTrack = false,
   bool isDownloaded = false,
   bool isPlayable = true,
   bool isMetadataOnly = false,
@@ -29,7 +28,6 @@ Track recording({
     recordingId: recordingId,
     recordingMbid: recordingMbid,
     localPath: localPath,
-    isDeviceTrack: isDeviceTrack,
     isDownloaded: isDownloaded,
     isPlayable: isPlayable,
     isMetadataOnly: isMetadataOnly,
@@ -50,25 +48,25 @@ void main() {
       recordingId: 'USABC2600001',
     );
 
-    final localDevice = recording(
-      id: 'device-51',
-      providerId: 'device',
-      providerName: 'On device',
+    final savedDownload = recording(
+      id: 'download-51',
+      providerId: 'jamendo',
+      providerName: 'Jamendo',
       title: 'Midnight Avenue',
       artist: 'Aurel Ensemble',
-      localPath: 'content://media/external/audio/media/51',
-      isDeviceTrack: true,
+      localPath: '/data/user/0/com.aurel.aurel/files/AUREL Downloads/51.mp3',
+      isDownloaded: true,
       recordingId: 'USABC2600001',
     );
 
-    test('selects a matching device recording ahead of an online stream', () {
+    test('selects an AUREL download ahead of an online stream', () {
       final selected = LocalTrackPriority.preferLocalCopy(
         onlineJamendo,
-        [localDevice],
+        [savedDownload],
       );
 
-      expect(selected.id, 'device-51');
-      expect(selected.isDeviceTrack, isTrue);
+      expect(selected.id, 'download-51');
+      expect(selected.isDownloaded, isTrue);
       expect(selected.isLocal, isTrue);
       expect(selected.canPlay, isTrue);
     });
@@ -76,7 +74,7 @@ void main() {
     test('retains the online recording as an automatic recovery source', () {
       final selected = LocalTrackPriority.preferLocalCopy(
         onlineJamendo,
-        [localDevice],
+        [savedDownload],
       );
 
       expect(selected.alternatives, hasLength(1));
@@ -85,7 +83,7 @@ void main() {
       expect(selected.alternatives.single.canPlay, isTrue);
     });
 
-    test('finds a local copy through an eligible catalogue alternative', () {
+    test('finds a download through an eligible catalogue alternative', () {
       final metadata = recording(
         id: 'spotify-17',
         providerId: 'spotify',
@@ -98,90 +96,76 @@ void main() {
       );
 
       expect(
-        LocalTrackPriority.findLocalCopy(metadata, [localDevice])?.id,
-        'device-51',
+        LocalTrackPriority.findLocalCopy(metadata, [savedDownload])?.id,
+        'download-51',
       );
 
       final selected = LocalTrackPriority.preferLocalCopy(
         metadata,
-        [localDevice],
+        [savedDownload],
       );
 
-      expect(selected.id, 'device-51');
+      expect(selected.id, 'download-51');
       expect(selected.alternatives.single.id, 'jamendo-21');
     });
 
-    test('chooses a downloaded copy when it is the matching local source', () {
-      final download = recording(
-        id: 'download-21',
+    test('recognizes a saved download only when its file still exists', () {
+      final brokenDownload = recording(
+        id: 'broken-download',
         providerId: 'jamendo',
         providerName: 'Jamendo',
         title: 'Midnight Avenue',
         artist: 'Aurel Ensemble',
-        localPath: '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
         isDownloaded: true,
         recordingId: 'USABC2600001',
       );
 
-      final selected = LocalTrackPriority.preferLocalCopy(
-        onlineJamendo,
-        [download],
-      );
-
-      expect(selected.id, 'download-21');
-      expect(selected.isDownloaded, isTrue);
-      expect(selected.isLocal, isTrue);
-    });
-
-    test('prefers an AUREL-managed download over the MediaStore copy', () {
-      final download = recording(
-        id: 'download-21',
-        providerId: 'jamendo',
-        providerName: 'Jamendo',
-        title: 'Midnight Avenue',
-        artist: 'Aurel Ensemble',
-        localPath: '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
-        isDownloaded: true,
-        recordingId: 'USABC2600001',
-      );
-
-      final selected = LocalTrackPriority.preferLocalCopy(
-        onlineJamendo,
-        [localDevice, download],
-      );
-
-      expect(selected.id, 'download-21');
-      expect(selected.isDownloaded, isTrue);
-    });
-
-    test('ignores a stale local entry without a real local playback URI', () {
-      final stale = recording(
-        id: 'stale-device-21',
-        providerId: 'device',
-        providerName: 'On device',
-        title: 'Midnight Avenue',
-        artist: 'Aurel Ensemble',
-        isDeviceTrack: true,
-        recordingId: 'USABC2600001',
-      );
-
-      expect(LocalTrackPriority.findLocalCopy(onlineJamendo, [stale]), isNull);
       expect(
-        LocalTrackPriority.preferLocalCopy(onlineJamendo, [stale]).id,
+        LocalTrackPriority.findLocalCopy(onlineJamendo, [brokenDownload]),
+        isNull,
+      );
+      expect(
+        LocalTrackPriority.preferLocalCopy(
+          onlineJamendo,
+          [brokenDownload],
+        ).id,
+        'jamendo-21',
+      );
+    });
+
+    test('does not import a matching file outside AUREL downloads', () {
+      final externalFile = recording(
+        id: 'external-file-21',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
+        title: 'Midnight Avenue',
+        artist: 'Aurel Ensemble',
+        localPath: '/storage/emulated/0/Music/Midnight Avenue.mp3',
+        recordingId: 'USABC2600001',
+      );
+
+      expect(
+        LocalTrackPriority.findLocalCopy(onlineJamendo, [externalFile]),
+        isNull,
+      );
+      expect(
+        LocalTrackPriority.preferLocalCopy(
+          onlineJamendo,
+          [externalFile],
+        ).id,
         'jamendo-21',
       );
     });
 
     test('never substitutes a different recording version', () {
       final liveVersion = recording(
-        id: 'device-live',
-        providerId: 'device',
-        providerName: 'On device',
+        id: 'download-live',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
         title: 'Midnight Avenue (Live)',
         artist: 'Aurel Ensemble',
-        localPath: 'content://media/external/audio/media/52',
-        isDeviceTrack: true,
-        durationMs: 180000,
+        localPath: '/data/user/0/com.aurel.aurel/files/AUREL Downloads/live.mp3',
+        isDownloaded: true,
       );
 
       expect(
@@ -190,25 +174,25 @@ void main() {
       );
     });
 
-    test('local metadata fills gaps without removing the original identity', () {
-      final sparseLocal = recording(
-        id: 'device-53',
-        providerId: 'device',
-        providerName: 'On device',
+    test('local download metadata fills gaps without changing its identity', () {
+      final sparseDownload = recording(
+        id: 'download-53',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
         title: 'Midnight Avenue',
         artist: 'Aurel Ensemble',
-        localPath: 'content://media/external/audio/media/53',
-        isDeviceTrack: true,
+        localPath: '/data/user/0/com.aurel.aurel/files/AUREL Downloads/53.mp3',
+        isDownloaded: true,
         durationMs: 0,
         recordingId: 'USABC2600001',
       );
 
       final selected = LocalTrackPriority.preferLocalCopy(
         onlineJamendo,
-        [sparseLocal],
+        [sparseDownload],
       );
 
-      expect(selected.id, 'device-53');
+      expect(selected.id, 'download-53');
       expect(selected.isLocal, isTrue);
       expect(selected.title, 'Midnight Avenue');
       expect(selected.artist, 'Aurel Ensemble');
@@ -238,7 +222,7 @@ void main() {
       );
       final selected = LocalTrackPriority.preferLocalCopy(
         onlineJamendo.copyWith(alternatives: [soundcloud, audius]),
-        [localDevice],
+        [savedDownload],
       );
 
       expect(
