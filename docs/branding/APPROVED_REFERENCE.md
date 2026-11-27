@@ -72,10 +72,10 @@ The updated AUREL screen image supplied on 2026-11-27 extends the existing refer
 
 ## Owner-approved player refinement (2026-11-27)
 
-- Use one built-in visualizer style named **Harmony**: a compact circular/radial spectrum in champagne and warm silver, placed directly below the seek bar and above the transport controls.
-- Harmony animates gently while AUREL playback is active and holds still when playback is paused. Keep it compact and ornamental; do not introduce a preset picker or extra navigation.
-- Do not request microphone permission or scan device audio to draw the Harmony effect.
-- Keep the existing seek bar independently seekable. The visualizer must never intercept gestures intended for the seek bar.
+- Use one built-in visualizer style named **Harmony**, integrated directly into the horizontal seek/progress bar. It is the progress waveform itself, not a separate circle or widget below the bar.
+- Harmony uses compact champagne-and-warm-silver waveform columns with a gently changing harmonic pattern while playback is active. The completed section shows progress, and the playhead remains clearly visible.
+- Tapping or dragging anywhere on the integrated waveform seeks to that position. The animation must not create a second gesture surface or intercept playback controls.
+- Pause freezes the animated pattern; playback resumes its motion. Do not request microphone permission or scan device audio.
 - Reduce glass surfaces across the app. Keep only a subtle frosted treatment on the Search field and Mini Player; return the navigation dock, Home search launcher, Profile card, Downloads summary and Now Playing artwork frame to crisp dark surfaces with restrained champagne borders.
 
 ## Lyrics quality requirements (2026-11-27)
