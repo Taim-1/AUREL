@@ -134,7 +134,7 @@ void main() {
         providerId: 'jamendo',
         recordingMbid: 'recording-002',
       );
-      final playlist = MusicPlaylist(
+      final playlist = const MusicPlaylist(
         id: 'one',
         name: 'Evening',
         tracks: [primary],
@@ -162,7 +162,7 @@ void main() {
         artist: 'AUREL Artist',
         providerId: 'audius',
       );
-      final playlist = MusicPlaylist(
+      final playlist = const MusicPlaylist(
         id: 'two',
         name: 'Sources',
         tracks: [jamendo, audius],
