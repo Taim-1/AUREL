@@ -11,6 +11,45 @@ class CatalogIdentity {
 
   static const int durationToleranceMs = 5000;
 
+  /// Canonical recording key. Verified cross-provider IDs are shared; when
+  /// neither exists the source identity remains part of the fallback key.
+  static String keyOf(Track track) {
+    final mbid = track.recordingMbid.trim().toLowerCase();
+    if (mbid.isNotEmpty) return 'mbid:$mbid';
+
+    final isrc = _normalizeIsrc(track.recordingId);
+    if (isrc.isNotEmpty) return 'isrc:$isrc';
+
+    if (track.id.trim().isNotEmpty) {
+      return '${track.providerId}:${track.id.trim()}';
+    }
+
+    return [
+      track.providerId,
+      normalizeText(track.title),
+      normalizeText(track.artist),
+      normalizeText(track.album),
+      track.durationMs,
+    ].join(':');
+  }
+
+  /// Provider-specific key for trying every eligible source exactly once.
+  /// Unlike [keyOf], this deliberately keeps same-recording providers apart.
+  static String providerKeyOf(Track track) {
+    final id = track.id.trim();
+    if (id.isNotEmpty) return '${track.providerId}:$id';
+
+    return [
+      track.providerId,
+      track.recordingMbid.trim().toLowerCase(),
+      _normalizeIsrc(track.recordingId),
+      normalizeText(track.title),
+      normalizeText(track.artist),
+      normalizeText(track.album),
+      track.durationMs,
+    ].join(':');
+  }
+
   static bool matches(Track a, Track b) {
     // A provider's own stable track ID is authoritative even when that
     // provider omits duration and recording identifiers.
