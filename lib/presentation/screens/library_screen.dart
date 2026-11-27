@@ -1018,28 +1018,27 @@ class PlaylistDetailScreen extends StatelessWidget {
 
   Future<void> _playPlaylist(
     BuildContext context,
-    MusicPlaylist playlist,
+    List<Track> tracks,
     AurelController controller,
   ) async {
-    final firstPlayable = playlist.tracks.cast<Track?>().firstWhere(
-          (track) =>
-              track != null &&
-              controller.hasPlayableSource(track) &&
-              (!controller.offlineMode ||
-                  track.isDownloaded ||
-                  controller.hasLocalPlayableCopy(track)),
+    final firstPlayable = tracks.cast<Track?>().firstWhere(
+          (track) => track != null && controller.hasPlayableSource(track),
           orElse: () => null,
         );
     if (firstPlayable == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No tracks in this playlist are currently playable.'),
+        SnackBar(
+          content: Text(
+            controller.offlineMode
+                ? 'No downloaded tracks from this playlist are available offline.'
+                : 'No tracks in this playlist are currently playable.',
+          ),
         ),
       );
       return;
     }
     try {
-      await controller.playTrack(firstPlayable, queue: playlist.tracks);
+      await controller.playTrack(firstPlayable, queue: tracks);
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1060,8 +1059,20 @@ class PlaylistDetailScreen extends StatelessWidget {
       }
     }
     final selectedPlaylist = playlist;
-    final firstArtwork = selectedPlaylist?.tracks.isNotEmpty == true
-        ? selectedPlaylist!.tracks.first.artworkUrl
+    final localTracksById = <String, Track>{
+      for (final track in controller.downloadedTracks)
+        if (track.isDownloaded && track.canPlay) track.id: track,
+    };
+    final playlistTracks = selectedPlaylist == null
+        ? const <Track>[]
+        : controller.offlineMode
+            ? selectedPlaylist.tracks
+                .map((track) => localTracksById[track.id])
+                .whereType<Track>()
+                .toList(growable: false)
+            : selectedPlaylist.tracks;
+    final firstArtwork = playlistTracks.isNotEmpty
+        ? playlistTracks.first.artworkUrl
         : '';
 
     return Scaffold(
@@ -1133,7 +1144,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              '${selectedPlaylist.tracks.length} tracks',
+                              '${playlistTracks.length} tracks',
                               style: const TextStyle(
                                 color: AurelColors.muted,
                                 fontSize: 11,
@@ -1141,11 +1152,11 @@ class PlaylistDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 10),
                             FilledButton.icon(
-                              onPressed: selectedPlaylist.tracks.isEmpty
+                              onPressed: playlistTracks.isEmpty
                                   ? null
                                   : () => _playPlaylist(
                                         context,
-                                        selectedPlaylist,
+                                        playlistTracks,
                                         controller,
                                       ),
                               icon: const Icon(Icons.play_arrow_rounded),
@@ -1163,19 +1174,21 @@ class PlaylistDetailScreen extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 25),
                     child: Center(
                       child: Text(
-                        'No tracks yet. Add music from Search or Discover.',
+                        controller.offlineMode
+                            ? 'No tracks from this playlist have been downloaded inside AUREL yet.'
+                            : 'No tracks yet. Add music from Search or Discover.',
                         style: TextStyle(color: AurelColors.muted),
                       ),
                     ),
                   )
                 else
-                  ...selectedPlaylist.tracks.map(
+                  ...playlistTracks.map(
                     (track) => Row(
                       children: [
                         Expanded(
                           child: TrackTile(
                             track: track,
-                            queue: selectedPlaylist.tracks,
+                            queue: playlistTracks,
                           ),
                         ),
                         IconButton(
