@@ -631,6 +631,8 @@ void main() {
 
       expect(primary.canPlay, isTrue);
       expect(primary.downloadAllowed, isFalse);
+      expect(primary.canDownloadDirectly, isFalse);
+      expect(primary.alternatives.single.canDownloadDirectly, isTrue);
       expect(primary.hasDownloadableSource, isTrue);
     });
 
