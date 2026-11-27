@@ -20,6 +20,31 @@ class LibraryCollectionService {
   static bool containsTrack(Iterable<Track> tracks, Track candidate) =>
       tracks.any((track) => CatalogIdentity.matches(track, candidate));
 
+  /// Stable local identity for one catalogue entry or verified recording.
+  /// Strong cross-provider IDs win; otherwise the provider's own ID is used.
+  static String trackKey(Track track) {
+    final mbid = track.recordingMbid.trim().toLowerCase();
+    if (mbid.isNotEmpty) return 'mbid:$mbid';
+
+    final isrc = track.recordingId.trim().toUpperCase().replaceAll(
+          RegExp(r'[^A-Z0-9]'),
+          '',
+        );
+    if (isrc.isNotEmpty) return 'isrc:$isrc';
+
+    if (track.id.trim().isNotEmpty) {
+      return '${track.providerId}:${track.id.trim()}';
+    }
+
+    return [
+      track.providerId,
+      CatalogIdentity.normalizeText(track.title),
+      CatalogIdentity.normalizeText(track.artist),
+      CatalogIdentity.normalizeText(track.album),
+      track.durationMs,
+    ].join(':');
+  }
+
   static bool isFavorite(Iterable<Track> favorites, Track track) =>
       containsTrack(favorites, track);
 
@@ -139,17 +164,7 @@ class LibraryCollectionService {
         key,
         () => _MutableLibraryTrackGroup(visibleLabel),
       );
-      final trackKey = track.id.isEmpty
-          ? [
-              track.providerId,
-              track.recordingMbid,
-              track.recordingId,
-              track.title,
-              track.artist,
-              track.album,
-              track.durationMs,
-            ].join(':')
-          : '${track.providerId}:${track.id}';
+      final trackKey = LibraryCollectionService.trackKey(track);
       group.tracks.putIfAbsent(trackKey, () => track);
     }
 
