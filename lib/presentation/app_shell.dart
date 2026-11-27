@@ -8,7 +8,6 @@ import 'screens/home_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/search_screen.dart';
-import 'widgets/aurel_glass_panel.dart';
 import 'widgets/mini_player.dart';
 
 class AppShell extends StatelessWidget {
@@ -48,17 +47,10 @@ class AppShell extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const MiniPlayer(),
-              AurelGlassPanel(
-                margin: const EdgeInsets.fromLTRB(9, 3, 9, 5),
+              Padding(
                 padding: const EdgeInsets.fromLTRB(5, 4, 5, 5),
-                radius: 21,
-                blur: 17,
-                tint: const Color(0xC00F1014),
-                shadowOpacity: 0.07,
-                child: Material(
-                  color: Colors.transparent,
-                  child: Row(
-                    children: List.generate(_items.length, (index) {
+                child: Row(
+                  children: List.generate(_items.length, (index) {
                     final item = _items[index];
                     final active = selected == index;
                     return Expanded(
@@ -96,8 +88,7 @@ class AppShell extends StatelessWidget {
                         ),
                       ),
                     );
-                    }),
-                  ),
+                  }),
                 ),
               ),
             ],
