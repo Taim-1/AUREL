@@ -116,6 +116,6 @@ The rules allow a signed-in user to read and write only documents underneath the
 
 ## Reinstall and account recovery behavior
 
-After reinstall, the user signs in with the same Google or email account. AUREL downloads the cloud metadata for that UID and merges it with any existing local library. The Home greeting and Profile name use the saved username.
+After reinstall, the user signs in with the same Google or email account. AUREL downloads the cloud metadata for that UID and merges it with that account's local namespace. Favourites, playlists, history and the AUREL username are stored separately for each UID, so switching accounts on one phone does not mix private libraries. Pre-account guest collections are migrated to the first account that claims them.
 
 This restores the listening-history list, favourites and playlists. It does not restore the raw audio bytes for AUREL-managed offline downloads. AUREL can offer a fresh in-app download only when the original provider still permits it; the app does not import or browse unrelated phone files.
