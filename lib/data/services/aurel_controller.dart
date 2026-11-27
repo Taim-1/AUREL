@@ -8,6 +8,7 @@ import '../models/music_playlist.dart';
 import '../models/track.dart';
 import '../catalog/catalog_identity.dart';
 import '../catalog/catalog_ranking.dart';
+import '../catalog/local_track_priority.dart';
 import '../repositories/library_repository.dart';
 import 'aurel_account_service.dart';
 import 'download_service.dart';
@@ -669,32 +670,23 @@ class AurelController extends ChangeNotifier {
   /// local file; stale database entries never outrank a network source.
   /// Chooses a real on-device or AUREL-managed offline file before any
   /// online stream. Local paths are never copied into the online catalogue.
-  Track _preferLocalCopy(Track track) {
-    for (final saved in [...deviceTracks, ...downloadedTracks]) {
-      if (!saved.isLocal || !saved.canPlay) continue;
-      if (saved.id == track.id || CatalogIdentity.matches(saved, track)) {
-        return saved;
-      }
-    }
-    return track;
-  }
+  List<Track> get _availableLocalTracks => [
+        ...deviceTracks,
+        ...downloadedTracks,
+      ];
+
+  Track _preferLocalCopy(Track track) =>
+      LocalTrackPriority.preferLocalCopy(track, _availableLocalTracks);
 
   bool hasLocalPlayableCopy(Track track) =>
-      [...deviceTracks, ...downloadedTracks].any(
-        (saved) =>
-            saved.isLocal &&
-            saved.canPlay &&
-            (saved.id == track.id || CatalogIdentity.matches(saved, track)),
-      );
+      LocalTrackPriority.findLocalCopy(track, _availableLocalTracks) != null;
 
-  /// Distinguishes AUREL-managed downloads from songs only indexed by Android.
   bool hasDownloadedCopy(Track track) =>
-      downloadedTracks.any(
-        (saved) =>
-            saved.isDownloaded &&
-            saved.canPlay &&
-            (saved.id == track.id || CatalogIdentity.matches(saved, track)),
-      );
+      LocalTrackPriority.findLocalCopy(
+        track,
+        downloadedTracks.where((saved) => saved.isDownloaded),
+      ) !=
+      null;
 
   /// Whether this recording can actually start in the current mode.
   /// Online alternatives are never advertised as playable while offline.
