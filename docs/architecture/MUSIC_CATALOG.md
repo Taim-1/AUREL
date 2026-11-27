@@ -44,12 +44,12 @@ The search orchestrator:
 8. Falls back to normalized title, artist and a duration difference of no more than five seconds, while preserving version labels such as Live, Remix and Acoustic.
 9. Does not merge uncertain recordings when both verified identifiers and useful duration/album data are missing.
 10. Ranks playable audio above metadata-only results. A match in a metadata catalogue never creates a fake audio URL.
-11. Selects the best duplicate by deterministic priority: playable local/device copy, then Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons and Openverse. Metadata-only fallbacks follow Apple Music, Spotify, Last.fm, ListenBrainz and MusicBrainz.
+11. Selects the best duplicate by deterministic priority: AUREL-managed offline download, then Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons and Openverse. Metadata-only fallbacks follow Apple Music, Spotify, Last.fm, ListenBrainz and MusicBrainz.
 12. Uses recording identity first for grouping; within each duplicate group, source priority selects the playback copy and metadata completeness breaks ties inside the same source tier.
 
 ## Source priority and quality
 
-The priority order is internal and deterministic; it is not exposed as a provider picker in the listening UI. A playable local/device file wins first. Online playable sources then follow Audius → Jamendo → SoundCloud → Internet Archive → Wikimedia Commons → Openverse. Metadata-only discovery follows Apple Music → Spotify → Last.fm → ListenBrainz → MusicBrainz and can never outrank a playable recording. Within one source tier, richer verified recording identity, artwork, album, duration, source link and eligible download/licence metadata break ties. A lower-priority source cannot displace a higher-priority playable source merely because it has more artwork or metadata. All same-recording copies remain attached as internal alternatives rather than appearing as duplicate search results. If the preferred source fails during preparation or playback, AUREL retries the next eligible copy in priority order while keeping the visible queue entry as one song; it must not change the recording/version.
+The priority order is internal and deterministic; it is not exposed as a provider picker in the listening UI. An eligible AUREL-managed downloaded file wins first. Online playable sources then follow Audius → Jamendo → SoundCloud → Internet Archive → Wikimedia Commons → Openverse. Metadata-only discovery follows Apple Music → Spotify → Last.fm → ListenBrainz → MusicBrainz and can never outrank a playable recording. Within one source tier, richer verified recording identity, artwork, album, duration, source link and eligible download/licence metadata break ties. A lower-priority source cannot displace a higher-priority playable source merely because it has more artwork or metadata. All same-recording copies remain attached as internal alternatives rather than appearing as duplicate search results. If the preferred source fails during preparation or playback, AUREL retries the next eligible copy in priority order while keeping the visible queue entry as one song; it must not change the recording/version.
 
 ## Playback and download rights
 
@@ -66,7 +66,7 @@ The priority order is internal and deterministic; it is not exposed as a provide
 
 ## No external-app handoff and no scraping
 
-Search, queue, player, lyrics, favourites, playlists, offline downloads and history remain inside AUREL. The offline Downloads collection contains only copies explicitly downloaded through AUREL from eligible catalogue entries; it is not a file manager for the device. The core Play action never hands the user to another music application. AUREL does not scrape consumer websites, extract protected streams, copy protected audio, proxy copyrighted audio, or bypass access controls.
+Search, queue, player, lyrics, favourites, playlists, offline downloads and history remain inside AUREL. The offline Downloads collection contains only copies explicitly downloaded through AUREL from eligible catalogue entries; AUREL does not scan, import or play unrelated music stored elsewhere on the phone. The core Play action never hands the user to another music application. AUREL does not scrape consumer websites, extract protected streams, copy protected audio, proxy copyrighted audio, or bypass access controls.
 
 An external provider name is not part of the normal Home/Search/Player/Profile experience. Source/creator attribution that is required by the relevant licence or platform terms remains available in track details.
 
