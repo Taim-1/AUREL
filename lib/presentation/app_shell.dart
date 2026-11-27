@@ -8,8 +8,8 @@ import 'screens/home_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/search_screen.dart';
-import 'widgets/mini_player.dart';
 import 'widgets/aurel_glass_panel.dart';
+import 'widgets/mini_player.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
@@ -55,8 +55,10 @@ class AppShell extends StatelessWidget {
                 blur: 17,
                 tint: const Color(0xC00F1014),
                 shadowOpacity: 0.07,
-                child: Row(
-                  children: List.generate(_items.length, (index) {
+                child: Material(
+                  color: Colors.transparent,
+                  child: Row(
+                    children: List.generate(_items.length, (index) {
                     final item = _items[index];
                     final active = selected == index;
                     return Expanded(
@@ -94,7 +96,8 @@ class AppShell extends StatelessWidget {
                         ),
                       ),
                     );
-                  }),
+                    }),
+                  ),
                 ),
               ),
             ],
