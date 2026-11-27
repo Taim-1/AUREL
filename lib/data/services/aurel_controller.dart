@@ -135,6 +135,7 @@ class AurelController extends ChangeNotifier {
   Map<String, int> sourceCounts = const {};
 
   String? cloudSyncError;
+  String? _activeLibraryUid;
 
   // Cloud saves are serialized. Every queued operation reads the latest
   // in-memory collections when it starts, so rapid edits cannot be replayed
@@ -182,6 +183,8 @@ class AurelController extends ChangeNotifier {
   Future<void> initialize() async {
     await jamendo.initialize();
     await lyrics.initialize();
+    await repository.setAccountScope(account.currentUser?.uid);
+    _activeLibraryUid = account.currentUser?.uid;
     favoriteTracks = await repository.loadFavorites();
     final storedDownloads = await repository.loadDownloads();
     downloadedTracks = await downloads.validateSavedDownloads(storedDownloads);
@@ -199,7 +202,19 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> restoreCloudLibrary() async {
-    if (!account.isSignedIn) return;
+    final userId = account.currentUser?.uid;
+    if (userId == null) return;
+
+    // Switch the local namespace before reading collections so accounts
+    // signing in on the same device never inherit one another's library.
+    if (_activeLibraryUid != userId) {
+      await repository.setAccountScope(userId);
+      favoriteTracks = await repository.loadFavorites();
+      recentlyPlayed = await repository.loadRecentlyPlayed();
+      playlists = await repository.loadPlaylists();
+      _activeLibraryUid = userId;
+    }
+
     try {
       final cloud = await account.loadCloudLibrary();
       if (cloud == null) {
@@ -229,11 +244,13 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> syncCloudLibrary() {
-    if (!account.isSignedIn) return Future<void>.value();
+    final accountUid = account.currentUser?.uid;
+    if (accountUid == null) return Future<void>.value();
 
     final revision = ++_cloudSyncRevision;
     final operation = _cloudSyncTail.then((_) async {
-      if (!account.isSignedIn) return;
+      // A queued operation from account A must not run after account B signs in.
+      if (account.currentUser?.uid != accountUid) return;
 
       // Take the snapshot only when this operation reaches the head of the
       // queue. Multiple taps then collapse naturally onto the latest state.
@@ -257,6 +274,18 @@ class AurelController extends ChangeNotifier {
     });
 
     return operation;
+  }
+
+  Future<void> onAccountSignedOut() async {
+    ++_cloudSyncRevision;
+    _activeLibraryUid = null;
+    await repository.setAccountScope(null);
+    favoriteTracks = await repository.loadFavorites();
+    recentlyPlayed = await repository.loadRecentlyPlayed();
+    playlists = await repository.loadPlaylists();
+    _lastHistoryTrackId = null;
+    cloudSyncError = null;
+    _notifySafely();
   }
 
   void notifyAccountChanged() => _notifySafely();
