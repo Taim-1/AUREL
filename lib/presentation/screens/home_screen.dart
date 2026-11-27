@@ -5,6 +5,7 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/album_art.dart';
+import '../widgets/aurel_glass_panel.dart';
 import '../widgets/track_tile.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -284,37 +285,43 @@ class _SearchLauncher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AurelColors.surface,
-      borderRadius: BorderRadius.circular(17),
-      child: InkWell(
-        onTap: onTap,
+    return AurelGlassPanel(
+      radius: 17,
+      blur: 14,
+      tint: const Color(0xCC15161B),
+      shadowOpacity: 0.05,
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(17),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.search_rounded,
-                color: AurelColors.muted,
-                size: 20,
-              ),
-              const SizedBox(width: 11),
-              const Expanded(
-                child: Text(
-                  'Search for songs, artists...',
-                  style: TextStyle(
-                    color: AurelColors.muted,
-                    fontSize: 12,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(17),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.search_rounded,
+                  color: AurelColors.muted,
+                  size: 20,
+                ),
+                const SizedBox(width: 11),
+                const Expanded(
+                  child: Text(
+                    'Search for songs, artists...',
+                    style: TextStyle(
+                      color: AurelColors.muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-              ),
-              Icon(
-                Icons.tune_rounded,
-                color: AurelColors.champagne.withValues(alpha: 0.9),
-                size: 18,
-              ),
-            ],
+                Icon(
+                  Icons.tune_rounded,
+                  color: AurelColors.champagne.withValues(alpha: 0.9),
+                  size: 18,
+                ),
+              ],
+            ),
           ),
         ),
       ),
