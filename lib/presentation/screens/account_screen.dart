@@ -365,7 +365,7 @@ class _AccountScreenState extends State<AccountScreen> {
             icon: Icons.download_for_offline_outlined,
             title: 'Downloaded audio',
             description:
-                'Audio files stay on this device. After reinstall, AUREL can restore track details and download again only where the provider allows it.',
+                'Your previous download list returns with your account. Audio files remain private to this device and can be downloaded again when the source still permits it.',
           ),
         ],
       ),
