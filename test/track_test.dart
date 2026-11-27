@@ -607,4 +607,68 @@ void main() {
     });
   });
 
+  group('Same-recording download eligibility', () {
+    test('recognizes a permitted download on a matched alternative', () {
+      const primary = Track(
+        id: 'audius-42',
+        title: 'Golden Hour',
+        artist: 'Aurel Artist',
+        providerId: 'audius',
+        streamUrl: 'https://audio.example/stream.mp3',
+        downloadAllowed: false,
+        alternatives: [
+          Track(
+            id: 'jamendo-42',
+            title: 'Golden Hour',
+            artist: 'Aurel Artist',
+            providerId: 'jamendo',
+            streamUrl: 'https://audio.example/stream.mp3',
+            downloadUrl: 'https://audio.example/download.mp3',
+            downloadAllowed: true,
+          ),
+        ],
+      );
+
+      expect(primary.canPlay, isTrue);
+      expect(primary.downloadAllowed, isFalse);
+      expect(primary.hasDownloadableSource, isTrue);
+    });
+
+    test('does not infer download eligibility from an insecure alternative', () {
+      const primary = Track(
+        id: 'audius-43',
+        title: 'Night Drive',
+        artist: 'Aurel Artist',
+        providerId: 'audius',
+        streamUrl: 'https://audio.example/stream.mp3',
+        alternatives: [
+          Track(
+            id: 'jamendo-43',
+            title: 'Night Drive',
+            artist: 'Aurel Artist',
+            providerId: 'jamendo',
+            downloadUrl: 'http://audio.example/download.mp3',
+            downloadAllowed: true,
+          ),
+        ],
+      );
+
+      expect(primary.hasDownloadableSource, isFalse);
+    });
+
+    test('keeps metadata-only records without a permitted file ineligible', () {
+      const metadata = Track(
+        id: 'spotify-44',
+        title: 'Afterglow',
+        artist: 'Aurel Artist',
+        providerId: 'spotify',
+        isMetadataOnly: true,
+        downloadUrl: 'https://example.com/audio.mp3',
+        downloadAllowed: false,
+      );
+
+      expect(metadata.hasDownloadableSource, isFalse);
+    });
+  });
+
 }
