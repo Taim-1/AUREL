@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/aurel_theme.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
+import 'artist_detail_screen.dart';
 import 'library_screen.dart';
 import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
@@ -281,7 +282,14 @@ class _SearchScreenState extends State<SearchScreen> {
                   return _ArtistBubble(
                     artist: track.artist,
                     artworkUrl: track.artworkUrl,
-                    onTap: () => _searchFor(track.artist),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => ArtistDetailScreen(
+                          artist: track.artist,
+                          artworkUrl: track.artworkUrl,
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
