@@ -15,6 +15,7 @@ import 'download_service.dart';
 import '../catalog/providers/jamendo_service.dart';
 import '../catalog/music_catalog_service.dart';
 import 'lyrics_service.dart';
+import 'library_collection_service.dart';
 import 'playback_controller.dart';
 
 class AurelController extends ChangeNotifier {
@@ -511,23 +512,17 @@ class AurelController extends ChangeNotifier {
   }
 
   Future<void> toggleFavorite(Track track) async {
-    final exists = favoriteTracks.any(
-      (item) => CatalogIdentity.matches(item, track),
+    favoriteTracks = LibraryCollectionService.toggleFavorite(
+      favoriteTracks,
+      track,
     );
-    if (exists) {
-      favoriteTracks = favoriteTracks
-          .where((item) => !CatalogIdentity.matches(item, track))
-          .toList(growable: false);
-    } else {
-      favoriteTracks = [...favoriteTracks, track];
-    }
     await repository.saveFavorites(favoriteTracks);
     await syncCloudLibrary();
     _notifySafely();
   }
 
   bool isFavorite(Track track) =>
-      favoriteTracks.any((item) => CatalogIdentity.matches(item, track));
+      LibraryCollectionService.isFavorite(favoriteTracks, track);
 
   Future<void> createPlaylist(String name, {Track? initialTrack}) async {
     final normalized = name.trim();
@@ -547,8 +542,11 @@ class AurelController extends ChangeNotifier {
     final index = playlists.indexWhere((playlist) => playlist.id == playlistId);
     if (index < 0) return;
     final playlist = playlists[index];
-    if (playlist.tracks.any((item) => CatalogIdentity.matches(item, track))) return;
-    final updated = playlist.copyWith(tracks: [...playlist.tracks, track]);
+    final updated = LibraryCollectionService.addTrackToPlaylist(
+      playlist,
+      track,
+    );
+    if (identical(updated, playlist)) return;
     playlists = [
       for (var i = 0; i < playlists.length; i++)
         if (i == index) updated else playlists[i],
@@ -566,13 +564,12 @@ class AurelController extends ChangeNotifier {
     final index = playlists.indexWhere((playlist) => playlist.id == playlistId);
     if (index < 0) return;
     final playlist = playlists[index];
-    final updated = playlist.copyWith(
-      tracks: playlist.tracks.where((track) {
-        if (track.id != trackId) return true;
-        if (providerId == null) return false;
-        return track.providerId != providerId;
-      }).toList(growable: false),
+    final updated = LibraryCollectionService.removeTrackFromPlaylist(
+      playlist,
+      trackId,
+      providerId: providerId,
     );
+    if (identical(updated, playlist)) return;
     playlists = [
       for (var i = 0; i < playlists.length; i++)
         if (i == index) updated else playlists[i],
