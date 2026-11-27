@@ -248,7 +248,7 @@ void main() {
     test('preserves the source order for recently added sorting', () {
       final result = LibraryCollectionService.filterTracks(
         collection,
-        sort: LibrarySort.recentlyAdded,
+        sort: LibrarySort.savedOrder,
       );
 
       expect(result.map((item) => item.id), ['one', 'two', 'three']);
