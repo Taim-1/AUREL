@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../catalog/catalog_identity.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
 
@@ -372,12 +373,9 @@ class AurelAccountService {
         .doc(user.uid)
         .collection('library');
 
-    final remoteFavorites = favorites
-        .where((track) => track.id.isNotEmpty)
-        .toList(growable: false);
+    final remoteFavorites = List<Track>.unmodifiable(favorites);
     final remotePlaylists = playlists.map((playlist) {
       final tracks = playlist.tracks
-          .where((track) => track.id.isNotEmpty)
           .map(_trackForCloudModel)
           .toList(growable: false);
       return MusicPlaylist(
@@ -415,7 +413,6 @@ class AurelAccountService {
     if (user == null || firestore == null) return;
 
     final remoteHistory = tracks
-        .where((track) => track.id.isNotEmpty)
         .take(100)
         .map(_trackForCloud)
         .toList(growable: false);
@@ -436,7 +433,7 @@ class AurelAccountService {
     List<Track> tracks,
   ) async {
     final existing = await collection.get();
-    final ids = tracks.map((track) => _documentId(track.id)).toSet();
+    final ids = tracks.map(_trackDocumentId).toSet();
     final stale = existing.docs.where((document) => !ids.contains(document.id));
 
     for (final chunk in _chunks(stale.toList(), 400)) {
@@ -452,7 +449,7 @@ class AurelAccountService {
       final batch = _firestore!.batch();
       for (var index = start; index < end; index++) {
         final track = tracks[index];
-        final reference = collection.doc(_documentId(track.id));
+        final reference = collection.doc(_trackDocumentId(track));
         batch.set(
           reference,
           {
@@ -493,6 +490,7 @@ class AurelAccountService {
           {
             'id': playlist.id,
             'name': playlist.name,
+            'playlist': FieldValue.delete(),
             'trackCount': playlist.tracks.length,
             'sortOrder': index,
             'schemaVersion': 2,
@@ -542,6 +540,9 @@ class AurelAccountService {
     json['isDownloaded'] = false;
     return json;
   }
+
+  String _trackDocumentId(Track track) =>
+      _documentId(CatalogIdentity.providerKeyOf(track));
 
   String _documentId(String id) =>
       base64Url.encode(utf8.encode(id)).replaceAll('=', '');
