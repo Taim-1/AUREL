@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
+import 'account_screen.dart';
 import '../widgets/aurel_settings_sheet.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -169,6 +170,18 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 19),
+        _ProfileMenuItem(
+          icon: Icons.cloud_sync_rounded,
+          title: 'Account & Sync',
+          subtitle: user == null
+              ? 'Connect Google or email and save your library'
+              : 'Signed in as ${controller.account.userName}',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const AccountScreen(),
+            ),
+          ),
+        ),
         _ProfileMenuItem(
           icon: Icons.workspace_premium_rounded,
           title: 'Premium Features',
