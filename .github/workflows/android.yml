@@ -73,9 +73,11 @@ jobs:
               echo "Add these repository Actions secrets to enable the corresponding account features:"
               for key in "${missing[@]}"; do
                 echo "- `$key`"
+                echo "::warning title=Missing cloud account setting::$key is not configured"
               done
               echo
               echo "No secret values are printed by this check."
+            echo "AUREL cloud account configuration is incomplete. Missing: ${missing[*]}"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
