@@ -130,7 +130,7 @@ class _HarmonyPainter extends CustomPainter {
       final motion = isPlaying ? 0.5 + waveA * 0.22 + waveB * 0.13 : 0.52;
       final barLength = (5.5 + (waveC * 0.5 + motion) * 14.5) * envelope;
       final startRadius = innerRadius;
-      final endRadius = startRadius + barLength.clamp(4.0, 22.0);
+      final endRadius = startRadius + barLength.clamp(4.0, 22.0).toDouble();
 
       final start = Offset(
         center.dx + math.cos(angle) * startRadius,
