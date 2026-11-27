@@ -328,7 +328,7 @@ class AurelController extends ChangeNotifier {
 
     if (offlineMode) {
       final localTracks = <String, Track>{
-        for (final track in downloadedTracks
+        for (final track in downloadedTracks)
           track.id: track,
       }.values.toList(growable: false);
       final term = normalized.toLowerCase();
