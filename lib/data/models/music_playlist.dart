@@ -47,4 +47,24 @@ class MusicPlaylist {
         name: name ?? this.name,
         tracks: tracks ?? this.tracks,
       );
+
+  /// Returns a new playlist with one item moved to its final target index.
+  /// Invalid indexes leave the original immutable playlist unchanged.
+  MusicPlaylist moveTrack({
+    required int fromIndex,
+    required int toIndex,
+  }) {
+    if (fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= tracks.length ||
+        toIndex >= tracks.length ||
+        fromIndex == toIndex) {
+      return this;
+    }
+
+    final reordered = tracks.toList(growable: true);
+    final moved = reordered.removeAt(fromIndex);
+    reordered.insert(toIndex, moved);
+    return copyWith(tracks: List<Track>.unmodifiable(reordered));
+  }
 }
