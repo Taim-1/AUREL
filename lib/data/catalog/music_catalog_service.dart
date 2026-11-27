@@ -353,24 +353,25 @@ class MusicCatalogService {
     ].where((candidate) => candidate.canPlay);
 
     Object? lastError;
-    final attemptedIds = <String>{};
+    final attemptedSources = <String>{};
     for (final candidate in candidates) {
+      final sourceKey = CatalogIdentity.providerKeyOf(candidate);
+      if (!attemptedSources.add(sourceKey)) continue;
+
       try {
         final prepared = candidate.isLocal && candidate.canPlay
             ? candidate
             : candidate.providerId == 'soundcloud'
                 ? await soundcloud.prepareForPlayback(candidate)
                 : candidate;
-        attemptedIds.add(candidate.id);
+        final preparedSourceKey = CatalogIdentity.providerKeyOf(prepared);
 
-        // Keep the selected catalogue identity stable while removing every
-        // source already tried during preparation from future playback retry.
+        // Only remove the source that was prepared successfully. Sources that
+        // failed authorization remain attached as possible playback fallbacks.
         final remaining = track.alternatives
             .where(
               (alternative) =>
-                  !attemptedSources.contains(
-                    CatalogIdentity.providerKeyOf(alternative),
-                  ),
+                  CatalogIdentity.providerKeyOf(alternative) != preparedSourceKey,
             )
             .toList(growable: false);
         return prepared.copyWith(
@@ -378,7 +379,6 @@ class MusicCatalogService {
           alternatives: remaining,
         );
       } catch (error) {
-        attemptedIds.add(candidate.id);
         lastError = error;
       }
     }
