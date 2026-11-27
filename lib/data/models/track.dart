@@ -80,6 +80,15 @@ class Track {
 
   bool get isLocal => isDownloaded && hasLocalPlaybackUri;
 
+  /// Whether this recording has at least one provider-approved HTTPS download.
+  /// A primary catalogue result may be stream-only while a same-recording
+  /// alternative permits offline saving.
+  bool get hasDownloadableSource {
+    bool permitted(Track candidate) =>
+        candidate.downloadAllowed && _isSecureHttpsUrl(candidate.downloadUrl);
+    return permitted(this) || alternatives.any(permitted);
+  }
+
   bool get canPlay {
     // Previews and metadata-only records are never full playable recordings.
     if (isPreviewOnly || isMetadataOnly || !isPlayable) return false;
