@@ -44,12 +44,15 @@ void main() {
       await repository.setAccountScope('firebase-user-a');
       await repository.saveFavorites([accountATrack]);
       await repository.savePlaylists([playlistA]);
+      await repository.saveDownloadHistory([accountATrack]);
 
       await repository.setAccountScope('firebase-user-b');
       expect(await repository.loadFavorites(), isEmpty);
       expect(await repository.loadPlaylists(), isEmpty);
+      expect(await repository.loadDownloadHistory(), isEmpty);
       await repository.saveFavorites([accountBTrack]);
       await repository.savePlaylists([playlistB]);
+      await repository.saveDownloadHistory([accountBTrack]);
 
       await repository.setAccountScope('firebase-user-a');
       expect(
@@ -59,6 +62,10 @@ void main() {
       expect(
         (await repository.loadPlaylists()).map((playlist) => playlist.id),
         ['playlist-a'],
+      );
+      expect(
+        (await repository.loadDownloadHistory()).map((track) => track.id),
+        ['account-a'],
       );
 
       await repository.setAccountScope('firebase-user-b');
@@ -70,6 +77,10 @@ void main() {
         (await repository.loadPlaylists()).map((playlist) => playlist.id),
         ['playlist-b'],
       );
+      expect(
+        (await repository.loadDownloadHistory()).map((track) => track.id),
+        ['account-b'],
+      );
     });
 
     test('migrates a legacy guest library only into its first account',
@@ -80,6 +91,10 @@ void main() {
         'aurel.favorites.v1',
         [jsonEncode(legacyTrack.toJson())],
       );
+      await preferences.setStringList(
+        'aurel.download_history.v1',
+        [jsonEncode(legacyTrack.toJson())],
+      );
 
       final repository = LibraryRepository(preferences);
       await repository.setAccountScope('firebase-user-a');
@@ -87,10 +102,15 @@ void main() {
         (await repository.loadFavorites()).single.id,
         'legacy-song',
       );
+      expect(
+        (await repository.loadDownloadHistory()).single.id,
+        'legacy-song',
+      );
 
       await repository.setAccountScope(null);
       await repository.setAccountScope('firebase-user-b');
       expect(await repository.loadFavorites(), isEmpty);
+      expect(await repository.loadDownloadHistory(), isEmpty);
     });
 
     test('keeps device downloads available when the signed-in account changes',
