@@ -397,7 +397,7 @@ class MusicCatalogService {
     final candidates = <Track>[
       track,
       ...track.alternatives,
-    ].where((candidate) => candidate.hasDownloadableSource);
+    ].where((candidate) => candidate.canDownloadDirectly);
 
     Object? lastError;
     final attemptedIds = <String>{};
