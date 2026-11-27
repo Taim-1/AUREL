@@ -110,6 +110,34 @@ void main() {
       expect(result.map((item) => item.id), ['three', 'two', 'one']);
     });
 
+    test('sorts albums alphabetically then titles', () {
+      final result = LibraryCollectionService.filterTracks(
+        [
+          track(
+            id: 'one',
+            title: 'First Song',
+            artist: 'A',
+            album: 'Zebra',
+          ),
+          track(
+            id: 'two',
+            title: 'Second Song',
+            artist: 'B',
+            album: 'Amber',
+          ),
+          track(
+            id: 'three',
+            title: 'Opening',
+            artist: 'C',
+            album: 'Amber',
+          ),
+        ],
+        sort: LibrarySort.albumAscending,
+      );
+
+      expect(result.map((item) => item.id), ['three', 'two', 'one']);
+    });
+
     test('returns an immutable filtered result', () {
       final result = LibraryCollectionService.filterTracks(collection);
 
