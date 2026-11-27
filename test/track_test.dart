@@ -469,6 +469,74 @@ void main() {
     });
   });
 
+  group('AUREL download persistence', () {
+    test('ordinary library records never restore a local file path', () {
+      final restored = Track.fromJson({
+        'id': 'ordinary-favorite',
+        'title': 'AUREL Song',
+        'artist': 'AUREL Artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/song.mp3',
+        'isDownloaded': true,
+        'localPath':
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
+      });
+
+      expect(restored.isDownloaded, isFalse);
+      expect(restored.localPath, isNull);
+      expect(restored.isLocal, isFalse);
+      expect(restored.playbackUri, 'https://audio.example/song.mp3');
+    });
+
+    test('only the dedicated downloads parser restores a candidate local path', () {
+      final restored = Track.fromDownloadedJson({
+        'id': 'saved-download',
+        'title': 'AUREL Song',
+        'artist': 'AUREL Artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/song.mp3',
+        'isDownloaded': true,
+        'localPath':
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
+      });
+
+      expect(restored.isDownloaded, isTrue);
+      expect(restored.isLocal, isTrue);
+      expect(restored.localPath, endsWith('AUREL Downloads/song.mp3'));
+      expect(restored.playbackUri, startsWith('file:'));
+    });
+
+    test('the dedicated downloads parser rejects entries without AUREL download status', () {
+      expect(
+        () => Track.fromDownloadedJson({
+          'id': 'ordinary-track',
+          'title': 'AUREL Song',
+          'artist': 'AUREL Artist',
+          'providerId': 'jamendo',
+          'streamUrl': 'https://audio.example/song.mp3',
+          'localPath': '/storage/emulated/0/Music/song.mp3',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('the ordinary parser rejects content URI playback paths', () {
+      final restored = Track.fromJson({
+        'id': 'ordinary-track',
+        'title': 'AUREL Song',
+        'artist': 'AUREL Artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/song.mp3',
+        'isDownloaded': true,
+        'localPath': 'content://media/external/audio/media/42',
+      });
+
+      expect(restored.isDownloaded, isFalse);
+      expect(restored.localPath, isNull);
+      expect(restored.playbackUri, 'https://audio.example/song.mp3');
+    });
+  });
+
   group('MusicBrainz recording identity', () {
     test('keeps recording MBID separate from ISRC for MusicBrainz', () {
       final track = Track.fromMusicBrainz({
