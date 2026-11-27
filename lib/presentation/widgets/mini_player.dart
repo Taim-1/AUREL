@@ -21,9 +21,9 @@ class MiniPlayer extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
       child: AurelGlassPanel(
         radius: 18,
-        blur: 16,
-        tint: const Color(0xCD17181D),
-        shadowOpacity: 0.08,
+        blur: 6,
+        tint: const Color(0xE817181D),
+        shadowOpacity: 0.035,
         child: Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(18),
