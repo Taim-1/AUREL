@@ -133,6 +133,27 @@ void main() {
       expect(selected.isLocal, isTrue);
     });
 
+    test('prefers an AUREL-managed download over the MediaStore copy', () {
+      final download = recording(
+        id: 'download-21',
+        providerId: 'jamendo',
+        providerName: 'Jamendo',
+        title: 'Midnight Avenue',
+        artist: 'Aurel Ensemble',
+        localPath: '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
+        isDownloaded: true,
+        recordingId: 'USABC2600001',
+      );
+
+      final selected = LocalTrackPriority.preferLocalCopy(
+        onlineJamendo,
+        [localDevice, download],
+      );
+
+      expect(selected.id, 'download-21');
+      expect(selected.isDownloaded, isTrue);
+    });
+
     test('ignores a stale local entry without a real local playback URI', () {
       final stale = recording(
         id: 'stale-device-21',
