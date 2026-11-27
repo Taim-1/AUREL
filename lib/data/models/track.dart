@@ -566,41 +566,54 @@ class Track {
     );
   }
 
-  factory Track.fromJson(Map<String, dynamic> json) => Track(
-        id: (json['id'] ?? '').toString(),
-        title: (json['title'] ?? '').toString(),
-        artist: (json['artist'] ?? '').toString(),
-        album: (json['album'] ?? '').toString(),
-        artworkUrl: (json['artworkUrl'] ?? '').toString(),
-        streamUrl: (json['streamUrl'] ?? '').toString(),
-        downloadUrl: (json['downloadUrl'] ?? '').toString(),
-        licenseUrl: (json['licenseUrl'] ?? '').toString(),
-        durationMs: (json['durationMs'] as num?)?.round() ?? 0,
-        downloadAllowed: json['downloadAllowed'] == true,
-        isDownloaded: json['isDownloaded'] == true,
-        localPath: json['localPath']?.toString(),
-        providerId: (json['providerId'] ?? 'jamendo').toString(),
-        providerName: (json['providerName'] ?? 'Jamendo').toString(),
-        sourceUrl: (json['sourceUrl'] ?? '').toString(),
-        recordingId: (json['recordingId'] ?? '').toString(),
-        recordingMbid: (json['recordingMbid'] ?? '').toString(),
-        licenseName: (json['licenseName'] ?? '').toString(),
-        attribution: (json['attribution'] ?? '').toString(),
-        isPlayable: json['isPlayable'] != false,
-        isPreviewOnly: json['isPreviewOnly'] == true,
-        isMetadataOnly: json['isMetadataOnly'] == true,
-        matchedSources: (json['matchedSources'] as List?)
-                ?.map((value) => value.toString())
-                .toList(growable: false) ??
-            const [],
-        alternatives: (json['alternatives'] as List?)
-                ?.whereType<Map>()
-                .map((value) => Track.fromJson(
-                      Map<String, dynamic>.from(value),
-                    ).copyWith(alternatives: const []))
-                .toList(growable: false) ??
-            const [],
+  factory Track.fromJson(Map<String, dynamic> json) {
+    final providerId = (json['providerId'] ?? 'jamendo').toString();
+    final id = (json['id'] ?? '').toString();
+
+    if (json['isDeviceTrack'] == true ||
+        providerId == 'device' ||
+        id.startsWith('device-')) {
+      throw const FormatException(
+        'Tracks indexed from the device library are no longer supported.',
       );
+    }
+
+    return Track(
+      id: id,
+      title: (json['title'] ?? '').toString(),
+      artist: (json['artist'] ?? '').toString(),
+      album: (json['album'] ?? '').toString(),
+      artworkUrl: (json['artworkUrl'] ?? '').toString(),
+      streamUrl: (json['streamUrl'] ?? '').toString(),
+      downloadUrl: (json['downloadUrl'] ?? '').toString(),
+      licenseUrl: (json['licenseUrl'] ?? '').toString(),
+      durationMs: (json['durationMs'] as num?)?.round() ?? 0,
+      downloadAllowed: json['downloadAllowed'] == true,
+      isDownloaded: json['isDownloaded'] == true,
+      localPath: json['localPath']?.toString(),
+      providerId: providerId,
+      providerName: (json['providerName'] ?? 'Jamendo').toString(),
+      sourceUrl: (json['sourceUrl'] ?? '').toString(),
+      recordingId: (json['recordingId'] ?? '').toString(),
+      recordingMbid: (json['recordingMbid'] ?? '').toString(),
+      licenseName: (json['licenseName'] ?? '').toString(),
+      attribution: (json['attribution'] ?? '').toString(),
+      isPlayable: json['isPlayable'] != false,
+      isPreviewOnly: json['isPreviewOnly'] == true,
+      isMetadataOnly: json['isMetadataOnly'] == true,
+      matchedSources: (json['matchedSources'] as List?)
+              ?.map((value) => value.toString())
+              .toList(growable: false) ??
+          const [],
+      alternatives: (json['alternatives'] as List?)
+              ?.whereType<Map>()
+              .map((value) => Track.fromJson(
+                    Map<String, dynamic>.from(value),
+                  ).copyWith(alternatives: const []))
+              .toList(growable: false) ??
+          const [],
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
