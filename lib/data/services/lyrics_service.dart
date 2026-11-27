@@ -230,7 +230,7 @@ class LyricsService {
     }
 
     if (plain == null && synced.isEmpty) {
-      _cache[track.id] = null;
+      _storeCache(cacheKey, null, cacheGeneration);
       return null;
     }
     final document = LyricsDocument(
@@ -252,7 +252,7 @@ class LyricsService {
     required String apiKey,
   }) async {
     final key = apiKey;
-    if (key == null || key.isEmpty) {
+    if (key.isEmpty) {
       throw const LyricsServiceException(
         'Add your Musixmatch API key in Profile.',
       );
