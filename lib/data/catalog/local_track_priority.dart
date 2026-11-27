@@ -41,7 +41,12 @@ class LocalTrackPriority {
 
     final candidates = <String, Track>{};
     for (final candidate in [track, ...track.alternatives, ...local.alternatives]) {
-      if (!candidate.canPlay || candidate.id == local.id) continue;
+      if (!candidate.canPlay ||
+          (candidate.id.isNotEmpty &&
+              candidate.id == local.id &&
+              candidate.providerId == local.providerId)) {
+        continue;
+      }
       candidates[candidate.id] = candidate.copyWith(alternatives: const []);
     }
 
@@ -106,8 +111,13 @@ class LocalTrackPriority {
     );
   }
 
-  static bool _isSameRecording(Track local, Track candidate) =>
-      local.id == candidate.id || CatalogIdentity.matches(local, candidate);
+  static bool _isSameRecording(Track local, Track candidate) {
+    final sameProviderId = local.id.isNotEmpty &&
+        candidate.id.isNotEmpty &&
+        local.providerId == candidate.providerId &&
+        local.id == candidate.id;
+    return sameProviderId || CatalogIdentity.matches(local, candidate);
+  }
 
   static String _firstNonEmpty(
     Iterable<String> values, {
