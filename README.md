@@ -22,7 +22,9 @@ Release packaging is intentionally deferred while the app is being completed. Gi
 - Private offline library containing only audio the user explicitly downloads through AUREL; the app does not scan, import or play unrelated music stored elsewhere on the phone.
 - Favourites, playlists, AUREL-managed offline downloads, offline mode and recently played history.
 - User-selected AUREL username.
-- Firebase email/password and Google account implementation with cloud library restore.
+- Firebase email/password and Google account sign-in, plus credential linking and per-account usernames.
+- UID-isolated local favourites, playlists and history so switching accounts on one phone never mixes private libraries.
+- Cloud restore for favourites, playlists and the 100 most recently played tracks; playlist entries are stored separately for large collections.
 - The same approved AUREL ribbon-A artwork on splash and Android launcher icon.
 
 AUREL does not scrape music sites, extract protected streams, record another app's playback, or hand off core playback to an external music app.
@@ -71,7 +73,7 @@ If a provider or account credential is absent, AUREL shows that source as unavai
 
 ## Account restore
 
-Signing in with the same AUREL account restores saved usernames, favourites, playlists and the recently played track list (up to 100 items). Downloaded audio bytes are kept in the app's private storage and are removed by Android when the app is uninstalled. After reinstall, AUREL restores the track metadata and history; audio must be downloaded again only if the provider allows it.
+Signing in with the same AUREL account restores saved usernames, favourites, playlists and the recently played track list (up to 100 items). Downloaded audio bytes are kept in the app's private storage and are removed by Android when the app is uninstalled. After reinstall, signing into the same AUREL account restores the username, favourites, playlists and up to 100 recently played tracks. Local collections are separated by account UID on shared devices. The actual downloaded audio bytes remain in app-private storage and are removed by Android on uninstall, so those files must be downloaded again only when the source still authorizes it.
 
 ## Project structure
 
