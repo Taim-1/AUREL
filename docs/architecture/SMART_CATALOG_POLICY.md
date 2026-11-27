@@ -16,18 +16,19 @@ The current deterministic preference in `MusicCatalogService` is:
 
 | Rank | Source | Intended role |
 |---:|---|---|
-| 1 | Previously downloaded AUREL offline copy | Highest priority for a recording already saved through AUREL |
-| 2 | Audius | Eligible in-app streams where the specific recording and API terms permit |
-| 3 | Jamendo | Licensed catalogue streams where the account/API terms permit |
-| 4 | SoundCloud | Only tracks and playback methods explicitly allowed by the integration |
-| 5 | Internet Archive | Item-by-item rights and file validation required |
-| 6 | Wikimedia Commons | Item-by-item license and attribution validation required |
-| 7 | Openverse | Discovery/indexing; verify the underlying work and license before playback/download |
-| 8 | Apple Music catalogue metadata | Metadata fallback; not a free stream |
-| 9 | Spotify catalogue metadata | Metadata fallback; not a free stream |
-| 10 | Last.fm | Track search, artist discovery and popularity metadata only |
-| 11 | ListenBrainz | Community listening-popularity metadata only |
-| 12 | MusicBrainz | Recording/artist metadata only |
+| 1 | AUREL-managed offline download | Highest priority for a permitted recording already saved inside AUREL |
+| 2 | Android MediaStore library | Read-only local playback through the user's granted device-audio permission |
+| 3 | Audius | Eligible in-app streams where the specific recording and API terms permit |
+| 4 | Jamendo | Licensed catalogue streams where the account/API terms permit |
+| 5 | SoundCloud | Only tracks and playback methods explicitly allowed by the integration |
+| 6 | Internet Archive | Item-by-item rights and file validation required |
+| 7 | Wikimedia Commons | Item-by-item license and attribution validation required |
+| 8 | Openverse | Discovery/indexing; verify the underlying work and license before playback/download |
+| 9 | Apple Music catalogue metadata | Metadata fallback; not a free stream |
+| 10 | Spotify catalogue metadata | Metadata fallback; not a free stream |
+| 11 | Last.fm | Track search, artist discovery and popularity metadata only |
+| 12 | ListenBrainz | Community listening-popularity metadata only |
+| 13 | MusicBrainz | Recording/artist metadata only |
 
 Downloaded copies are created only by AUREL's in-app download action when the item and provider explicitly permit offline saving. The Downloads tab lists only those AUREL-managed copies; it is not a phone-file browser or device-music importer. This is a product fallback order, not a claim that every item from a source is legally playable or has superior audio quality. Track-level eligibility and verified audio quality always override the default rank.
 
@@ -68,7 +69,7 @@ Downloaded copies are created only by AUREL's in-app download action when the it
 
 ## Current implementation note
 
-The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking rules are centralized in `lib/data/catalog/catalog_ranking.dart`; same-recording alternatives are retained for controlled fallback. Last.fm is a gated metadata adapter and is omitted unless the API key and written-approval flag are present. Its artwork is not reused, its data is excluded from the generic catalogue cache, and public use still requires the provider-approved attribution button and catalogue links. The automated CI suite validates the current model, ranking, identity, provider parser and Android debug-build paths; real provider authorization, item rights and account-specific services still require their credentials and approval before a public release.
+The catalogue collects multiple providers with per-source failure isolation, groups matches through `lib/data/catalog/catalog_identity.dart`, enriches missing descriptive metadata, selects one eligible playable candidate, and places metadata-only results after playable recordings. The ranking rules are centralized in `lib/data/catalog/catalog_ranking.dart`. `lib/data/catalog/local_track_priority.dart` promotes an available local recording to the active copy while retaining playable same-recording online alternatives in deterministic order, so a missing local file does not erase recovery choices. Last.fm is a gated metadata adapter and is omitted unless the API key and written-approval flag are present. Its artwork is not reused, its data is excluded from the generic catalogue cache, and public use still requires the provider-approved attribution button and catalogue links. The automated CI suite validates the current model, ranking, identity, provider parser and Android debug-build paths; real provider authorization, item rights and account-specific services still require their credentials and approval before a public release.
 
 
 ## Device library priority and privacy
