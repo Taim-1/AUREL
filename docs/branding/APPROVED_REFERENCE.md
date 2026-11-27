@@ -69,3 +69,20 @@ The updated AUREL screen image supplied on 2026-11-27 extends the existing refer
 - Do not blur the whole screen, add a new theme selector, introduce a dominant new colour, or apply glass to every card.
 - “TAIM” in the reference image remains sample identity text; display the account's chosen username.
 - The Downloads area remains limited to audio downloaded inside AUREL. Do not copy the reference mockup's whole-device storage meter or add phone-wide scanning/importing; continue to report only AUREL-managed offline items.
+
+## Owner-approved player refinement (2026-11-27)
+
+- Use one built-in visualizer style named **Harmony**: a compact circular/radial spectrum in champagne and warm silver, placed directly below the seek bar and above the transport controls.
+- Harmony animates gently while AUREL playback is active and holds still when playback is paused. Keep it compact and ornamental; do not introduce a preset picker or extra navigation.
+- Do not request microphone permission or scan device audio to draw the Harmony effect.
+- Keep the existing seek bar independently seekable. The visualizer must never intercept gestures intended for the seek bar.
+- Reduce glass surfaces across the app. Keep only a subtle frosted treatment on the Search field and Mini Player; return the navigation dock, Home search launcher, Profile card, Downloads summary and Now Playing artwork frame to crisp dark surfaces with restrained champagne borders.
+
+## Lyrics quality requirements (2026-11-27)
+
+- Show only lyrics returned by the configured licensed lyrics provider. Never fabricate missing lines or silently substitute a different recording's lyrics.
+- Match the exact normalized title and credited artist, prefer the matching album and closest duration, and reject a candidate whose known duration differs from the playing recording by more than eight seconds.
+- Use synchronized subtitles when the provider supplies them; keep plain licensed lyrics as a fallback when synced subtitles are unavailable under the user's API plan.
+- Synchronized lines follow the player position, auto-scroll to the active line, and remain tappable to seek to that line. Reset the lyrics scroll when the current track changes.
+- Validate subtitle timestamps and discard invalid or out-of-range lines. Keep lyrics in memory only; do not persist copyrighted lyric text into the library or cloud backup.
+- Keep the provider copyright notice visible whenever it is supplied, and state clearly when lyrics are unavailable, restricted, instrumental, or require API configuration.
