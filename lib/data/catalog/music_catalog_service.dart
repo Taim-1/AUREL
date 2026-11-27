@@ -220,15 +220,16 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
+      _SourceRequest(
+        'Open audio',
+        () => wikimediaCommons.search(
+          normalized,
+          page: page,
+          cancelToken: cancelToken,
+        ),
+      ),
     ]);
-    final commons = await _collectCommons(
-      normalized,
-      page: page,
-      cancelToken: cancelToken,
-    );
-    final result = _buildPage(
-      _CollectedSources({...collected.sources, 'Open audio': commons}),
-    );
+    final result = _buildPage(collected);
     _writeCache(cacheKey, result);
     return result;
   }
@@ -303,46 +304,18 @@ class MusicCatalogService {
             cancelToken: cancelToken,
           ),
         ),
+      _SourceRequest(
+        'Open audio',
+        () => wikimediaCommons.search(
+          'instrumental music',
+          page: page,
+          cancelToken: cancelToken,
+        ),
+      ),
     ]);
-    final commons = await _collectCommons(
-      'instrumental music',
-      page: page,
-      cancelToken: cancelToken,
-    );
-    final result = _buildPage(
-      _CollectedSources({...collected.sources, 'Open audio': commons}),
-    );
+    final result = _buildPage(collected);
     _writeCache(cacheKey, result);
     return result;
-  }
-
-  Future<_SourceResult> _collectCommons(
-    String query, {
-    required int page,
-    CancelToken? cancelToken,
-  }) async {
-    if (cancelToken?.isCancelled ?? false) {
-      throw DioException(
-        requestOptions: RequestOptions(path: 'commons-search'),
-        type: DioExceptionType.cancel,
-        message: 'Open audio search cancelled.',
-      );
-    }
-    try {
-      final tracks = await wikimediaCommons.search(
-        query,
-        page: page,
-        cancelToken: cancelToken,
-      );
-      return _SourceResult.success(tracks);
-    } catch (error) {
-      if (error is DioException && error.type == DioExceptionType.cancel) {
-        rethrow;
-      }
-      return _SourceResult.failure(
-        error.toString().replaceFirst('Exception: ', ''),
-      );
-    }
   }
 
   Future<List<Track>> prepareQueue(
