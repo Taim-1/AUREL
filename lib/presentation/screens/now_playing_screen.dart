@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/album_art.dart';
-import '../widgets/aurel_glass_panel.dart';
 import '../widgets/lyrics_sheet.dart';
 import '../widgets/playback_settings_sheet.dart';
 import '../widgets/up_next_sheet.dart';
 import '../widgets/waveform_seek_bar.dart';
+import '../widgets/harmony_visualizer.dart';
 
 class NowPlayingScreen extends StatelessWidget {
   const NowPlayingScreen({super.key});
@@ -118,16 +118,25 @@ class NowPlayingScreen extends StatelessWidget {
           child: Column(
             children: [
               Center(
-                child: AurelGlassPanel(
-                  padding: const EdgeInsets.all(7),
-                  radius: 27,
-                  blur: 17,
-                  tint: const Color(0xC9151518),
-                  shadowOpacity: 0.10,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(
+                      color: AurelColors.champagne.withValues(alpha: 0.18),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AurelColors.champagne.withValues(alpha: 0.055),
+                        blurRadius: 22,
+                        offset: const Offset(0, 7),
+                      ),
+                    ],
+                  ),
                   child: AlbumArt(
                     imageUrl: track.artworkUrl,
                     size: artworkSize,
-                    radius: 21,
+                    radius: 20,
                   ),
                 ),
               ),
@@ -221,6 +230,20 @@ class NowPlayingScreen extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      HarmonyVisualizer(
+                        isPlaying: playback.isPlaying,
+                        position: position,
+                      ),
+                      const Text(
+                        'HARMONY',
+                        style: TextStyle(
+                          color: AurelColors.muted,
+                          fontSize: 8,
+                          letterSpacing: 2.2,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
