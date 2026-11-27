@@ -238,13 +238,135 @@ class DownloadsScreen extends StatelessWidget {
               ),
             ),
           ),
-        const SizedBox(height: 14),
-        if (tracks.isNotEmpty)
+        if (tracks.isNotEmpty) ...[
+          const SizedBox(height: 14),
           const Text(
             'Swipe a song to remove its offline copy from AUREL.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AurelColors.muted, fontSize: 10),
           ),
+        ],
+        Builder(
+          builder: (context) {
+            final previousDownloads = controller.previouslyDownloadedTracks
+                .where((track) => !controller.hasDownloadedCopy(track))
+                .toList(growable: false);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Previously downloaded',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${previousDownloads.length}',
+                      style: const TextStyle(
+                        color: AurelColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'Saved with your AUREL account. Recheck availability to download again on this device.',
+                  style: TextStyle(
+                    color: AurelColors.muted,
+                    fontSize: 11,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                if (previousDownloads.isEmpty)
+                  const Text(
+                    'Your account has no previous downloads to restore.',
+                    style: TextStyle(
+                      color: AurelColors.muted,
+                      fontSize: 11,
+                    ),
+                  )
+                else
+                  ...previousDownloads.map(
+                    (track) => Dismissible(
+                      key: ValueKey('previous-${track.providerId}-${track.id}'),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 18),
+                        margin: const EdgeInsets.symmetric(vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6B343A),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                      onDismissed: (_) => context
+                          .read<AurelController>()
+                          .removeDownloadHistoryTrack(track),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TrackTile(
+                              track: track,
+                              showDownload: false,
+                              compact: true,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Recheck and download again',
+                            onPressed: controller.restoringDownloadIds
+                                    .contains(track.id) ||
+                                controller.offlineMode
+                                ? null
+                                : () async {
+                                    final message = await context
+                                        .read<AurelController>()
+                                        .redownloadPreviousTrack(track);
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          message ??
+                                              'Downloaded again inside AUREL.',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                            icon: controller.restoringDownloadIds
+                                    .contains(track.id)
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AurelColors.champagneLight,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.refresh_rounded,
+                                    color: AurelColors.champagneLight,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
