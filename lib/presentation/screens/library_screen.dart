@@ -1169,7 +1169,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 19),
-                if (selectedPlaylist.tracks.isEmpty)
+                if (playlistTracks.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 25),
                     child: Center(
