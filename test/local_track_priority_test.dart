@@ -200,6 +200,7 @@ void main() {
         localPath: 'content://media/external/audio/media/53',
         isDeviceTrack: true,
         durationMs: 0,
+        recordingId: 'USABC2600001',
       );
 
       final selected = LocalTrackPriority.preferLocalCopy(
@@ -207,6 +208,8 @@ void main() {
         [sparseLocal],
       );
 
+      expect(selected.id, 'device-53');
+      expect(selected.isLocal, isTrue);
       expect(selected.title, 'Midnight Avenue');
       expect(selected.artist, 'Aurel Ensemble');
       expect(selected.durationMs, 180000);
