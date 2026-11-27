@@ -306,19 +306,48 @@ class AurelAccountService {
           ..sort((a, b) =>
               (a.data()['sortOrder'] as num? ?? 0)
                   .compareTo(b.data()['sortOrder'] as num? ?? 0));
-    final playlists = <MusicPlaylist>[];
-    for (final document in playlistDocs) {
-      final raw = document.data()['playlist'];
-      if (raw is Map) {
-        try {
-          playlists.add(
-            MusicPlaylist.fromJson(Map<String, dynamic>.from(raw)),
-          );
-        } catch (_) {
-          // Ignore one malformed playlist without losing the others.
+
+    // Version 2 stores playlist tracks in their own subcollection. This keeps
+    // large playlists below Firestore's per-document size limit. The legacy
+    // embedded format remains readable and is migrated on the next save.
+    final loadedPlaylists = await Future.wait(
+      playlistDocs.map((document) async {
+        final data = document.data();
+        final legacyPlaylist = data['playlist'];
+        if (legacyPlaylist is Map) {
+          try {
+            return MusicPlaylist.fromJson(
+              Map<String, dynamic>.from(legacyPlaylist),
+            );
+          } catch (_) {
+            return null;
+          }
         }
-      }
-    }
+
+        final id = (data['id'] ?? document.id).toString().trim();
+        final name = (data['name'] ?? '').toString().trim();
+        if (id.isEmpty || name.isEmpty) return null;
+
+        try {
+          final trackSnapshot =
+              await document.reference.collection('tracks').get();
+          final tracks = readTracks(trackSnapshot);
+          return MusicPlaylist(
+            id: id,
+            name: name,
+            tracks: List<Track>.unmodifiable(tracks),
+          );
+        } catch (error) {
+          debugPrint('AUREL playlist restore failed for $id: $error');
+          return MusicPlaylist(
+            id: id,
+            name: name,
+            tracks: const [],
+          );
+        }
+      }),
+    );
+    final playlists = loadedPlaylists.whereType<MusicPlaylist>().toList();
 
     return CloudLibrarySnapshot(
       favorites: readTracks(
@@ -445,27 +474,55 @@ class AurelAccountService {
     final ids = playlists.map((playlist) => _documentId(playlist.id)).toSet();
     final stale = existing.docs.where((document) => !ids.contains(document.id));
 
-    for (final chunk in _chunks(stale.toList(), 400)) {
-      final batch = _firestore!.batch();
-      for (final document in chunk) {
-        batch.delete(document.reference);
-      }
-      await batch.commit();
+    // Firestore does not cascade deletes into subcollections. Remove children
+    // explicitly before deleting a playlist that no longer exists.
+    for (final document in stale) {
+      await _deleteCollectionDocuments(
+        document.reference.collection('tracks'),
+      );
+      await document.reference.delete();
     }
 
-    for (var start = 0; start < playlists.length; start += 400) {
-      final end = (start + 400).clamp(0, playlists.length).toInt();
+    for (var start = 0; start < playlists.length; start += 200) {
+      final end = (start + 200).clamp(0, playlists.length).toInt();
       final batch = _firestore!.batch();
       for (var index = start; index < end; index++) {
         final playlist = playlists[index];
         batch.set(
           collection.doc(_documentId(playlist.id)),
           {
-            'playlist': playlist.toJson(),
+            'id': playlist.id,
+            'name': playlist.name,
+            'trackCount': playlist.tracks.length,
             'sortOrder': index,
+            'schemaVersion': 2,
+            'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
         );
+      }
+      await batch.commit();
+
+      // Persist each track as its own document. A 1,000-track playlist no
+      // longer becomes one oversized Firestore document.
+      for (var index = start; index < end; index++) {
+        final playlist = playlists[index];
+        await _replaceTrackCollection(
+          collection.doc(_documentId(playlist.id)).collection('tracks'),
+          playlist.tracks,
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteCollectionDocuments(
+    CollectionReference<Map<String, dynamic>> collection,
+  ) async {
+    final snapshot = await collection.get();
+    for (final chunk in _chunks(snapshot.docs, 400)) {
+      final batch = _firestore!.batch();
+      for (final document in chunk) {
+        batch.delete(document.reference);
       }
       await batch.commit();
     }
