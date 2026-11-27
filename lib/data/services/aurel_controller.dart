@@ -192,7 +192,7 @@ class AurelController extends ChangeNotifier {
     await repository.saveDownloads(downloadedTracks);
     recentlyPlayed = await repository.loadRecentlyPlayed();
     previouslyDownloadedTracks = await repository.loadDownloadHistory();
-    previouslyDownloadedTracks = _appendUnique(
+    previouslyDownloadedTracks = _mergeDownloadHistory(
       previouslyDownloadedTracks,
       downloadedTracks,
     );
@@ -234,7 +234,7 @@ class AurelController extends ChangeNotifier {
       recentlyPlayed = _appendUnique(recentlyPlayed, cloud.recentlyPlayed)
           .take(100)
           .toList(growable: false);
-      previouslyDownloadedTracks = _appendUnique(
+      previouslyDownloadedTracks = _mergeDownloadHistory(
         previouslyDownloadedTracks,
         cloud.downloadHistory,
       );
@@ -324,17 +324,33 @@ class AurelController extends ChangeNotifier {
 
   List<Track> _appendUnique(List<Track> current, List<Track> incoming) {
     // IDs are not guaranteed to be present in every metadata-only catalogue.
-    // Use the provider-aware identity key so two empty IDs do not collapse
-    // into one record and providers do not overwrite each other's copies.
-    final keys = current
-        .map(CatalogIdentity.providerKeyOf)
-        .toSet();
+    // Keep source-specific copies distinct in general library collections.
+    final keys = current.map(CatalogIdentity.providerKeyOf).toSet();
     return [
       ...current,
-      ...incoming.where((track) => keys.add(
-            CatalogIdentity.providerKeyOf(track),
-          )),
+      ...incoming.where(
+        (track) => keys.add(CatalogIdentity.providerKeyOf(track)),
+      ),
     ];
+  }
+
+  List<Track> _mergeDownloadHistory(
+    List<Track> current,
+    List<Track> incoming,
+  ) {
+    final merged = current.toList(growable: true);
+    for (final track in incoming) {
+      final index = merged.indexWhere(
+        (saved) => CatalogIdentity.matches(saved, track),
+      );
+      if (index < 0) {
+        merged.add(track);
+      } else {
+        // Prefer the latest metadata and provider URL for one recording.
+        merged[index] = track;
+      }
+    }
+    return List<Track>.unmodifiable(merged);
   }
 
   Future<void> refreshDiscover() async {
@@ -948,7 +964,7 @@ class AurelController extends ChangeNotifier {
       final updated = [...downloadedTracks, saved];
       await repository.saveDownloads(updated);
       downloadedTracks = updated;
-      previouslyDownloadedTracks = _appendUnique(
+      previouslyDownloadedTracks = _mergeDownloadHistory(
         previouslyDownloadedTracks,
         [saved],
       );
