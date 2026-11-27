@@ -20,6 +20,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
   int _selectedTab = 0;
   String _query = '';
   LibrarySort _sort = LibrarySort.recentlyAdded;
+  final TextEditingController _searchController = TextEditingController();
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() => _query = '');
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   List<Track> _filterTracks(Iterable<Track> tracks) =>
       LibraryCollectionService.filterTracks(
@@ -84,25 +96,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
       unique.putIfAbsent(track.id, () => track);
     }
     return unique.values.toList(growable: false);
-  }
-
-  List<_TrackGroup> _groupTracks(
-    List<Track> tracks,
-    String Function(Track) groupName,
-  ) {
-    final groups = <String, List<Track>>{};
-    for (final track in tracks) {
-      final name = groupName(track).trim();
-      if (name.isEmpty) continue;
-      groups.putIfAbsent(name, () => <Track>[]).add(track);
-    }
-    final result = groups.entries
-        .map((entry) => _TrackGroup(entry.key, entry.value))
-        .toList();
-    result.sort(
-      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-    );
-    return result;
   }
 
   @override
@@ -193,6 +186,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   border: Border.all(color: AurelColors.divider),
                 ),
                 child: TextField(
+                  controller: _searchController,
                   onChanged: (value) => setState(() => _query = value),
                   style: const TextStyle(
                     color: Colors.white,
@@ -214,7 +208,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ? null
                         : IconButton(
                             tooltip: 'Clear library search',
-                            onPressed: () => setState(() => _query = ''),
+                            onPressed: _clearSearch,
                             icon: const Icon(
                               Icons.close_rounded,
                               color: AurelColors.muted,
@@ -295,7 +289,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               title: 'No matching playlists',
               message: 'Try another search to find a playlist or one of its songs.',
               action: 'Clear search',
-              onTap: () => setState(() => _query = ''),
+              onTap: _clearSearch,
             )
           else ...[
             ...playlists.map(
@@ -322,13 +316,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
             count: '${favorites.length} songs',
           ),
           if (favorites.isEmpty)
-            const _LibraryEmptyState(
+            _LibraryEmptyState(
               title: _query.isEmpty ? 'No liked songs yet' : 'No matching songs',
               message: _query.isEmpty
                   ? 'Tap the heart on any track to save it to your collection.'
                   : 'Try a different title, artist or album name.',
               action: _query.isEmpty ? null : 'Clear search',
-              onTap: _query.isEmpty ? null : () => setState(() => _query = ''),
+              onTap: _query.isEmpty ? null : _clearSearch,
             )
           else
             ...favorites.map(
@@ -341,19 +335,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const _LibrarySectionHeading(title: 'Albums', count: 'Saved music'),
           ..._buildGroups(
             context,
-            _groupTracks(
-              saved,
-              (track) => track.album.isEmpty ? 'Singles' : track.album,
-            ),
+            LibraryCollectionService.groupByAlbum(saved),
           ),
         ] else if (_selectedTab == 3) ...[
           _LibrarySectionHeading(
             title: 'Artists',
-            count: '${_groupTracks(saved, (track) => track.artist).length} artists',
+            count: '${LibraryCollectionService.groupByArtist(saved).length} artists',
           ),
           ..._buildGroups(
             context,
-            _groupTracks(saved, (track) => track.artist),
+            LibraryCollectionService.groupByArtist(saved),
           ),
         ] else if (_selectedTab == 4) ...[
           _LibrarySectionHeading(
@@ -383,7 +374,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   List<Widget> _buildGroups(
     BuildContext context,
-    List<_TrackGroup> groups,
+    List<LibraryTrackGroup> groups,
   ) {
     if (groups.isEmpty) {
       return const [
@@ -547,20 +538,13 @@ class _LibraryEmptyState extends StatelessWidget {
   }
 }
 
-class _TrackGroup {
-  const _TrackGroup(this.name, this.tracks);
-
-  final String name;
-  final List<Track> tracks;
-}
-
 class _CollectionRow extends StatelessWidget {
   const _CollectionRow({
     required this.group,
     required this.onTap,
   });
 
-  final _TrackGroup group;
+  final LibraryTrackGroup group;
   final VoidCallback onTap;
 
   @override
