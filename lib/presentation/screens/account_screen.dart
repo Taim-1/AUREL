@@ -53,13 +53,17 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       await action();
     } on FirebaseAuthException catch (error) {
-      if (mounted) setState(() => _error = _friendlyAuthError(error));
+      if (mounted) {
+        setState(() => _error = _friendlyAuthError(error));
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -203,7 +207,9 @@ class _AccountScreenState extends State<AccountScreen> {
     }
     await _run(() async {
       await context.read<AurelController>().account.sendPasswordReset(email);
-      if (mounted) setState(() => _message = 'Password reset email sent.');
+      if (mounted) {
+        setState(() => _message = 'Password reset email sent.');
+      }
     });
   }
 
@@ -222,6 +228,7 @@ class _AccountScreenState extends State<AccountScreen> {
       });
 
   Future<void> _changePassword() async {
+    final account = context.read<AurelController>().account;
     final current = TextEditingController();
     final next = TextEditingController();
     final confirmation = TextEditingController();
@@ -288,12 +295,15 @@ class _AccountScreenState extends State<AccountScreen> {
                         dialogError = null;
                       });
                       try {
-                        await context.read<AurelController>().account.changePassword(
-                              currentPassword: current.text,
-                              newPassword: next.text,
-                            );
-                        if (dialogContext.mounted) Navigator.pop(dialogContext);
-                        if (mounted) setState(() => _message = 'Your password has been changed.');
+                        await account.changePassword(
+                          currentPassword: current.text,
+                          newPassword: next.text,
+                        );
+                        if (!dialogContext.mounted || !mounted) return;
+                        Navigator.pop(dialogContext);
+                        setState(() {
+                          _message = 'Your password has been changed.';
+                        });
                       } on FirebaseAuthException catch (error) {
                         setDialogState(() {
                           dialogError = _friendlyAuthError(error);
@@ -320,6 +330,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _changeEmail({required bool passwordLinked}) async {
+    final account = context.read<AurelController>().account;
     final email = TextEditingController();
     final password = TextEditingController();
     var saving = false;
@@ -371,15 +382,16 @@ class _AccountScreenState extends State<AccountScreen> {
                         dialogError = null;
                       });
                       try {
-                        await context.read<AurelController>().account.requestEmailChange(
-                              newEmail: email.text,
-                              currentPassword: passwordLinked ? password.text : null,
-                            );
-                        if (dialogContext.mounted) Navigator.pop(dialogContext);
-                        if (mounted) {
-                          setState(() => _message =
-                              'A verification link was sent to the new address. Your AUREL email changes after verification.');
-                        }
+                        await account.requestEmailChange(
+                          newEmail: email.text,
+                          currentPassword: passwordLinked ? password.text : null,
+                        );
+                        if (!dialogContext.mounted || !mounted) return;
+                        Navigator.pop(dialogContext);
+                        setState(() {
+                          _message =
+                              'A verification link was sent to the new address. Your AUREL email changes after verification.';
+                        });
                       } on FirebaseAuthException catch (error) {
                         setDialogState(() {
                           dialogError = _friendlyAuthError(error);
@@ -426,11 +438,18 @@ class _AccountScreenState extends State<AccountScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (!mounted || confirmed != true) {
+      return;
+    }
+    final controller = context.read<AurelController>();
     await _run(() async {
-      await context.read<AurelController>().account.unlinkProvider(providerId);
-      context.read<AurelController>().notifyAccountChanged();
-      if (mounted) setState(() => _message = '$label has been disconnected.');
+      await controller.account.unlinkProvider(providerId);
+      controller.notifyAccountChanged();
+      if (mounted) {
+        setState(() {
+          _message = '$label has been disconnected.';
+        });
+      }
     });
   }
 
@@ -495,16 +514,16 @@ class _AccountScreenState extends State<AccountScreen> {
                         dialogError = null;
                       });
                       try {
-                        await context.read<AurelController>().account.linkEmail(
-                              email: email.text,
-                              password: password.text,
-                            );
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
-                        }
-                        if (mounted) {
-                          setState(() => _message = 'Email sign-in is now linked.');
-                        }
+                        final controller = context.read<AurelController>();
+                        await controller.account.linkEmail(
+                          email: email.text,
+                          password: password.text,
+                        );
+                        if (!dialogContext.mounted || !mounted) return;
+                        Navigator.pop(dialogContext);
+                        setState(() {
+                          _message = 'Email sign-in is now linked.';
+                        });
                       } on FirebaseAuthException catch (error) {
                         setDialogState(() {
                           dialogError = _friendlyAuthError(error);
@@ -531,7 +550,9 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     email.dispose();
     password.dispose();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
