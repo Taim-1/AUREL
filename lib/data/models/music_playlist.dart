@@ -45,7 +45,7 @@ class MusicPlaylist {
   MusicPlaylist copyWith({String? name, List<Track>? tracks}) => MusicPlaylist(
         id: id,
         name: name ?? this.name,
-        tracks: tracks ?? this.tracks,
+        tracks: List<Track>.unmodifiable(tracks ?? this.tracks),
       );
 
   /// Returns a new playlist with one item moved to its final target index.
