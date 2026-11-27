@@ -742,7 +742,9 @@ class AurelController extends ChangeNotifier {
         final position = playback.player.position;
         final localCopy = _preferLocalCopy(current);
         if (localCopy.isLocal && localCopy.canPlay) {
-          if (!current.isLocal || current.id != localCopy.id) {
+          if (!_isTrustedDownload(current) ||
+              current.id != localCopy.id ||
+              current.localPath != localCopy.localPath) {
             try {
               await playTrack(localCopy, queue: playback.queue);
               try {
