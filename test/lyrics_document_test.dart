@@ -14,6 +14,16 @@ void main() {
       expect(lines[2].start, const Duration(seconds: 10, milliseconds: 250));
     });
 
+    test('ignores invalid timestamps and empty subtitle rows', () {
+      final lines = LyricsDocument.parseLrc(
+        '[00:75]Invalid timestamp\n[00:02]\n[00:03.25]Valid line',
+      );
+
+      expect(lines, hasLength(1));
+      expect(lines.single.text, 'Valid line');
+      expect(lines.single.start, const Duration(seconds: 3, milliseconds: 250));
+    });
+
     test('supports multiple timestamps on one subtitle line', () {
       final lines = LyricsDocument.parseLrc('[00:01.00][00:04.25]A line');
       expect(lines, hasLength(2));
