@@ -42,9 +42,8 @@ class LocalTrackPriority {
     final candidates = <String, Track>{};
     for (final candidate in [track, ...track.alternatives, ...local.alternatives]) {
       if (!candidate.canPlay ||
-          (candidate.id.isNotEmpty &&
-              candidate.id == local.id &&
-              candidate.providerId == local.providerId)) {
+          (candidate.providerId == local.providerId &&
+              CatalogIdentity.matches(candidate, local))) {
         continue;
       }
       candidates[CatalogIdentity.providerKeyOf(candidate)] =
