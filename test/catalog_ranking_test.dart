@@ -12,23 +12,26 @@ Track track({
   String artwork = '',
   String album = '',
   int duration = 180000,
-}) =>
-    Track(
-      id: id,
-      title: 'A Song',
-      artist: 'An Artist',
-      providerId: provider,
-      providerName: provider,
-      isPlayable: playable,
-      isDeviceTrack: local,
-      localPath: local ? 'content://music/$id' : null,
-      streamUrl: stream,
-      recordingId: isrc,
-      artworkUrl: artwork,
-      album: album,
-      durationMs: duration,
-      isMetadataOnly: !playable,
-    );
+}) {
+  return Track(
+    id: id,
+    title: 'A Song',
+    artist: 'An Artist',
+    providerId: provider,
+    providerName: provider,
+    isPlayable: playable,
+    isDownloaded: local,
+    localPath: local
+        ? '/data/user/0/com.aurel.aurel/files/AUREL Downloads/$id.mp3'
+        : null,
+    streamUrl: stream,
+    recordingId: isrc,
+    artworkUrl: artwork,
+    album: album,
+    durationMs: duration,
+    isMetadataOnly: !playable,
+  );
+}
 
 void main() {
   group('CatalogRanking', () {
@@ -54,10 +57,10 @@ void main() {
       }
     });
 
-    test('local playable music outranks every online playable source', () {
+    test('AUREL-managed downloads outrank every online playable source', () {
       expect(
         CatalogRanking.compare(
-          track(provider: 'device', local: true),
+          track(provider: 'jamendo', local: true),
           track(provider: 'audius'),
         ),
         lessThan(0),
