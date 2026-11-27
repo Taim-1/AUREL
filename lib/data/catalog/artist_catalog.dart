@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import '../models/track.dart';
 import 'catalog_identity.dart';
 import 'catalog_ranking.dart';
@@ -37,7 +35,7 @@ class ArtistCatalog {
     final artistKey = CatalogIdentity.normalizeText(artist);
     if (artistKey.isEmpty) return const [];
 
-    final unique = LinkedHashMap<String, Track>();
+    final Map<String, Track> unique = {};
     for (final track in source) {
       if (CatalogIdentity.normalizeText(track.artist) != artistKey) continue;
 
@@ -55,7 +53,7 @@ class ArtistCatalog {
   }
 
   static List<ArtistAlbumGroup> albumsForTracks(Iterable<Track> tracks) {
-    final grouped = LinkedHashMap<String, _MutableAlbum>();
+    final Map<String, _MutableAlbum> grouped = {};
     for (final track in tracks) {
       final title = track.album.trim();
       final key = CatalogIdentity.normalizeText(title);
@@ -92,5 +90,5 @@ class _MutableAlbum {
   _MutableAlbum(this.title);
 
   final String title;
-  final LinkedHashMap<String, Track> tracks = LinkedHashMap();
+  final Map<String, Track> tracks = {};
 }
