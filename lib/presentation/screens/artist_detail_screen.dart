@@ -2,7 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/aurel_theme.dart';
-import '../../data/catalog/catalog_identity.dart';
+import '../../data/catalog/artist_catalog.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/album_art.dart';
@@ -32,31 +32,14 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
     });
   }
 
-  List<Track> _artistTracks(List<Track> tracks) {
-    final artistKey = CatalogIdentity.normalizeText(widget.artist);
-    final unique = <String, Track>{};
-    for (final track in tracks) {
-      if (CatalogIdentity.normalizeText(track.artist) != artistKey) continue;
-      unique.putIfAbsent(track.id, () => track);
-    }
-    return unique.values.toList(growable: false);
-  }
-
-  Map<String, List<Track>> _albums(List<Track> tracks) {
-    final albums = <String, List<Track>>{};
-    for (final track in tracks) {
-      final name = track.album.trim();
-      if (name.isEmpty) continue;
-      albums.putIfAbsent(name, () => <Track>[]).add(track);
-    }
-    return albums;
-  }
-
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
-    final tracks = _artistTracks(controller.searchResults);
-    final albums = _albums(tracks);
+    final tracks = ArtistCatalog.tracksForArtist(
+      widget.artist,
+      controller.searchResults,
+    );
+    final albums = ArtistCatalog.albumsForTracks(tracks);
     final playable = tracks.any(controller.hasPlayableSource);
     final artwork = widget.artworkUrl.isNotEmpty
         ? widget.artworkUrl
@@ -94,10 +77,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               artworkUrl: artwork,
               trackCount: tracks.length,
               onPlay: playable
-                  ? () => controller.playTrack(
-                        tracks.firstWhere(controller.hasPlayableSource),
-                        queue: tracks,
-                      )
+                  ? () => _playTrackCollection(context, controller, tracks)
                   : null,
             ),
             const SizedBox(height: 27),
@@ -114,18 +94,17 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                   itemCount: albums.length,
                   separatorBuilder: (_, _) => const SizedBox(width: 13),
                   itemBuilder: (context, index) {
-                    final entry = albums.entries.elementAt(index);
-                    final albumTracks = entry.value;
+                    final album = albums[index];
                     return _AlbumCard(
-                      title: entry.key,
-                      artworkUrl: albumTracks.first.artworkUrl,
-                      trackCount: albumTracks.length,
+                      title: album.title,
+                      artworkUrl: album.artworkUrl,
+                      trackCount: album.trackCount,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => ArtistAlbumDetailScreen(
                             artist: widget.artist,
-                            album: entry.key,
-                            tracks: albumTracks,
+                            album: album.title,
+                            tracks: album.tracks,
                           ),
                         ),
                       ),
@@ -136,7 +115,7 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
               const SizedBox(height: 27),
             ],
             _SectionHeading(
-              title: 'Popular Tracks',
+              title: 'Tracks',
               count: tracks.isEmpty ? null : '${tracks.length}',
             ),
             const SizedBox(height: 8),
@@ -168,6 +147,49 @@ class _ArtistDetailScreenState extends State<ArtistDetailScreen> {
                   showDownload: true,
                 ),
               ),
+            if (controller.searchMoreError != null) ...[
+              const SizedBox(height: 12),
+              _ArtistMessage(
+                message: controller.searchMoreError!,
+                action: 'Retry',
+                onTap: controller.isLoadingMoreSearch
+                    ? null
+                    : controller.loadMoreSearch,
+              ),
+            ],
+            if (controller.hasMoreSearch) ...[
+              const SizedBox(height: 14),
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: controller.isLoadingMoreSearch
+                      ? null
+                      : controller.loadMoreSearch,
+                  icon: controller.isLoadingMoreSearch
+                      ? const SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AurelColors.champagne,
+                          ),
+                        )
+                      : const Icon(Icons.expand_more_rounded, size: 18),
+                  label: Text(
+                    controller.isLoadingMoreSearch
+                        ? 'Loading more tracks…'
+                        : 'Load more tracks',
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AurelColors.champagne,
+                    side: const BorderSide(color: AurelColors.divider),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             if (tracks.isEmpty)
               const Text(
@@ -268,10 +290,7 @@ class ArtistAlbumDetailScreen extends StatelessWidget {
           Center(
             child: FilledButton.icon(
               onPressed: playable
-                  ? () => controller.playTrack(
-                        tracks.firstWhere(controller.hasPlayableSource),
-                        queue: tracks,
-                      )
+                  ? () => _playTrackCollection(context, controller, tracks)
                   : null,
               icon: const Icon(Icons.play_arrow_rounded),
               label: const Text('Play album'),
@@ -471,6 +490,26 @@ class _AlbumCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+Future<void> _playTrackCollection(
+  BuildContext context,
+  AurelController controller,
+  List<Track> tracks,
+) async {
+  final playable = tracks.where(controller.hasPlayableSource).toList(
+    growable: false,
+  );
+  if (playable.isEmpty) return;
+
+  try {
+    await controller.playTrack(playable.first, queue: tracks);
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.toString())),
     );
   }
 }
