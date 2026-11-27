@@ -18,6 +18,12 @@ import 'lyrics_service.dart';
 import 'playback_controller.dart';
 
 class AurelController extends ChangeNotifier {
+  bool _disposed = false;
+
+  void _notifySafely() {
+    if (!_disposed) super._notifySafely();
+  }
+
   AurelController({
     required this.repository,
     required this.jamendo,
@@ -49,7 +55,7 @@ class AurelController extends ChangeNotifier {
     if (track != null && trackId != _lastHistoryTrackId) {
       unawaited(_recordRecentlyPlayed(track));
     }
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> _recordRecentlyPlayed(Track track) async {
@@ -70,7 +76,7 @@ class AurelController extends ChangeNotifier {
     } catch (error) {
       cloudSyncError = error.toString().replaceFirst('Exception: ', '');
     }
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> loadLyricsForCurrentTrack({bool forceRefresh = false}) async {
@@ -81,7 +87,7 @@ class AurelController extends ChangeNotifier {
       currentLyrics = null;
       isLoadingLyrics = false;
       lyricsError = null;
-      notifyListeners();
+      _notifySafely();
       return;
     }
     if (!forceRefresh && _lyricsTrackId == track.id) return;
@@ -91,7 +97,7 @@ class AurelController extends ChangeNotifier {
     currentLyrics = null;
     lyricsError = null;
     isLoadingLyrics = true;
-    notifyListeners();
+    _notifySafely();
 
     try {
       final document = await lyrics.fetchFor(
@@ -110,7 +116,7 @@ class AurelController extends ChangeNotifier {
     } finally {
       if (generation == _lyricsRequestGeneration) {
         isLoadingLyrics = false;
-        notifyListeners();
+        _notifySafely();
       }
     }
   }
@@ -177,7 +183,7 @@ class AurelController extends ChangeNotifier {
     if (account.isSignedIn) {
       await restoreCloudLibrary();
     }
-    notifyListeners();
+    _notifySafely();
     if (!offlineMode) {
       await refreshDiscover();
     }
@@ -210,7 +216,7 @@ class AurelController extends ChangeNotifier {
     } catch (error) {
       cloudSyncError = error.toString().replaceFirst('Exception: ', '');
     }
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> syncCloudLibrary() async {
@@ -226,10 +232,10 @@ class AurelController extends ChangeNotifier {
       cloudSyncError = error.toString().replaceFirst('Exception: ', '');
       rethrow;
     }
-    notifyListeners();
+    _notifySafely();
   }
 
-  void notifyAccountChanged() => notifyListeners();
+  void notifyAccountChanged() => _notifySafely();
 
   List<Track> _appendUnique(List<Track> current, List<Track> incoming) {
     final ids = current.map((track) => track.id).toSet();
@@ -250,7 +256,7 @@ class AurelController extends ChangeNotifier {
     hasMoreDiscover = true;
     discoverError = null;
     _discoverOffset = 0;
-    notifyListeners();
+    _notifySafely();
 
     try {
       final page = await catalog.discover(page: 0, cancelToken: cancelToken);
@@ -270,7 +276,7 @@ class AurelController extends ChangeNotifier {
         if (identical(_discoverCancelToken, cancelToken)) {
           _discoverCancelToken = null;
         }
-        notifyListeners();
+        _notifySafely();
       }
     }
   }
@@ -283,7 +289,7 @@ class AurelController extends ChangeNotifier {
     final cancelToken = _discoverCancelToken ??= CancelToken();
     isLoadingMoreDiscover = true;
     discoverError = null;
-    notifyListeners();
+    _notifySafely();
 
     try {
       final page = await catalog.discover(
@@ -306,7 +312,7 @@ class AurelController extends ChangeNotifier {
         if (identical(_discoverCancelToken, cancelToken)) {
           _discoverCancelToken = null;
         }
-        notifyListeners();
+        _notifySafely();
       }
     }
   }
@@ -344,20 +350,20 @@ class AurelController extends ChangeNotifier {
             }).toList(growable: false);
       hasMoreSearch = false;
       isSearching = false;
-      notifyListeners();
+      _notifySafely();
       return;
     }
 
     if (normalized.isEmpty) {
       isSearching = false;
-      notifyListeners();
+      _notifySafely();
       return;
     }
 
     final cancelToken = CancelToken();
     _searchCancelToken = cancelToken;
     isSearching = true;
-    notifyListeners();
+    _notifySafely();
 
     try {
       final page = await catalog.search(
@@ -385,7 +391,7 @@ class AurelController extends ChangeNotifier {
         if (identical(_searchCancelToken, cancelToken)) {
           _searchCancelToken = null;
         }
-        notifyListeners();
+        _notifySafely();
       }
     }
   }
@@ -399,7 +405,7 @@ class AurelController extends ChangeNotifier {
     final cancelToken = _searchCancelToken ??= CancelToken();
     isLoadingMoreSearch = true;
     searchMoreError = null;
-    notifyListeners();
+    _notifySafely();
 
     try {
       final page = await catalog.search(
@@ -423,7 +429,7 @@ class AurelController extends ChangeNotifier {
         if (identical(_searchCancelToken, cancelToken)) {
           _searchCancelToken = null;
         }
-        notifyListeners();
+        _notifySafely();
       }
     }
   }
@@ -511,7 +517,7 @@ class AurelController extends ChangeNotifier {
     }
     await repository.saveFavorites(favoriteTracks);
     await syncCloudLibrary();
-    notifyListeners();
+    _notifySafely();
   }
 
   bool isFavorite(Track track) =>
@@ -528,7 +534,7 @@ class AurelController extends ChangeNotifier {
     playlists = [...playlists, playlist];
     await repository.savePlaylists(playlists);
     await syncCloudLibrary();
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> addTrackToPlaylist(String playlistId, Track track) async {
@@ -543,7 +549,7 @@ class AurelController extends ChangeNotifier {
     ];
     await repository.savePlaylists(playlists);
     await syncCloudLibrary();
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> removeTrackFromPlaylist(
@@ -564,7 +570,7 @@ class AurelController extends ChangeNotifier {
     ];
     await repository.savePlaylists(playlists);
     await syncCloudLibrary();
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> renamePlaylist(String playlistId, String name) async {
@@ -579,14 +585,14 @@ class AurelController extends ChangeNotifier {
     ];
     await repository.savePlaylists(playlists);
     await syncCloudLibrary();
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> removePlaylist(String playlistId) async {
     playlists = playlists.where((item) => item.id != playlistId).toList();
     await repository.savePlaylists(playlists);
     await syncCloudLibrary();
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Returns the app-managed local copy when the same recording has
@@ -708,7 +714,7 @@ class AurelController extends ChangeNotifier {
     final playableTrack = selected.first;
     await playback.playTrack(playableTrack, prepared);
     await _recordRecentlyPlayed(playableTrack);
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> setOfflineMode(bool enabled) async {
@@ -767,7 +773,7 @@ class AurelController extends ChangeNotifier {
       }
     }
 
-    notifyListeners();
+    _notifySafely();
     if (!enabled) {
       await refreshDiscover();
     }
@@ -791,7 +797,7 @@ class AurelController extends ChangeNotifier {
     downloadingIds.add(track.id);
     downloadProgress[track.id] = 0;
     Track? saved;
-    notifyListeners();
+    _notifySafely();
 
     try {
       final preparedTrack = await catalog.prepareTrackForDownload(track);
@@ -804,7 +810,7 @@ class AurelController extends ChangeNotifier {
           final previous = downloadProgress[track.id] ?? 0;
           if (next >= 1 || next - previous >= 0.03) {
             downloadProgress[track.id] = next;
-            notifyListeners();
+            _notifySafely();
           }
         },
       );
@@ -827,7 +833,7 @@ class AurelController extends ChangeNotifier {
       _downloadTokens.remove(track.id);
       downloadingIds.remove(track.id);
       downloadProgress.remove(track.id);
-      notifyListeners();
+      _notifySafely();
     }
   }
 
@@ -856,7 +862,7 @@ class AurelController extends ChangeNotifier {
       await repository.saveDownloads(previous);
       rethrow;
     }
-    notifyListeners();
+    _notifySafely();
   }
 
   bool get hasLyricsApiKey => lyrics.hasApiKey;
@@ -865,7 +871,7 @@ class AurelController extends ChangeNotifier {
     await lyrics.saveApiKey(value);
     lyricsError = null;
     currentLyrics = null;
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> clearLyricsApiKey() async {
@@ -874,7 +880,7 @@ class AurelController extends ChangeNotifier {
     currentLyrics = null;
     isLoadingLyrics = false;
     lyricsError = 'Add your Musixmatch API key in Profile to load licensed lyrics.';
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> saveJamendoClientId(String value) async {
@@ -886,11 +892,12 @@ class AurelController extends ChangeNotifier {
 
   void selectTab(int index) {
     selectedTab = index;
-    notifyListeners();
+    _notifySafely();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _discoverCancelToken?.cancel('AUREL is closing');
     _searchCancelToken?.cancel('AUREL is closing');
     for (final token in _downloadTokens.values) {
