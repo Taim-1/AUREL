@@ -586,25 +586,24 @@ class AurelController extends ChangeNotifier {
   Future<void> moveTrackInPlaylist(
     String playlistId,
     Track track,
-    int offset,
+    Track relativeTrack,
   ) async {
-    if (offset == 0) return;
     final playlistIndex =
         playlists.indexWhere((playlist) => playlist.id == playlistId);
     if (playlistIndex < 0) return;
 
     final playlist = playlists[playlistIndex];
-    final tracks = playlist.tracks.toList(growable: true);
-    final trackIndex = tracks.indexWhere(
-      (item) =>
-          item.providerId == track.providerId &&
-          item.id == track.id &&
-          item.id.isNotEmpty,
-    );
-    if (trackIndex < 0) return;
+    final tracks = playlist.tracks;
+    int indexOf(Track candidate) => tracks.indexWhere(
+          (item) =>
+              item.providerId == candidate.providerId &&
+              item.id == candidate.id &&
+              item.id.isNotEmpty,
+        );
 
-    final targetIndex = trackIndex + offset;
-    if (targetIndex < 0 || targetIndex >= tracks.length) return;
+    final trackIndex = indexOf(track);
+    final targetIndex = indexOf(relativeTrack);
+    if (trackIndex < 0 || targetIndex < 0 || trackIndex == targetIndex) return;
 
     final updated = playlist.moveTrack(
       fromIndex: trackIndex,
