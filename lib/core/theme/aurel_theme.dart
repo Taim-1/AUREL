@@ -9,6 +9,9 @@ class AurelColors {
   static const muted = Color(0xFF96939A);
   static const divider = Color(0xFF2A292B);
   static const violet = Color(0xFF6450A5);
+  static const glassSurface = Color(0xC014151A);
+  static const glassEdge = Color(0x45F1DEC1);
+  static const glassSheen = Color(0x1AFFFFFF);
 }
 
 class AurelTheme {
