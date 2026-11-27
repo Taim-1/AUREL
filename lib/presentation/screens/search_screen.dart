@@ -9,6 +9,7 @@ import '../../data/services/aurel_controller.dart';
 import 'artist_detail_screen.dart';
 import 'library_screen.dart';
 import '../widgets/album_art.dart';
+import '../widgets/aurel_glass_panel.dart';
 import '../widgets/track_tile.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -98,31 +99,43 @@ class _SearchScreenState extends State<SearchScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 28),
       children: [
-        TextField(
-          controller: _searchController,
-          focusNode: _searchFocus,
-          textInputAction: TextInputAction.search,
-          onChanged: _onChanged,
-          onSubmitted: (_) => _submit(),
-          decoration: InputDecoration(
-            hintText: controller.offlineMode
-                ? 'Search your offline music...'
-                : 'Search artists, songs...',
-            prefixIcon: const Icon(
-              Icons.search_rounded,
-              color: AurelColors.champagne,
-            ),
-            suffixIcon: IconButton(
-              tooltip: 'Clear search',
-              onPressed: () {
-                _debounce?.cancel();
-                _searchController.clear();
-                context.read<AurelController>().searchMusic('');
-                _searchFocus.requestFocus();
-              },
-              icon: const Icon(
-                Icons.close_rounded,
-                color: AurelColors.muted,
+        AurelGlassPanel(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 1),
+          radius: 18,
+          blur: 15,
+          tint: const Color(0xCC15161B),
+          shadowOpacity: 0.06,
+          child: TextField(
+            controller: _searchController,
+            focusNode: _searchFocus,
+            textInputAction: TextInputAction.search,
+            onChanged: _onChanged,
+            onSubmitted: (_) => _submit(),
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              filled: false,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              hintText: controller.offlineMode
+                  ? 'Search your offline music...'
+                  : 'Search artists, songs...',
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AurelColors.champagne,
+              ),
+              suffixIcon: IconButton(
+                tooltip: 'Clear search',
+                onPressed: () {
+                  _debounce?.cancel();
+                  _searchController.clear();
+                  context.read<AurelController>().searchMusic('');
+                  _searchFocus.requestFocus();
+                },
+                icon: const Icon(
+                  Icons.close_rounded,
+                  color: AurelColors.muted,
+                ),
               ),
             ),
           ),
