@@ -43,7 +43,7 @@ AUREL/
 - `AurelController` coordinates user actions and local state.
 - `MusicCatalogService` coordinates adapters, error isolation, canonical identity, deduplication and ranking.
 - `CatalogIdentity` owns cross-source recording matching and is covered by unit tests.
-- AUREL's local-first playback selection lives in `lib/data/catalog/local_track_priority.dart`. It replaces a matching online catalogue row with a valid device/download URI while keeping only same-recording playable online alternatives available for automatic recovery.
+- AUREL's download-first playback selection lives in `lib/data/catalog/local_track_priority.dart`. It replaces a matching online catalogue row with a verified AUREL-managed download while keeping only same-recording playable online alternatives available for automatic recovery.
 - Each provider adapter converts one external API into the shared `Track` model.
 - Repositories own persistence. Provider adapters never write to user libraries.
 - Playback, account, downloads and lyrics services remain independent from catalogue adapters.
@@ -61,7 +61,7 @@ AUREL/
 
 ## Library and offline boundary
 
-The Library → Songs tab is the permission-gated, read-only Android MediaStore view. AUREL requests `READ_MEDIA_AUDIO` (or `READ_EXTERNAL_STORAGE` on Android 12 and below) only when the user opens Songs, queries music entries in the background, excludes Snaptube paths and plays `content://media/...` URIs in place. It never copies, moves, edits or uploads device audio. The Downloads tab remains separate and contains only items saved through AUREL into app-managed storage; it is not a whole-device storage dashboard.
+AUREL does not provide a phone-wide music browser and does not request Android audio-library permissions. Its offline collection contains only verified audio files downloaded through AUREL into private app storage. Tracks that have not been downloaded remain online catalogue entries and cannot be played while Offline mode is enabled.
 
 ## Verification and release
 
