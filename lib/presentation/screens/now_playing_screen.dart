@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/album_art.dart';
+import '../widgets/aurel_glass_panel.dart';
 import '../widgets/lyrics_sheet.dart';
 import '../widgets/playback_settings_sheet.dart';
 import '../widgets/up_next_sheet.dart';
@@ -117,21 +118,12 @@ class NowPlayingScreen extends StatelessWidget {
           child: Column(
             children: [
               Center(
-                child: Container(
+                child: AurelGlassPanel(
                   padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(27),
-                    border: Border.all(
-                      color: AurelColors.champagne.withValues(alpha: 0.20),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AurelColors.champagne.withValues(alpha: 0.09),
-                        blurRadius: 36,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
+                  radius: 27,
+                  blur: 17,
+                  tint: const Color(0xC9151518),
+                  shadowOpacity: 0.10,
                   child: AlbumArt(
                     imageUrl: track.artworkUrl,
                     size: artworkSize,
