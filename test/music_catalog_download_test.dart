@@ -108,6 +108,51 @@ void main() {
       expect(prepared.downloadUrl, primary.downloadUrl);
     });
 
+    test('keeps eligible no-ID alternatives from separate providers distinct', () async {
+      const primary = Track(
+        id: '',
+        title: 'Quiet Horizon',
+        artist: 'Aurel Artist',
+        providerId: 'metadata',
+        recordingMbid: 'recording-empty-id-001',
+        isMetadataOnly: true,
+        downloadAllowed: false,
+        alternatives: [
+          Track(
+            id: '',
+            title: 'Quiet Horizon',
+            artist: 'Aurel Artist',
+            providerId: 'jamendo',
+            providerName: 'Jamendo',
+            recordingMbid: 'recording-empty-id-001',
+            downloadUrl: 'https://audio.example/jamendo-download.mp3',
+            downloadAllowed: true,
+          ),
+          Track(
+            id: '',
+            title: 'Quiet Horizon',
+            artist: 'Aurel Artist',
+            providerId: 'audius',
+            providerName: 'Audius',
+            recordingMbid: 'recording-empty-id-001',
+            downloadUrl: 'https://audio.example/audius-download.mp3',
+            downloadAllowed: true,
+          ),
+        ],
+      );
+
+      final prepared = await createCatalog().prepareTrackForDownload(primary);
+
+      expect(prepared.providerId, 'jamendo');
+      expect(prepared.downloadUrl, 'https://audio.example/jamendo-download.mp3');
+      expect(prepared.alternatives, hasLength(1));
+      expect(prepared.alternatives.single.providerId, 'audius');
+      expect(
+        prepared.alternatives.single.downloadUrl,
+        'https://audio.example/audius-download.mp3',
+      );
+    });
+
     test('does not prepare a metadata-only track or an insecure alternative', () async {
       const primary = Track(
         id: 'spotify-44',
