@@ -9,6 +9,26 @@ import '../../data/services/library_collection_service.dart';
 import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
 
+List<Track> _tracksAvailableForMode(
+  Iterable<Track> tracks,
+  AurelController controller,
+) {
+  if (!controller.offlineMode) {
+    return List<Track>.unmodifiable(tracks);
+  }
+
+  final localTracksById = <String, Track>{
+    for (final track in controller.downloadedTracks)
+      if (track.isDownloaded && track.canPlay) track.id: track,
+  };
+
+  return List<Track>.unmodifiable(
+    tracks
+        .map((track) => localTracksById[track.id])
+        .whereType<Track>(),
+  );
+}
+
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
 
@@ -93,7 +113,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ...controller.downloadedTracks,
       ...controller.recentlyPlayed,
     ]) {
-      unique.putIfAbsent(track.id, () => track);
+      final key = track.id.isEmpty
+          ? '${track.providerId}:${track.title}:${track.artist}:${track.album}'
+          : '${track.providerId}:${track.id}';
+      unique.putIfAbsent(key, () => track);
     }
     return unique.values.toList(growable: false);
   }
@@ -101,27 +124,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
-    final localTracksById = <String, Track>{
-      for (final track in controller.downloadedTracks)
-        if (track.isDownloaded && track.canPlay) track.id: track,
-    };
     final savedSource = controller.offlineMode
         ? controller.downloadedTracks
         : _savedTracks(controller);
-    final favoriteSource = controller.offlineMode
-        ? controller.favoriteTracks
-            .map((track) => localTracksById[track.id])
-            .whereType<Track>()
-        : controller.favoriteTracks;
-    final recentSource = controller.offlineMode
-        ? controller.recentlyPlayed
-            .map((track) => localTracksById[track.id])
-            .whereType<Track>()
-        : controller.recentlyPlayed;
     final saved = _filterTracks(savedSource);
-    final favorites = _filterTracks(favoriteSource);
-    final recent = _filterTracks(recentSource);
-    final playlists = _filterPlaylists(controller.playlists);
+    final favorites = _filterTracks(
+      _tracksAvailableForMode(controller.favoriteTracks, controller),
+    );
+    final recent = _filterTracks(
+      _tracksAvailableForMode(controller.recentlyPlayed, controller),
+    );
+    final playlists = _filterPlaylists(
+      controller.playlists.map(
+        (playlist) => playlist.copyWith(
+          tracks: _tracksAvailableForMode(playlist.tracks, controller),
+        ),
+      ),
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 28),
@@ -1059,18 +1078,9 @@ class PlaylistDetailScreen extends StatelessWidget {
       }
     }
     final selectedPlaylist = playlist;
-    final localTracksById = <String, Track>{
-      for (final track in controller.downloadedTracks)
-        if (track.isDownloaded && track.canPlay) track.id: track,
-    };
     final playlistTracks = selectedPlaylist == null
         ? const <Track>[]
-        : controller.offlineMode
-            ? selectedPlaylist.tracks
-                .map((track) => localTracksById[track.id])
-                .whereType<Track>()
-                .toList(growable: false)
-            : selectedPlaylist.tracks;
+        : _tracksAvailableForMode(selectedPlaylist.tracks, controller);
     final firstArtwork = playlistTracks.isNotEmpty
         ? playlistTracks.first.artworkUrl
         : '';
