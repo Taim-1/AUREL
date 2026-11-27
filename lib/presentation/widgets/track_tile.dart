@@ -320,7 +320,7 @@ class TrackTile extends StatelessWidget {
                         .read<AurelController>()
                         .cancelDownload(track.id)
                     : alreadyDownloaded ||
-                            !track.downloadAllowed ||
+                            !track.hasDownloadableSource ||
                             controller.offlineMode
                         ? null
                         : () async {
@@ -357,7 +357,7 @@ class TrackTile extends StatelessWidget {
                             : track.downloadAllowed
                                 ? Icons.download_rounded
                                 : Icons.download_for_offline_outlined,
-                        color: alreadyDownloaded || track.downloadAllowed
+                        color: alreadyDownloaded || track.hasDownloadableSource
                             ? AurelColors.champagne
                             : AurelColors.muted.withValues(alpha: 0.45),
                         size: 20,
