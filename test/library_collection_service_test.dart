@@ -245,7 +245,7 @@ void main() {
       expect(result.single.licenseName, 'CC BY-SA');
     });
 
-    test('preserves the source order for recently added sorting', () {
+    test('preserves the source order for saved-order sorting', () {
       final result = LibraryCollectionService.filterTracks(
         collection,
         sort: LibrarySort.savedOrder,
