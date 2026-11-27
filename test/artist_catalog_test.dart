@@ -54,6 +54,18 @@ void main() {
       );
     });
 
+    test('keeps distinct tracks when a provider omits stable IDs', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(id: '', title: 'Opening', album: 'No IDs'),
+          track(id: '', title: 'Closing', album: 'No IDs'),
+        ],
+      );
+
+      expect(result, hasLength(2));
+    });
+
     test('returns an immutable empty result for a blank artist', () {
       expect(ArtistCatalog.tracksForArtist('   ', const []), isEmpty);
     });
@@ -90,6 +102,15 @@ void main() {
       final albums = ArtistCatalog.albumsForTracks([
         track(id: 'shared', album: 'One Album'),
         track(id: 'shared', provider: 'audius', album: 'One Album'),
+      ]);
+
+      expect(albums.single.trackCount, 2);
+    });
+
+    test('does not collapse different songs with missing IDs', () {
+      final albums = ArtistCatalog.albumsForTracks([
+        track(id: '', title: 'Opening', album: 'No IDs'),
+        track(id: '', title: 'Closing', album: 'No IDs'),
       ]);
 
       expect(albums.single.trackCount, 2);
