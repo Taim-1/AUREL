@@ -358,7 +358,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ? 'Songs you play in AUREL will appear here, ready to continue where you left off.'
                   : 'Try a different title, artist or album name.',
               action: _query.isEmpty ? null : 'Clear search',
-              onTap: _query.isEmpty ? null : () => setState(() => _query = ''),
+              onTap: _query.isEmpty ? null : _clearSearch,
             )
           else
             ...recent.map(
