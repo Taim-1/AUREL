@@ -87,9 +87,12 @@ class _AccountScreenState extends State<AccountScreen> {
     await controller.restoreCloudLibrary();
     controller.notifyAccountChanged();
     if (mounted) {
+      final syncError = controller.cloudSyncError;
       setState(() {
-        _message = 'Your AUREL library is connected and ready to sync.';
-        _error = null;
+        _message = syncError == null
+            ? 'Signed in. Your AUREL library has been restored and synced.'
+            : 'Signed in successfully. Your saved library is still on this device, but cloud restore needs attention.';
+        _error = syncError;
       });
     }
   }
