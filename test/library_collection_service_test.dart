@@ -193,4 +193,99 @@ void main() {
       expect(playlists, hasLength(2));
     });
   });
+  group('LibraryCollectionService grouping', () {
+    test('normalizes album titles and places singles in their own group', () {
+      final groups = LibraryCollectionService.groupByAlbum([
+        track(
+          id: 'one',
+          title: 'First',
+          artist: 'Aurel Artist',
+          album: 'Born to Die',
+        ),
+        track(
+          id: 'two',
+          title: 'Second',
+          artist: 'Aurel Artist',
+          album: ' born   to die ',
+        ),
+        track(
+          id: 'three',
+          title: 'Standalone',
+          artist: 'Aurel Artist',
+        ),
+      ]);
+
+      expect(groups.map((group) => group.name), ['Born to Die', 'Singles']);
+      expect(groups.first.tracks, hasLength(2));
+      expect(groups.last.tracks.single.title, 'Standalone');
+    });
+
+    test('normalizes artist names and ignores blank artist metadata', () {
+      final groups = LibraryCollectionService.groupByArtist([
+        track(
+          id: 'one',
+          title: 'First',
+          artist: 'Lana Del Rey',
+        ),
+        track(
+          id: 'two',
+          title: 'Second',
+          artist: ' lana   del rey ',
+        ),
+        track(
+          id: 'three',
+          title: 'No artist',
+          artist: '',
+        ),
+        track(
+          id: 'four',
+          title: 'Another',
+          artist: 'Adele',
+        ),
+      ]);
+
+      expect(groups.map((group) => group.name), ['Adele', 'Lana Del Rey']);
+      expect(groups.last.tracks, hasLength(2));
+    });
+
+    test('keeps same IDs from distinct music providers separate', () {
+      final groups = LibraryCollectionService.groupByAlbum([
+        track(
+          id: 'shared',
+          title: 'Same Name',
+          artist: 'Artist',
+          album: 'Same Album',
+        ),
+        track(
+          id: 'shared',
+          title: 'Same Name',
+          artist: 'Artist',
+          album: 'Same Album',
+          provider: 'audius',
+        ),
+      ]);
+
+      expect(groups.single.tracks, hasLength(2));
+    });
+
+    test('returns immutable group lists', () {
+      final groups = LibraryCollectionService.groupByArtist([
+        track(id: 'one', title: 'First', artist: 'Artist'),
+      ]);
+
+      expect(
+        () => groups.add(
+          LibraryTrackGroup(name: 'Another', tracks: const []),
+        ),
+        throwsUnsupportedError,
+      );
+      expect(
+        () => groups.single.tracks.add(
+          track(id: 'two', title: 'Second', artist: 'Artist'),
+        ),
+        throwsUnsupportedError,
+      );
+    });
+  });
+
 }
