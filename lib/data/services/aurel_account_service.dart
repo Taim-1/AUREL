@@ -413,7 +413,10 @@ class AurelAccountService {
       library.doc('favorites').collection('items'),
       remoteFavorites,
     );
-    await saveCloudRecentlyPlayed(recentlyPlayed);
+    await _writeCloudRecentlyPlayed(
+      library.doc('recentlyPlayed'),
+      recentlyPlayed,
+    );
     // Migrate the previous per-track history collection after the compact
     // history document has been written successfully.
     await _replaceTrackCollection(
@@ -436,17 +439,24 @@ class AurelAccountService {
     final firestore = _firestore;
     if (user == null || firestore == null) return;
 
+    final document = firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('library')
+        .doc('recentlyPlayed');
+    await _writeCloudRecentlyPlayed(document, tracks);
+  }
+
+  Future<void> _writeCloudRecentlyPlayed(
+    DocumentReference<Map<String, dynamic>> document,
+    List<Track> tracks,
+  ) async {
     final remoteHistory = tracks
         .take(100)
         .map(_trackForCloud)
         .toList(growable: false);
 
-    await firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('library')
-        .doc('recentlyPlayed')
-        .set({
+    await document.set({
       'tracks': remoteHistory,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -562,6 +572,9 @@ class AurelAccountService {
     // restored after uninstall and must never be mistaken for cloud files.
     json['localPath'] = null;
     json['isDownloaded'] = false;
+    // Alternatives are refreshed by the catalogue coordinator when needed.
+    // Keeping them nested would multiply the size of every cloud library item.
+    json['alternatives'] = const <Map<String, dynamic>>[];
     return json;
   }
 
