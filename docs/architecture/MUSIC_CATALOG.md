@@ -24,9 +24,9 @@ The word "source" is not equivalent to "playable track". The catalogue distingui
 | Metadata only | `providers/apple_music_catalog_service.dart` | Storefront-aware track metadata and ISRC matching; native MusicKit playback is not enabled in this Android build |
 | Metadata only | `providers/music_brainz_service.dart` | Recording metadata, artist credit, duration and ISRC; non-commercial API use and one-request-per-second limit |
 | Metadata only | `providers/lastfm_catalog_service.dart` | Track search, global top-track charts, artist top tracks, artist names, artwork, duration and Last.fm links; requires both an API key and explicit terms-approval flag; never supplies audio |
+| Metadata only | `providers/listenbrainz_catalog_service.dart` | Public site-wide top-recording statistics, recording/release MBIDs and listening popularity; metadata only, no audio stream |
 
 Last.fm is disabled by default and requires both `LASTFM_API_KEY` and `LASTFM_API_APPROVED=true`. Its API terms require non-commercial use unless a separate written commercial-use agreement is granted; public pages using its data require prior written approval, an approved AudioScrobbler button linked to Last.fm, track/artist/album catalogue links, response-header-aware caching, and storage below 100 MB. Obtain approval and the permitted attribution asset before setting the flag. AUREL labels Last.fm records as metadata-only and deliberately excludes them from the generic catalogue cache.
-| Metadata only | `providers/listenbrainz_catalog_service.dart` | Public site-wide top-recording statistics, recording/release MBIDs and listening popularity; metadata only, no audio stream |
 
 The provider adapters live in one folder. Playback, account, AUREL-managed offline downloads and lyrics services remain in `lib/data/services/`. The Downloads tab is exclusively for tracks saved from inside AUREL; it does not scan, import, or list the phone's unrelated music files.
 
