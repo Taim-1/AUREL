@@ -72,7 +72,7 @@ jobs:
               echo
               echo "Add these repository Actions secrets to enable the corresponding account features:"
               for key in "${missing[@]}"; do
-                printf '%s\\n' "- $key"
+                echo "- $key"
               done
               echo
               echo "No secret values are printed by this check."
