@@ -1,3 +1,4 @@
+import '../catalog/catalog_identity.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
 
@@ -15,6 +16,50 @@ enum LibrarySort {
 /// no Android media, filesystem discovery, or device-library dependency.
 class LibraryCollectionService {
   const LibraryCollectionService._();
+
+  static bool containsTrack(Iterable<Track> tracks, Track candidate) =>
+      tracks.any((track) => CatalogIdentity.matches(track, candidate));
+
+  static bool isFavorite(Iterable<Track> favorites, Track track) =>
+      containsTrack(favorites, track);
+
+  static List<Track> toggleFavorite(
+    Iterable<Track> favorites,
+    Track track,
+  ) {
+    final current = favorites.toList(growable: false);
+    final alreadySaved = containsTrack(current, track);
+    final updated = alreadySaved
+        ? current
+            .where((item) => !CatalogIdentity.matches(item, track))
+            .toList(growable: false)
+        : [...current, track];
+    return List<Track>.unmodifiable(updated);
+  }
+
+  static MusicPlaylist addTrackToPlaylist(
+    MusicPlaylist playlist,
+    Track track,
+  ) {
+    if (containsTrack(playlist.tracks, track)) return playlist;
+    return playlist.copyWith(
+      tracks: List<Track>.unmodifiable([...playlist.tracks, track]),
+    );
+  }
+
+  static MusicPlaylist removeTrackFromPlaylist(
+    MusicPlaylist playlist,
+    String trackId, {
+    String? providerId,
+  }) {
+    final updated = playlist.tracks.where((track) {
+      if (track.id != trackId) return true;
+      if (providerId == null) return false;
+      return track.providerId != providerId;
+    }).toList(growable: false);
+    if (updated.length == playlist.tracks.length) return playlist;
+    return playlist.copyWith(tracks: List<Track>.unmodifiable(updated));
+  }
 
   static List<Track> filterTracks(
     Iterable<Track> tracks, {
