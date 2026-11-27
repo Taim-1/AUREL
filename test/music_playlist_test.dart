@@ -69,6 +69,19 @@ void main() {
       );
     });
 
+    test('copyWith keeps replacement tracks immutable', () {
+      final replacement = <Track>[
+        track('four', 'Fourth'),
+      ];
+      final copied = playlist.copyWith(tracks: replacement);
+
+      expect(
+        () => copied.tracks.add(track('five', 'Fifth')),
+        throwsUnsupportedError,
+      );
+      expect(replacement, hasLength(1));
+    });
+
     test('returns an immutable ordered track list', () {
       final reordered = playlist.moveTrack(fromIndex: 0, toIndex: 1);
 
