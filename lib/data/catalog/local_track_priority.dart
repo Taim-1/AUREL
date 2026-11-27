@@ -79,16 +79,19 @@ class LocalTrackPriority {
       local.recordingMbid,
       ...recordingMetadata.map((item) => item.recordingMbid),
     ]);
-    final matchedSources = {
+    final matchedSources = <String>[
       ...local.matchedSources,
       ...track.matchedSources,
-      if (track.providerName.trim().isNotEmpty) track.providerName,
+      track.providerName,
       for (final alternative in track.alternatives) ...[
         ...alternative.matchedSources,
-        if (alternative.providerName.trim().isNotEmpty)
-          alternative.providerName,
+        alternative.providerName,
       ],
-    }.toList(growable: false);
+    ]
+        .map((source) => source.trim())
+        .where((source) => source.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
 
     return local.copyWith(
       title: title,
