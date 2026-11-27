@@ -9,6 +9,7 @@ import 'screens/library_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/search_screen.dart';
 import 'widgets/mini_player.dart';
+import 'widgets/aurel_glass_panel.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
@@ -47,8 +48,13 @@ class AppShell extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const MiniPlayer(),
-              Padding(
+              AurelGlassPanel(
+                margin: const EdgeInsets.fromLTRB(9, 3, 9, 5),
                 padding: const EdgeInsets.fromLTRB(5, 4, 5, 5),
+                radius: 21,
+                blur: 17,
+                tint: const Color(0xC00F1014),
+                shadowOpacity: 0.07,
                 child: Row(
                   children: List.generate(_items.length, (index) {
                     final item = _items[index];
