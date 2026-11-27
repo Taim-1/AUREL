@@ -607,9 +607,16 @@ class Track {
           const [],
       alternatives: (json['alternatives'] as List?)
               ?.whereType<Map>()
-              .map((value) => Track.fromJson(
+              .map((value) {
+                try {
+                  return Track.fromJson(
                     Map<String, dynamic>.from(value),
-                  ).copyWith(alternatives: const []))
+                  ).copyWith(alternatives: const []);
+                } on FormatException {
+                  return null;
+                }
+              })
+              .whereType<Track>()
               .toList(growable: false) ??
           const [],
     );
