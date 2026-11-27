@@ -4,11 +4,6 @@ import 'package:dio/dio.dart';
 
 import '../../models/track.dart';
 
-/// Openly licensed audio search through the MediaWiki Action API.
-///
-/// Only direct audio files with an explicit reusable licence are returned.
-/// The adapter is deliberately called after the other catalogue requests so
-/// AUREL does not fan out several concurrent requests to the same API.
 class WikimediaCommonsService {
   WikimediaCommonsService({Dio? dio})
       : _dio = dio ??
