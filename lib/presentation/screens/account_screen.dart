@@ -155,7 +155,7 @@ class _AccountScreenState extends State<AccountScreen> {
           _confirmPasswordController.clear();
           if (mounted) {
             setState(() {
-              _message =
+              _message = controller.account.emailVerificationNotice ??
                   'Account created. Check your inbox to verify your email address.';
             });
           }
@@ -454,7 +454,9 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _linkGoogle() => _run(() async {
-        await context.read<AurelController>().account.linkGoogle();
+        final controller = context.read<AurelController>();
+        await controller.account.linkGoogle();
+        controller.notifyAccountChanged();
         if (mounted) {
           setState(() {
             _message = 'Google is now linked to your AUREL account.';
@@ -519,10 +521,12 @@ class _AccountScreenState extends State<AccountScreen> {
                           email: email.text,
                           password: password.text,
                         );
+                        controller.notifyAccountChanged();
                         if (!dialogContext.mounted || !mounted) return;
                         Navigator.pop(dialogContext);
                         setState(() {
-                          _message = 'Email sign-in is now linked.';
+                          _message = controller.account.emailVerificationNotice ??
+                              'Email sign-in is now linked. Verify the address to finish setup.';
                         });
                       } on FirebaseAuthException catch (error) {
                         setDialogState(() {
