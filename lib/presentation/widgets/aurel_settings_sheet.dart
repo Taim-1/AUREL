@@ -14,6 +14,9 @@ class AurelSettingsSheet extends StatefulWidget {
 
 class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
   late final TextEditingController _lyricsController;
+  late final TextEditingController _jamendoController;
+  bool _jamendoInitialized = false;
+  bool _savingJamendo = false;
   bool _savingLyrics = false;
   bool _showLyricsKey = false;
 
@@ -21,12 +24,48 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
   void initState() {
     super.initState();
     _lyricsController = TextEditingController();
+    _jamendoController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_jamendoInitialized) {
+      _jamendoController.text =
+          context.read<AurelController>().jamendo.clientId;
+      _jamendoInitialized = true;
+    }
   }
 
   @override
   void dispose() {
     _lyricsController.dispose();
+    _jamendoController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveJamendo() async {
+    setState(() => _savingJamendo = true);
+    try {
+      await context
+          .read<AurelController>()
+          .saveJamendoClientId(_jamendoController.text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Music catalogue connection saved'),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingJamendo = false);
+    }
   }
 
   Future<void> _saveLyrics() async {
@@ -190,6 +229,48 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
                     ],
                   ),
                 ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Music catalogue',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 7),
+            const Text(
+              'Connect your registered Jamendo app to enable its music collection. The application ID is public and is not a private API secret.',
+              style: TextStyle(
+                color: AurelColors.muted,
+                fontSize: 12,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 11),
+            TextField(
+              controller: _jamendoController,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: const InputDecoration(
+                labelText: 'Jamendo application ID',
+                hintText: 'Enter your registered app ID',
+              ),
+            ),
+            const SizedBox(height: 9),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _savingJamendo ? null : _saveJamendo,
+                child: _savingJamendo
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Save music connection'),
               ),
             ),
             const SizedBox(height: 24),
