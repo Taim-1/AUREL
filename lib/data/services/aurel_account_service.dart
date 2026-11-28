@@ -158,7 +158,7 @@ class AurelAccountService {
     required String username,
   }) async {
     _requireConfigured();
-    final normalizedName = username.trim().replaceAll(RegExp(r'\\s+'), ' ');
+    final normalizedName = username.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalizedName.length < 2 || normalizedName.length > 24) {
       throw const FormatException(
         'Choose a username between 2 and 24 characters.',
