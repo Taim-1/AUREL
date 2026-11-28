@@ -153,7 +153,7 @@ void main() {
       expect(playable.downloadAllowed, isFalse);
     });
 
-    test('Openverse only enables downloads for permitted reusable licenses', () {
+    test('Openverse only enables playback and downloads for permitted reusable licenses', () {
       final by = Track.fromOpenverse({
         'id': 'open-by',
         'title': 'Open Piece',
@@ -180,7 +180,8 @@ void main() {
       expect(by.downloadAllowed, isTrue);
       expect(by.licenseName, 'by');
       expect(by.attribution, contains('Composer'));
-      expect(nc.canPlay, isTrue);
+      expect(nc.canPlay, isFalse);
+      expect(nc.streamUrl, isEmpty);
       expect(nc.downloadAllowed, isFalse);
     });
 
@@ -195,7 +196,8 @@ void main() {
         'category': 'music',
       });
 
-      expect(forged.canPlay, isTrue);
+      expect(forged.canPlay, isFalse);
+      expect(forged.streamUrl, isEmpty);
       expect(forged.downloadAllowed, isFalse);
     });
 
