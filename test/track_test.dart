@@ -31,6 +31,17 @@ void main() {
       expect(track.canPlay, isTrue);
     });
 
+    test('rejects non-HTTPS audio URLs as playable streams', () {
+      final track = Track.fromJamendo({
+        'id': 'track-insecure',
+        'name': 'Insecure Stream',
+        'audio': 'http://example.com/audio.mp3',
+      });
+
+      expect(track.isPlayable, isFalse);
+      expect(track.canPlay, isFalse);
+    });
+
     test('does not allow a download when the artist has disabled it', () {
       final track = Track.fromJamendo({
         'id': 'track-2',
