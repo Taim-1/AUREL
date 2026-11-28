@@ -50,6 +50,10 @@ jobs:
       - name: Generate Android project and apply AUREL platform files
         run: bash tool/bootstrap_android.sh
 
+      - name: Report Android signing fingerprints for Firebase OAuth
+        working-directory: android
+        run: ./gradlew :app:signingReport
+
       - name: Resolve dependencies
         run: flutter pub get
 
