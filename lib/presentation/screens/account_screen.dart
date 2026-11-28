@@ -87,9 +87,16 @@ class _AccountScreenState extends State<AccountScreen> {
     await controller.restoreCloudLibrary();
     controller.notifyAccountChanged();
     if (mounted) {
+      final syncError = controller.cloudSyncError;
       setState(() {
-        _message = 'Your AUREL library is connected and ready to sync.';
-        _error = null;
+        if (syncError == null) {
+          _message = 'Your AUREL library is connected and ready to sync.';
+          _error = null;
+        } else {
+          _message =
+              'You are signed in. Cloud library sync will be available when setup is complete.';
+          _error = 'Cloud sync could not finish: $syncError';
+        }
       });
     }
   }
@@ -112,9 +119,13 @@ class _AccountScreenState extends State<AccountScreen> {
           );
           await _afterAuthentication();
           if (mounted) {
+            final syncError = controller.cloudSyncError;
             setState(() {
               _message =
                   'Account created. Check your email for the verification message.';
+              _error = syncError == null
+                  ? null
+                  : 'Your account was created, but cloud sync could not finish: $syncError';
             });
           }
         } else {
