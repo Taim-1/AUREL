@@ -134,7 +134,7 @@ class Track {
       providerName: 'Jamendo',
       sourceUrl: (json['shareurl'] ?? '').toString(),
       recordingId: (json['isrc'] ?? '').toString(),
-      isPlayable: audio.isNotEmpty,
+      isPlayable: _isSecureHttpsUrl(audio),
     );
   }
 
