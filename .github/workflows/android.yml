@@ -135,9 +135,9 @@ jobs:
             -keystore "$debug_keystore" \
             -storepass android \
             -alias AndroidDebugKey)"
-          printf '%s\\n' "$certificate_report"
+          printf '%s\n' "$certificate_report"
 
-          debug_sha1="$(printf '%s\\n' "$certificate_report" | awk '
+          debug_sha1="$(printf '%s\n' "$certificate_report" | awk '
             /^[[:space:]]*SHA1:/ {
               sub(/^[[:space:]]*SHA1:[[:space:]]*/, "")
               print
@@ -153,7 +153,7 @@ jobs:
           {
             echo "## Firebase Android debug signing fingerprint"
             echo
-            echo "**SHA-1:** `$debug_sha1`"
+            printf '**SHA-1:** `%s`\n' "$debug_sha1"
             echo
             echo "Add this fingerprint under Firebase Project settings → Your apps → AUREL Android → SHA certificate fingerprints."
             echo
