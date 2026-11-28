@@ -98,3 +98,25 @@ Missing credentials make the related adapter unavailable; other sources continue
 6. Isolate the adapter in `lib/data/catalog/providers/`.
 7. Add parser, licence, failure and pagination tests.
 8. Add the adapter to ranking only after its real capabilities are verified.
+
+
+## Request execution and server order
+
+Search adapters are queried concurrently so a slow metadata catalogue does not hold up playable sources. The source order in `CatalogRanking` is the deterministic selection order after responses arrive; it is not a serial request order:
+
+1. AUREL-managed verified download
+2. Audius
+3. Jamendo
+4. SoundCloud
+5. Internet Archive
+6. Wikimedia Commons
+7. Openverse
+8. Apple Music metadata
+9. Spotify metadata
+10. Last.fm metadata
+11. ListenBrainz metadata
+12. MusicBrainz metadata
+
+A lower-ranked response can add a same-recording fallback or fill missing descriptive fields, but cannot replace the higher-ranked playable copy or make a metadata-only result playable. Pagination merges results across pages using the same recording identity rules.
+
+Free Music Archive is intentionally not integrated as a hotlinked stream source: its official developer guidance says its API was shut down and direct hotlinking/HTML scraping is not permitted without explicit approval. See https://freemusicarchive.org/app-developers.
