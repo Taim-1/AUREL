@@ -66,7 +66,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          report_file="$RUNNER_TEMP/aurel-signing-report.txt"
           debug_keystore="$HOME/.android/debug.keystore"
 
           mkdir -p "$(dirname "$debug_keystore")"
@@ -82,17 +81,19 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          ./gradlew :app:signingReport --no-daemon --console=plain | tee "$report_file"
+          certificate_report="$(keytool -list -v \
+            -keystore "$debug_keystore" \
+            -storepass android \
+            -alias AndroidDebugKey)"
+          printf '%s\\n' "$certificate_report"
 
-          debug_sha1="$(awk '
-            /^Variant: debug[[:space:]]*$/ { in_debug = 1; next }
-            in_debug && /^SHA1:/ {
-              sub(/^SHA1:[[:space:]]*/, "")
+          debug_sha1="$(printf '%s\\n' "$certificate_report" | awk '
+            /^[[:space:]]*SHA1:/ {
+              sub(/^[[:space:]]*SHA1:[[:space:]]*/, "")
               print
               exit
             }
-            in_debug && /^Variant:/ { exit }
-          ' "$report_file")"
+          ')"
 
           if [[ -z "$debug_sha1" ]]; then
             echo "Could not find the Android debug SHA-1 in Gradle signingReport output." >&2
