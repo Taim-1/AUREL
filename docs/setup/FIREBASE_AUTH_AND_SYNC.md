@@ -80,7 +80,7 @@ firebase deploy --only functions:catalogTokens
 The Android app requests a short-lived token through the authenticated AUREL token broker. If the credentials or account are not available, it falls back to anonymous public search. Registered users receive a slightly higher default rate limit; larger limits require a separate request and are not guaranteed.
 ### Jamendo production ID
 
-Replace the documented read-only development ID with your own registered Jamendo application ID by setting the `JAMENDO_CLIENT_ID` GitHub Actions secret.
+Register an AUREL application with Jamendo, then either set its public application ID as the `JAMENDO_CLIENT_ID` GitHub Actions secret for CI/device builds, or enter it in AUREL → Settings → Music catalogue. The in-app setting is stored locally on that device and overrides the build-time value. This is a public application ID, not a private API secret.
 
 ## Firestore layout
 
