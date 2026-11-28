@@ -74,3 +74,13 @@ The catalogue collects multiple providers with per-source failure isolation, gro
 ## Offline library and privacy
 
 AUREL's only local music files are audio copies the user explicitly downloads through the in-app download action after the provider and item licence allow offline saving. These files live in AUREL's private application storage and are listed in the Downloads collection. The app does not request Android audio-library permissions, query MediaStore, scan phone folders, import unrelated music files or play music from other apps. Enabling Offline mode restricts search, queue, playback and fallback to verified AUREL-managed downloads already present in private storage.
+
+
+## Recording and artist identity safeguards
+
+- When a candidate is added to an existing recording group, it must be compatible with every current member. An identifier-free result cannot bridge two groups whose verified ISRCs or recording MBIDs conflict.
+- Two conflicting ISRCs are a hard separation even if another catalogue field happens to match. A shared exact ISRC can reconcile different catalogue MBIDs; otherwise conflicting MBIDs remain separate.
+- A stable track ID within the same provider remains authoritative for that provider record.
+- Artist pages inspect the artist credits on a recording's retained same-recording alternatives. This prevents a correct artist result being dropped merely because the preferred provider uses a different spelling or a featured-artist credit.
+- Featured-artist matching is by complete credited name, not a partial substring, to avoid incorrectly attributing tracks to similarly named artists.
+- Artist-page track lists group verified same-recording copies with the same identity policy as global search and preserve the ranked alternatives.
