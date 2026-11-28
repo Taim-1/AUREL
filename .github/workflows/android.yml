@@ -56,7 +56,36 @@ jobs:
       - name: Report Android signing fingerprints for Firebase OAuth
         working-directory: android
         timeout-minutes: 5
-        run: ./gradlew :app:signingReport --no-daemon --console=plain
+        shell: bash
+        run: |
+          set -euo pipefail
+          report_file="$RUNNER_TEMP/aurel-signing-report.txt"
+          ./gradlew :app:signingReport --no-daemon --console=plain | tee "$report_file"
+
+          debug_sha1="$(awk '
+            /^Variant: debug[[:space:]]*$/ { in_debug = 1; next }
+            in_debug && /^SHA1:/ {
+              sub(/^SHA1:[[:space:]]*/, "")
+              print
+              exit
+            }
+            in_debug && /^Variant:/ { exit }
+          ' "$report_file")"
+
+          if [[ -z "$debug_sha1" ]]; then
+            echo "Could not find the Android debug SHA-1 in Gradle signingReport output." >&2
+            exit 1
+          fi
+
+          {
+            echo "## Firebase Android debug signing fingerprint"
+            echo
+            echo "**SHA-1:** `$debug_sha1`"
+            echo
+            echo "Add this fingerprint under Firebase Project settings → Your apps → AUREL Android → SHA certificate fingerprints."
+            echo
+            echo "This is the temporary GitHub Actions debug certificate. A separately signed release build will have its own fingerprint."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate AUREL launcher icons
         run: dart run flutter_launcher_icons
