@@ -366,7 +366,9 @@ class Track {
       title: (json['title'] ?? 'Unknown track').toString(),
       artist: (json['creator'] ?? 'Unknown creator').toString(),
       artworkUrl: (json['thumbnail'] ?? '').toString(),
-      streamUrl: playable ? mediaUri.toString() : '',
+      // The API's search filter is only a discovery hint. Verify the
+      // individual work's licence before exposing any direct audio URL.
+      streamUrl: playable && allowed ? mediaUri.toString() : '',
       downloadUrl: playable && allowed ? mediaUri.toString() : '',
       licenseUrl: licenseUrl,
       licenseName: license,
@@ -376,7 +378,7 @@ class Track {
       providerId: 'openverse',
       providerName: 'Openverse',
       sourceUrl: safeLandingUrl,
-      isPlayable: playable,
+      isPlayable: playable && allowed,
     );
   }
 
