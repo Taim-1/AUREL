@@ -44,6 +44,7 @@ class LyricsDocument {
       for (final match in matches) {
         final minutes = int.tryParse(match.group(1) ?? '') ?? 0;
         final seconds = int.tryParse(match.group(2) ?? '') ?? 0;
+        if (seconds >= 60) continue;
         final fraction = match.group(3) ?? '';
         final milliseconds = fraction.isEmpty
             ? 0

@@ -58,3 +58,31 @@ These refinements extend the screen reference without changing its composition:
 ## Owner clarification (2026-11-26)
 
 The Downloads clarification above supersedes any earlier visual note suggesting a whole-device storage ring. The Downloads screen reports only the number of tracks saved inside AUREL and manages those offline copies; it is not a device storage dashboard or local-file importer.
+
+## Owner-approved visual refinement (2026-11-27)
+
+The updated AUREL screen image supplied on 2026-11-27 extends the existing reference; it does not replace the fixed brand identity.
+
+- Keep the same ribbon-A mark, AUREL wordmark, “Feel the Music” tagline, near-black surfaces and champagne-gold accents.
+- Introduce a restrained glass treatment only on selected high-value surfaces: the Home/Search entry, Search field, mini player, bottom navigation dock, Profile identity panel, Downloads summary and Now Playing artwork rim.
+- Glass uses a dark translucent charcoal tint, a modest backdrop blur, a fine warm champagne edge and a very soft highlight. Text and controls must remain crisp and readable.
+- Do not blur the whole screen, add a new theme selector, introduce a dominant new colour, or apply glass to every card.
+- “TAIM” in the reference image remains sample identity text; display the account's chosen username.
+- The Downloads area remains limited to audio downloaded inside AUREL. Do not copy the reference mockup's whole-device storage meter or add phone-wide scanning/importing; continue to report only AUREL-managed offline items.
+
+## Owner-approved player refinement (2026-11-27)
+
+- Use one built-in visualizer style named **Harmony**, integrated directly into the horizontal seek/progress bar. It is the progress waveform itself, not a separate circle or widget below the bar.
+- Harmony uses compact champagne-and-warm-silver waveform columns with a gently changing harmonic pattern while playback is active. The completed section shows progress, and the playhead remains clearly visible.
+- Tapping or dragging anywhere on the integrated waveform seeks to that position. The animation must not create a second gesture surface or intercept playback controls.
+- Pause freezes the animated pattern; playback resumes its motion. Do not request microphone permission or scan device audio.
+- Reduce glass surfaces across the app. Keep only a subtle frosted treatment on the Search field and Mini Player; return the navigation dock, Home search launcher, Profile card, Downloads summary and Now Playing artwork frame to crisp dark surfaces with restrained champagne borders.
+
+## Lyrics quality requirements (2026-11-27)
+
+- Show only lyrics returned by the configured licensed lyrics provider. Never fabricate missing lines or silently substitute a different recording's lyrics.
+- Match the exact normalized title and credited artist, prefer the matching album and closest duration, and reject a candidate whose known duration differs from the playing recording by more than eight seconds.
+- Use synchronized subtitles when the provider supplies them; keep plain licensed lyrics as a fallback when synced subtitles are unavailable under the user's API plan.
+- Synchronized lines follow the player position, auto-scroll to the active line, and remain tappable to seek to that line. Reset the lyrics scroll when the current track changes.
+- Validate subtitle timestamps and discard invalid or out-of-range lines. Keep lyrics in memory only; do not persist copyrighted lyric text into the library or cloud backup.
+- Keep the provider copyright notice visible whenever it is supplied, and state clearly when lyrics are unavailable, restricted, instrumental, or require API configuration.

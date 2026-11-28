@@ -15,17 +15,26 @@ enum AurelEqualizerPreset {
 }
 
 class PlaybackController extends ChangeNotifier {
+  bool _disposed = false;
+
+  void _notifySafely() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   PlaybackController() {
     _subscriptions.addAll([
-      player.playerStateStream.listen((_) => notifyListeners()),
-      player.shuffleModeEnabledStream.listen((_) => notifyListeners()),
-      player.loopModeStream.listen((_) => notifyListeners()),
-      player.speedStream.listen((_) => notifyListeners()),
-      equalizer.enabledStream.listen((_) => notifyListeners()),
+      player.errorStream.listen((error) {
+        unawaited(_recoverFromSourceError(error).then<void>((_) {}));
+      }),
+      player.playerStateStream.listen((_) => _notifySafely()),
+      player.shuffleModeEnabledStream.listen((_) => _notifySafely()),
+      player.loopModeStream.listen((_) => _notifySafely()),
+      player.speedStream.listen((_) => _notifySafely()),
+      equalizer.enabledStream.listen((_) => _notifySafely()),
       player.currentIndexStream.listen((index) {
         if (index != null && index >= 0 && index < queue.length) {
           currentIndex = index;
-          notifyListeners();
+          _notifySafely();
         }
       }),
     ]);
@@ -37,11 +46,20 @@ class PlaybackController extends ChangeNotifier {
     audioPipeline: AudioPipeline(androidAudioEffects: [equalizer]),
     handleInterruptions: true,
     useLazyPreparation: true,
-    maxSkipsOnError: 2,
+    // AUREL handles provider fallback itself so just_audio must not skip to
+    // the next visible song when one source fails.
+    maxSkipsOnError: 0,
   );
 
   List<Track> queue = const [];
   int currentIndex = -1;
+  Future<Track> Function(Track)? _fallbackResolver;
+  Future<bool>? _activeRecovery;
+  final Set<String> _attemptedFallbackIds = {};
+
+  void setFallbackResolver(Future<Track> Function(Track) resolver) {
+    _fallbackResolver = resolver;
+  }
 
   Timer? _sleepTimer;
   DateTime? _sleepDeadline;
@@ -73,6 +91,7 @@ class PlaybackController extends ChangeNotifier {
 
     queue = tracks;
     currentIndex = index < 0 ? 0 : index;
+    _attemptedFallbackIds.clear();
     final sources = tracks.map(_audioSource).toList(growable: false);
 
     try {
@@ -81,14 +100,83 @@ class PlaybackController extends ChangeNotifier {
         initialIndex: currentIndex,
       );
       unawaited(player.play());
-      notifyListeners();
+      _notifySafely();
     } on PlayerException catch (error) {
+      final recovered = await _recoverFromSourceError(error);
+      if (recovered) return;
       throw PlaybackException(
         error.message ?? 'AUREL could not play this audio source.',
       );
     } on PlayerInterruptedException {
       throw const PlaybackException('Playback was interrupted. Try again.');
     }
+  }
+
+  Future<bool> _recoverFromSourceError(PlayerException error) async {
+    if (_disposed) return false;
+    final active = _activeRecovery;
+    if (active != null) return active;
+
+    final operation = _performSourceRecovery(error);
+    _activeRecovery = operation;
+    try {
+      return await operation;
+    } finally {
+      if (identical(_activeRecovery, operation)) {
+        _activeRecovery = null;
+      }
+    }
+  }
+
+  Future<bool> _performSourceRecovery(PlayerException error) async {
+    if (queue.isEmpty) return false;
+    final index = error.index ?? currentIndex;
+    if (index != currentIndex || index < 0 || index >= queue.length) {
+      return false;
+    }
+
+    final failed = queue[index];
+    final resolver = _fallbackResolver;
+    if (resolver == null) return false;
+
+    final candidates = failed.alternatives.where(
+      (candidate) =>
+          candidate.canPlay && !_attemptedFallbackIds.contains(candidate.id),
+    );
+    if (candidates.isEmpty) return false;
+
+    for (final candidate in candidates) {
+      if (_disposed) return false;
+      _attemptedFallbackIds.add(candidate.id);
+      try {
+        final prepared = await resolver(candidate);
+        if (_disposed) return false;
+        // The resolver may have tried and consumed more than one
+        // underlying provider while preparing this candidate. Preserve its
+        // remaining list rather than reintroducing an already-failed source.
+        final replacement = prepared.copyWith(
+          id: failed.id,
+          alternatives: prepared.alternatives,
+        );
+        final updatedQueue = List<Track>.of(queue);
+        updatedQueue[index] = replacement;
+
+        // Replace only the failed source while retaining the visible queue.
+        // The fallback is the same recording/version, not a different song.
+        await player.setAudioSources(
+          updatedQueue.map(_audioSource).toList(growable: false),
+          initialIndex: index,
+        );
+        queue = updatedQueue;
+        currentIndex = index;
+        unawaited(player.play());
+        _notifySafely();
+        return true;
+      } catch (_) {
+        // Try the next same-recording source in the agreed priority order.
+      }
+    }
+    return false;
   }
 
   /// Appends a track to the active queue without interrupting playback.
@@ -100,7 +188,7 @@ class PlaybackController extends ChangeNotifier {
 
     await player.addAudioSource(_audioSource(track));
     queue = [...queue, track];
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Places a track immediately after the currently playing item.
@@ -124,7 +212,7 @@ class PlaybackController extends ChangeNotifier {
       track,
       ...queue.skip(insertionIndex),
     ];
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Removes an upcoming item. The current and already played items stay put.
@@ -141,7 +229,7 @@ class PlaybackController extends ChangeNotifier {
       ...queue.skip(index + 1),
     ];
     currentIndex = player.currentIndex ?? -1;
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> removeUpcoming(int index) async {
@@ -157,7 +245,7 @@ class PlaybackController extends ChangeNotifier {
       ...queue.take(index),
       ...queue.skip(index + 1),
     ];
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Moves an upcoming item without allowing the current item to be displaced.
@@ -178,7 +266,7 @@ class PlaybackController extends ChangeNotifier {
     final moved = updated.removeAt(oldIndex);
     updated.insert(newIndex, moved);
     queue = updated;
-    notifyListeners();
+    _notifySafely();
   }
 
   /// Clears only the upcoming items, preserving the current track.
@@ -188,7 +276,7 @@ class PlaybackController extends ChangeNotifier {
 
     await player.removeAudioSourceRange(firstUpcoming, queue.length);
     queue = queue.take(firstUpcoming).toList(growable: false);
-    notifyListeners();
+    _notifySafely();
   }
 
   AudioSource _audioSource(Track track) {
@@ -231,7 +319,7 @@ class PlaybackController extends ChangeNotifier {
     final enable = !player.shuffleModeEnabled;
     if (enable) await player.shuffle();
     await player.setShuffleModeEnabled(enable);
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> cycleRepeatMode() async {
@@ -241,13 +329,13 @@ class PlaybackController extends ChangeNotifier {
       LoopMode.one => LoopMode.off,
     };
     await player.setLoopMode(nextMode);
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> setSpeed(double value) async {
     final normalized = value.clamp(0.5, 2.0).toDouble();
     await player.setSpeed(normalized);
-    notifyListeners();
+    _notifySafely();
   }
 
   void setSleepTimer(Duration? duration) {
@@ -257,7 +345,7 @@ class PlaybackController extends ChangeNotifier {
     sleepTimerRemaining = null;
 
     if (duration == null || duration <= Duration.zero) {
-      notifyListeners();
+      _notifySafely();
       return;
     }
 
@@ -280,14 +368,14 @@ class PlaybackController extends ChangeNotifier {
       } else {
         sleepTimerRemaining = Duration(seconds: remaining.inSeconds);
       }
-      notifyListeners();
+      _notifySafely();
     });
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> toggleEqualizer() async {
     await equalizer.setEnabled(!equalizer.enabled);
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<AndroidEqualizerParameters> loadEqualizerParameters() =>
@@ -299,7 +387,7 @@ class PlaybackController extends ChangeNotifier {
     final value =
         gain.clamp(parameters.minDecibels, parameters.maxDecibels).toDouble();
     await parameters.bands[index].setGain(value);
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> applyEqualizerPreset(AurelEqualizerPreset preset) async {
@@ -330,7 +418,7 @@ class PlaybackController extends ChangeNotifier {
           gain.clamp(parameters.minDecibels, parameters.maxDecibels).toDouble();
       await band.setGain(normalized);
     }
-    notifyListeners();
+    _notifySafely();
   }
 
   Future<void> jumpTo(int index) async {
@@ -355,6 +443,7 @@ class PlaybackController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _sleepTimer?.cancel();
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());

@@ -252,7 +252,7 @@ void main() {
       expect(restored.playbackHeaders, isEmpty);
     });
 
-    test('keeps provider attribution and matched sources after copy and restore', () {
+    test('keeps provider attribution but strips local file identity from normal restore', () {
       const original = Track(
         id: 'openverse-1',
         title: 'Open Piece',
@@ -276,7 +276,9 @@ void main() {
       expect(restored.licenseName, 'CC BY');
       expect(restored.attribution, 'Open Piece by Composer');
       expect(restored.matchedSources, ['Openverse', 'Jamendo']);
-      expect(restored.isDownloaded, isTrue);
+      expect(restored.isDownloaded, isFalse);
+      expect(restored.localPath, isNull);
+      expect(restored.playbackUri, 'https://example.com/audio.mp3');
     });
 
     test('keeps the downloaded file path when serialised and restored', () {
@@ -288,10 +290,11 @@ void main() {
         downloadUrl: 'https://example.com/download.mp3',
         downloadAllowed: true,
         isDownloaded: true,
-        localPath: '/data/user/0/com.aurel.aurel/app_flutter/song.mp3',
+        localPath:
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
       );
 
-      final restored = Track.fromJson(original.toJson());
+      final restored = Track.fromDownloadedJson(original.toJson());
 
       expect(restored.isDownloaded, isTrue);
       expect(restored.localPath, original.localPath);
@@ -408,19 +411,46 @@ void main() {
       expect(track.canPlay, isFalse);
     });
 
-    test('does not treat a device record without a URI as playable', () {
-      const track = Track(
-        id: 'broken-device-track',
-        title: 'Missing URI',
-        artist: 'Artist',
-        isDeviceTrack: true,
+    test('rejects legacy tracks imported from Android MediaStore', () {
+      expect(
+        () => Track.fromJson({
+          'id': 'device-42',
+          'title': 'Old imported song',
+          'artist': 'Phone library',
+          'providerId': 'device',
+          'providerName': 'On device',
+          'isDeviceTrack': true,
+          'localPath': 'content://media/external/audio/media/42',
+        }),
+        throwsFormatException,
       );
-
-      expect(track.isLocal, isFalse);
-      expect(track.canPlay, isFalse);
     });
 
-    test('allows downloaded files and device content URIs', () {
+    test('skips legacy device alternatives while restoring an online recording', () {
+      final track = Track.fromJson({
+        'id': 'jamendo-42',
+        'title': 'AUREL recording',
+        'artist': 'AUREL artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/track.mp3',
+        'alternatives': [
+          {
+            'id': 'device-42',
+            'title': 'Old imported song',
+            'artist': 'Phone library',
+            'providerId': 'device',
+            'isDeviceTrack': true,
+            'localPath': 'content://media/external/audio/media/42',
+          },
+        ],
+      });
+
+      expect(track.id, 'jamendo-42');
+      expect(track.alternatives, isEmpty);
+      expect(track.canPlay, isTrue);
+    });
+
+    test('only an AUREL-managed download becomes a local playable track', () {
       const downloaded = Track(
         id: 'saved-track',
         title: 'Saved',
@@ -428,18 +458,219 @@ void main() {
         isDownloaded: true,
         localPath: '/data/user/0/com.aurel.aurel/files/saved.mp3',
       );
-      const device = Track(
-        id: 'device-track',
-        title: 'Device',
+      const externalFile = Track(
+        id: 'external-file',
+        title: 'Not downloaded in AUREL',
         artist: 'Artist',
-        isDeviceTrack: true,
-        localPath: 'content://media/external/audio/media/42',
+        localPath: '/storage/emulated/0/Music/external.mp3',
       );
 
       expect(downloaded.isLocal, isTrue);
       expect(downloaded.canPlay, isTrue);
-      expect(device.isLocal, isTrue);
-      expect(device.canPlay, isTrue);
+      expect(externalFile.isLocal, isFalse);
+      expect(externalFile.canPlay, isFalse);
     });
   });
+
+  group('AUREL download persistence', () {
+    test('ordinary library records never restore a local file path', () {
+      final restored = Track.fromJson({
+        'id': 'ordinary-favorite',
+        'title': 'AUREL Song',
+        'artist': 'AUREL Artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/song.mp3',
+        'isDownloaded': true,
+        'localPath':
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
+      });
+
+      expect(restored.isDownloaded, isFalse);
+      expect(restored.localPath, isNull);
+      expect(restored.isLocal, isFalse);
+      expect(restored.playbackUri, 'https://audio.example/song.mp3');
+    });
+
+    test('only the dedicated downloads parser restores a candidate local path', () {
+      final restored = Track.fromDownloadedJson({
+        'id': 'saved-download',
+        'title': 'AUREL Song',
+        'artist': 'AUREL Artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/song.mp3',
+        'isDownloaded': true,
+        'localPath':
+            '/data/user/0/com.aurel.aurel/files/AUREL Downloads/song.mp3',
+      });
+
+      expect(restored.isDownloaded, isTrue);
+      expect(restored.isLocal, isTrue);
+      expect(restored.localPath, endsWith('AUREL Downloads/song.mp3'));
+      expect(restored.playbackUri, startsWith('file:'));
+    });
+
+    test('the dedicated downloads parser rejects entries without AUREL download status', () {
+      expect(
+        () => Track.fromDownloadedJson({
+          'id': 'ordinary-track',
+          'title': 'AUREL Song',
+          'artist': 'AUREL Artist',
+          'providerId': 'jamendo',
+          'streamUrl': 'https://audio.example/song.mp3',
+          'localPath': '/storage/emulated/0/Music/song.mp3',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('the ordinary parser rejects content URI playback paths', () {
+      final restored = Track.fromJson({
+        'id': 'ordinary-track',
+        'title': 'AUREL Song',
+        'artist': 'AUREL Artist',
+        'providerId': 'jamendo',
+        'streamUrl': 'https://audio.example/song.mp3',
+        'isDownloaded': true,
+        'localPath': 'content://media/external/audio/media/42',
+      });
+
+      expect(restored.isDownloaded, isFalse);
+      expect(restored.localPath, isNull);
+      expect(restored.playbackUri, 'https://audio.example/song.mp3');
+    });
+  });
+
+  group('MusicBrainz recording identity', () {
+    test('keeps recording MBID separate from ISRC for MusicBrainz', () {
+      final track = Track.fromMusicBrainz({
+        'id': '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        'title': 'Closer',
+        'isrcs': ['USABC2600001'],
+        'artist-credit': [
+          {'name': 'Nine Inch Nails', 'joinphrase': ''},
+        ],
+      });
+
+      expect(
+        track.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      expect(track.recordingId, 'USABC2600001');
+    });
+
+    test('maps Last.fm MBID without treating it as an ISRC', () {
+      final track = Track.fromLastFm({
+        'name': 'Closer',
+        'mbid': '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        'artist': {'name': 'Nine Inch Nails'},
+      });
+
+      expect(
+        track.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      expect(track.recordingId, isEmpty);
+    });
+
+    test('maps ListenBrainz MBID without treating it as an ISRC', () {
+      final track = Track.fromListenBrainz({
+        'recording_mbid': '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        'track_name': 'Closer',
+        'artist_name': 'Nine Inch Nails',
+      });
+
+      expect(
+        track.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      expect(track.recordingId, isEmpty);
+    });
+
+    test('persists recording MBID independently from ISRC', () {
+      const original = Track(
+        id: 'metadata-recording',
+        title: 'Closer',
+        artist: 'Nine Inch Nails',
+        recordingId: 'USABC2600001',
+        recordingMbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+        isPlayable: false,
+        isMetadataOnly: true,
+      );
+
+      final restored = Track.fromJson(original.toJson());
+
+      expect(restored.recordingId, 'USABC2600001');
+      expect(
+        restored.recordingMbid,
+        '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+    });
+  });
+
+  group('Same-recording download eligibility', () {
+    test('recognizes a permitted download on a matched alternative', () {
+      const primary = Track(
+        id: 'audius-42',
+        title: 'Golden Hour',
+        artist: 'Aurel Artist',
+        providerId: 'audius',
+        streamUrl: 'https://audio.example/stream.mp3',
+        downloadAllowed: false,
+        alternatives: [
+          Track(
+            id: 'jamendo-42',
+            title: 'Golden Hour',
+            artist: 'Aurel Artist',
+            providerId: 'jamendo',
+            streamUrl: 'https://audio.example/stream.mp3',
+            downloadUrl: 'https://audio.example/download.mp3',
+            downloadAllowed: true,
+          ),
+        ],
+      );
+
+      expect(primary.canPlay, isTrue);
+      expect(primary.downloadAllowed, isFalse);
+      expect(primary.canDownloadDirectly, isFalse);
+      expect(primary.alternatives.single.canDownloadDirectly, isTrue);
+      expect(primary.hasDownloadableSource, isTrue);
+    });
+
+    test('does not infer download eligibility from an insecure alternative', () {
+      const primary = Track(
+        id: 'audius-43',
+        title: 'Night Drive',
+        artist: 'Aurel Artist',
+        providerId: 'audius',
+        streamUrl: 'https://audio.example/stream.mp3',
+        alternatives: [
+          Track(
+            id: 'jamendo-43',
+            title: 'Night Drive',
+            artist: 'Aurel Artist',
+            providerId: 'jamendo',
+            downloadUrl: 'http://audio.example/download.mp3',
+            downloadAllowed: true,
+          ),
+        ],
+      );
+
+      expect(primary.hasDownloadableSource, isFalse);
+    });
+
+    test('keeps metadata-only records without a permitted file ineligible', () {
+      const metadata = Track(
+        id: 'spotify-44',
+        title: 'Afterglow',
+        artist: 'Aurel Artist',
+        providerId: 'spotify',
+        isMetadataOnly: true,
+        downloadUrl: 'https://example.com/audio.mp3',
+        downloadAllowed: false,
+      );
+
+      expect(metadata.hasDownloadableSource, isFalse);
+    });
+  });
+
 }

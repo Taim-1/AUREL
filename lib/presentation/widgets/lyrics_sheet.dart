@@ -36,10 +36,19 @@ class _LyricsSheetState extends State<LyricsSheet> {
   }
 
   void _ensureLineKeys(String trackId, int count) {
-    if (_keysTrackId == trackId && _lineKeys.length == count) return;
+    final changedTrack = _keysTrackId != trackId;
+    if (!changedTrack && _lineKeys.length == count) return;
     _keysTrackId = trackId;
     _lineKeys = List.generate(count, (_) => GlobalKey());
     _lastAutoScrolledIndex = -1;
+
+    if (changedTrack) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
+    }
   }
 
   int _activeLine(List<LyricsLine> lines, Duration position) {
@@ -165,7 +174,28 @@ class _LyricsSheetState extends State<LyricsSheet> {
               ),
               const SizedBox(height: 18),
               const Divider(color: AurelColors.divider, height: 1),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
+              if (lyrics?.hasSyncedLyrics == true)
+                const Text(
+                  'SYNCED LYRICS · TAP A LINE TO SEEK',
+                  style: TextStyle(
+                    color: AurelColors.champagne,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
+                )
+              else if (lyrics?.hasPlainLyrics == true)
+                const Text(
+                  'PLAIN LYRICS',
+                  style: TextStyle(
+                    color: AurelColors.muted,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              const SizedBox(height: 10),
               Expanded(
                 child: _buildLyricsContent(
                   controller: controller,

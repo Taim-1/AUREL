@@ -6,13 +6,22 @@ import 'package:path_provider/path_provider.dart';
 import '../models/track.dart';
 
 class DownloadService {
-  final Dio _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(minutes: 5),
-      sendTimeout: const Duration(seconds: 20),
-    ),
-  );
+  DownloadService({
+    Dio? dio,
+    Future<Directory> Function()? documentsDirectoryProvider,
+  })  : _dio = dio ??
+            Dio(
+              BaseOptions(
+                connectTimeout: const Duration(seconds: 20),
+                receiveTimeout: const Duration(minutes: 5),
+                sendTimeout: const Duration(seconds: 20),
+              ),
+            ),
+        _documentsDirectoryProvider =
+            documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+
+  final Dio _dio;
+  final Future<Directory> Function() _documentsDirectoryProvider;
 
   Future<Track> download(
     Track track, {
@@ -29,7 +38,7 @@ class DownloadService {
       );
     }
 
-    final root = await getApplicationDocumentsDirectory();
+    final root = await _documentsDirectoryProvider();
     final folder = Directory('${root.path}/AUREL Downloads');
     if (!await folder.exists()) {
       await folder.create(recursive: true);
@@ -49,21 +58,72 @@ class DownloadService {
         await temporaryFile.delete();
       }
 
-      final response = await _dio.download(
-        track.downloadUrl,
-        temporaryFile.path,
-        cancelToken: cancelToken,
-        onReceiveProgress: onProgress,
-        options: Options(
-          headers: track.playbackHeaders.isEmpty ? null : track.playbackHeaders,
-          followRedirects: true,
-          maxRedirects: 5,
-          validateStatus: (status) =>
-              status != null && status >= 200 && status < 300,
-        ),
-      );
+      var requestUri = downloadUri;
+      final requestHeaders = Map<String, String>.of(track.playbackHeaders);
+      Response<dynamic>? response;
 
-      // Do not allow a provider redirect to downgrade an HTTPS request.
+      // Follow redirects manually so an HTTPS request can never silently
+      // continue to an HTTP target. Provider authorization is not forwarded
+      // when a redirect crosses an origin boundary.
+      for (var redirectCount = 0; redirectCount <= 5; redirectCount++) {
+        if (!isSecureDownloadUri(requestUri)) {
+          throw const DownloadException(
+            'The download server redirected to an insecure address.',
+          );
+        }
+
+        response = await _dio.download(
+          requestUri.toString(),
+          temporaryFile.path,
+          cancelToken: cancelToken,
+          onReceiveProgress: onProgress,
+          options: Options(
+            headers: requestHeaders.isEmpty ? null : requestHeaders,
+            followRedirects: false,
+            maxRedirects: 0,
+            validateStatus: (status) =>
+                status != null && status >= 200 && status < 400,
+          ),
+        );
+
+        final status = response.statusCode ?? 0;
+        if (status >= 200 && status < 300) break;
+        if (!_isRedirectStatus(status)) {
+          throw DownloadException(
+            'The download server returned HTTP $status.',
+          );
+        }
+        if (redirectCount == 5) {
+          throw const DownloadException(
+            'The download server redirected too many times.',
+          );
+        }
+
+        final nextUri = resolveSecureDownloadRedirect(
+          requestUri,
+          response.headers.value('location'),
+        );
+        if (!_sameDownloadOrigin(requestUri, nextUri)) {
+          requestHeaders.removeWhere(
+            (key, _) =>
+                key.toLowerCase() == 'authorization' ||
+                key.toLowerCase() == 'cookie',
+          );
+        }
+        requestUri = nextUri;
+        if (await temporaryFile.exists()) {
+          await temporaryFile.delete();
+        }
+      }
+
+      if (response == null ||
+          response.statusCode == null ||
+          response.statusCode! < 200 ||
+          response.statusCode! >= 300) {
+        throw const DownloadException(
+          'The download server did not return an audio file.',
+        );
+      }
       if (!isSecureDownloadUri(response.realUri)) {
         throw const DownloadException(
           'The download server redirected to an insecure address.',
@@ -136,19 +196,119 @@ class DownloadService {
     return clean.length > 64 ? clean.substring(0, 64) : clean;
   }
 
-  Future<void> delete(Track track) async {
-    final path = track.localPath;
-    if (path == null || path.startsWith('content://')) return;
+  Future<List<Track>> validateSavedDownloads(
+    Iterable<Track> tracks,
+  ) async {
+    final root = await _documentsDirectoryProvider();
+    final directory = Directory(
+      '${root.path}${Platform.pathSeparator}AUREL Downloads',
+    );
+    if (!await directory.exists()) return const [];
 
-    final root = await getApplicationDocumentsDirectory();
-    final downloadsPath =
-        Directory('${root.path}/AUREL Downloads').absolute.path;
-    final file = File(path).absolute;
-    final allowedPrefix = '$downloadsPath${Platform.pathSeparator}';
-    if (!file.path.startsWith(allowedPrefix)) return;
+    final resolvedDirectory = await directory.resolveSymbolicLinks();
+    final validTracks = <Track>[];
 
-    if (await file.exists()) await file.delete();
+    for (final track in tracks) {
+      if (!track.isDownloaded || !track.hasLocalPlaybackUri) continue;
+
+      final rawPath = track.localPath?.trim() ?? '';
+      if (rawPath.isEmpty) continue;
+
+      final uri = Uri.tryParse(rawPath);
+      if (uri == null) continue;
+
+      final candidate = uri.scheme == 'file'
+          ? File.fromUri(uri)
+          : uri.scheme.isEmpty
+              ? File(rawPath)
+              : null;
+      if (candidate == null) continue;
+
+      try {
+        final resolvedPath = await candidate.resolveSymbolicLinks();
+        if (!isWithinAurelDownloadsDirectory(
+          resolvedPath,
+          resolvedDirectory,
+        )) {
+          continue;
+        }
+
+        final file = File(resolvedPath);
+        if (!await file.exists() || await file.length() == 0) continue;
+
+        final handle = await file.open();
+        late final List<int> header;
+        try {
+          header = await handle.read(64);
+        } finally {
+          await handle.close();
+        }
+
+        if (audioFileExtensionFromSignature(header) == null) continue;
+
+        validTracks.add(
+          track.copyWith(
+            isDownloaded: true,
+            localPath: resolvedPath,
+          ),
+        );
+      } on FileSystemException {
+        continue;
+      } on FormatException {
+        continue;
+      }
+    }
+
+    return List.unmodifiable(validTracks);
   }
+
+  Future<void> delete(Track track) async {
+    final path = track.localPath?.trim();
+    if (path == null || path.isEmpty || !track.isDownloaded) return;
+
+    final uri = Uri.tryParse(path);
+    if (uri == null) return;
+    final file = uri.scheme == 'file'
+        ? File.fromUri(uri)
+        : uri.scheme.isEmpty
+            ? File(path)
+            : null;
+    if (file == null || !await file.exists()) return;
+
+    final root = await _documentsDirectoryProvider();
+    final downloadsDirectory = Directory(
+      '${root.path}${Platform.pathSeparator}AUREL Downloads',
+    );
+    if (!await downloadsDirectory.exists()) return;
+
+    try {
+      final resolvedDirectory = await downloadsDirectory.resolveSymbolicLinks();
+      final resolvedFile = await file.resolveSymbolicLinks();
+      if (!isWithinAurelDownloadsDirectory(
+        resolvedFile,
+        resolvedDirectory,
+      )) {
+        return;
+      }
+
+      await File(resolvedFile).delete();
+    } on FileSystemException {
+      // The file may have been removed or replaced while the user was acting.
+    }
+  }
+}
+
+bool isWithinAurelDownloadsDirectory(
+  String candidateFilePath,
+  String downloadsDirectoryPath,
+) {
+  final separator = Platform.pathSeparator;
+  final directory = Directory(downloadsDirectoryPath).absolute.path;
+  final candidate = File(candidateFilePath).absolute.path;
+  final prefix = directory.endsWith(separator)
+      ? directory
+      : '$directory$separator';
+  return candidate.startsWith(prefix) && candidate.length > prefix.length;
 }
 
 /// Reject explicit non-audio responses while allowing generic binary
@@ -244,6 +404,35 @@ class DownloadException implements Exception {
   String toString() => message;
 }
 
+bool _isRedirectStatus(int status) =>
+    status == 300 ||
+    status == 301 ||
+    status == 302 ||
+    status == 303 ||
+    status == 307 ||
+    status == 308;
+
+bool _sameDownloadOrigin(Uri a, Uri b) =>
+    a.scheme == b.scheme && a.host == b.host && a.port == b.port;
+
+/// Resolves a redirect target and rejects insecure or malformed destinations
+/// before AUREL sends the next request.
+Uri resolveSecureDownloadRedirect(Uri source, String? location) {
+  final value = location?.trim() ?? '';
+  if (value.isEmpty) {
+    throw const DownloadException(
+      'The download server returned a redirect without a destination.',
+    );
+  }
+  final target = source.resolve(value);
+  if (!isSecureDownloadUri(target) || target.userInfo.isNotEmpty) {
+    throw const DownloadException(
+      'The download server redirected to an insecure address.',
+    );
+  }
+  return target;
+}
+
 /// Confirms that the final resolved download URL remains HTTPS after redirects.
 bool isSecureDownloadUri(Uri uri) =>
-    uri.scheme == 'https' && uri.host.isNotEmpty;
+    uri.scheme == 'https' && uri.host.isNotEmpty && uri.userInfo.isEmpty;

@@ -7,6 +7,8 @@ Track recording({
   String title = 'Blue Hour',
   String artist = 'Aurel Artist',
   String isrc = '',
+  String mbid = '',
+  String provider = 'jamendo',
   int duration = 200000,
 }) =>
     Track(
@@ -14,11 +16,58 @@ Track recording({
       title: title,
       artist: artist,
       recordingId: isrc,
+      recordingMbid: mbid,
+      providerId: provider,
       durationMs: duration,
       streamUrl: 'https://example.com/audio.mp3',
     );
 
 void main() {
+  group('CatalogIdentity keys', () {
+    test('canonical key is shared across providers for a verified MBID', () {
+      final first = recording(
+        id: 'audius-1',
+        provider: 'audius',
+        mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+      );
+      final second = recording(
+        id: 'jamendo-8',
+        provider: 'jamendo',
+        mbid: '13DD61C7-CE73-4E97-9F0C-9F0E53144411',
+      );
+
+      expect(CatalogIdentity.keyOf(first), CatalogIdentity.keyOf(second));
+      expect(
+        CatalogIdentity.providerKeyOf(first),
+        isNot(CatalogIdentity.providerKeyOf(second)),
+      );
+    });
+
+    test('provider key distinguishes empty-ID records from different providers', () {
+      final first = recording(id: '', provider: 'audius');
+      final second = recording(id: '', provider: 'jamendo');
+
+      expect(
+        CatalogIdentity.providerKeyOf(first),
+        isNot(CatalogIdentity.providerKeyOf(second)),
+      );
+    });
+
+    test('provider key remains stable for one no-ID catalogue result', () {
+      final first = recording(id: '', provider: 'jamendo');
+      final second = recording(
+        id: '',
+        provider: 'jamendo',
+        title: '  blue   hour ',
+      );
+
+      expect(
+        CatalogIdentity.providerKeyOf(first),
+        CatalogIdentity.providerKeyOf(second),
+      );
+    });
+  });
+
   group('CatalogIdentity', () {
     test('matches exact ISRC even when catalogue metadata differs', () {
       expect(
@@ -138,4 +187,71 @@ void main() {
       );
     });
   });
+
+    test('matches the same provider track ID without metadata', () {
+      final first = recording(
+        id: 'jamendo-42',
+        duration: 0,
+        provider: 'jamendo',
+      );
+      final duplicate = recording(
+        id: 'jamendo-42',
+        title: 'Different catalogue formatting',
+        artist: 'A different text credit',
+        duration: 0,
+        provider: 'jamendo',
+      );
+
+      expect(CatalogIdentity.matches(first, duplicate), isTrue);
+      expect(
+        CatalogIdentity.group([first, duplicate]),
+        hasLength(1),
+      );
+    });
+
+    test('matches exact MusicBrainz recording MBID across catalogues', () {
+      expect(
+        CatalogIdentity.matches(
+          recording(mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411'),
+          recording(
+            id: 'lastfm',
+            title: 'Different title formatting',
+            artist: 'Different artist formatting',
+            mbid: '13DD61C7-CE73-4E97-9F0C-9F0E53144411',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('uses exact ISRC when duplicate catalogue entries have different MBIDs', () {
+      expect(
+        CatalogIdentity.matches(
+          recording(
+            mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+            isrc: 'USABC2600001',
+          ),
+          recording(
+            id: 'duplicate-recording-entity',
+            mbid: 'ba8701ba-dc7c-4bca-9c83-846ee8c3d576',
+            isrc: 'USABC2600001',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not merge conflicting verified recording MBIDs', () {
+      expect(
+        CatalogIdentity.matches(
+          recording(mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411'),
+          recording(
+            id: 'different-recording',
+            mbid: 'ba8701ba-dc7c-4bca-9c83-846ee8c3d576',
+          ),
+        ),
+        isFalse,
+      );
+    });
+
 }

@@ -5,8 +5,34 @@ import '../../core/theme/aurel_theme.dart';
 import '../../data/models/music_playlist.dart';
 import '../../data/models/track.dart';
 import '../../data/services/aurel_controller.dart';
+import '../../data/services/library_collection_service.dart';
+import '../../data/catalog/local_track_priority.dart';
 import '../widgets/album_art.dart';
 import '../widgets/track_tile.dart';
+
+List<Track> _tracksAvailableForMode(
+  Iterable<Track> tracks,
+  AurelController controller,
+) {
+  if (!controller.offlineMode) {
+    return List<Track>.unmodifiable(tracks);
+  }
+
+  final availableDownloads = controller.downloadedTracks.where(
+    (track) => track.isDownloaded && track.isLocal && track.canPlay,
+  );
+
+  return List<Track>.unmodifiable(
+    tracks
+        .map(
+          (track) => LocalTrackPriority.findLocalCopy(
+            track,
+            availableDownloads,
+          ),
+        )
+        .whereType<Track>(),
+  );
+}
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -17,6 +43,33 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   int _selectedTab = 0;
+  String _query = '';
+  LibrarySort _sort = LibrarySort.savedOrder;
+  final TextEditingController _searchController = TextEditingController();
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() => _query = '');
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Track> _filterTracks(Iterable<Track> tracks) =>
+      LibraryCollectionService.filterTracks(
+        tracks,
+        query: _query,
+        sort: _sort,
+      );
+
+  List<MusicPlaylist> _filterPlaylists(Iterable<MusicPlaylist> playlists) =>
+      LibraryCollectionService.filterPlaylists(
+        playlists,
+        query: _query,
+      );
 
   Future<void> _createPlaylist(BuildContext context) async {
     final controller = TextEditingController();
@@ -65,34 +118,32 @@ class _LibraryScreenState extends State<LibraryScreen> {
       ...controller.downloadedTracks,
       ...controller.recentlyPlayed,
     ]) {
-      unique.putIfAbsent(track.id, () => track);
+      final key = LibraryCollectionService.trackKey(track);
+      unique.putIfAbsent(key, () => track);
     }
     return unique.values.toList(growable: false);
-  }
-
-  List<_TrackGroup> _groupTracks(
-    List<Track> tracks,
-    String Function(Track) groupName,
-  ) {
-    final groups = <String, List<Track>>{};
-    for (final track in tracks) {
-      final name = groupName(track).trim();
-      if (name.isEmpty) continue;
-      groups.putIfAbsent(name, () => <Track>[]).add(track);
-    }
-    final result = groups.entries
-        .map((entry) => _TrackGroup(entry.key, entry.value))
-        .toList();
-    result.sort(
-      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-    );
-    return result;
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
-    final saved = _savedTracks(controller);
+    final savedSource = controller.offlineMode
+        ? controller.downloadedTracks
+        : _savedTracks(controller);
+    final saved = _filterTracks(savedSource);
+    final favorites = _filterTracks(
+      _tracksAvailableForMode(controller.favoriteTracks, controller),
+    );
+    final recent = _filterTracks(
+      _tracksAvailableForMode(controller.recentlyPlayed, controller),
+    );
+    final playlists = _filterPlaylists(
+      controller.playlists.map(
+        (playlist) => playlist.copyWith(
+          tracks: _tracksAvailableForMode(playlist.tracks, controller),
+        ),
+      ),
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 25, 20, 28),
@@ -154,17 +205,118 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 selected: _selectedTab == 3,
                 onTap: () => setState(() => _selectedTab = 3),
               ),
+              _LibraryTab(
+                label: 'Recently Played',
+                selected: _selectedTab == 4,
+                onTap: () => setState(() => _selectedTab = 4),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AurelColors.surface,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: AurelColors.divider),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _query = value),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                  cursorColor: AurelColors.champagne,
+                  decoration: InputDecoration(
+                    hintText: 'Search your library',
+                    hintStyle: const TextStyle(
+                      color: AurelColors.muted,
+                      fontSize: 12,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AurelColors.champagne,
+                      size: 20,
+                    ),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear library search',
+                            onPressed: _clearSearch,
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: AurelColors.muted,
+                              size: 18,
+                            ),
+                          ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            PopupMenuButton<LibrarySort>(
+              tooltip: 'Sort library',
+              initialValue: _sort,
+              onSelected: (value) => setState(() => _sort = value),
+              color: AurelColors.surfaceRaised,
+              icon: const Icon(
+                Icons.sort_rounded,
+                color: AurelColors.champagneLight,
+              ),
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: LibrarySort.savedOrder,
+                  child: Text('Saved order'),
+                ),
+                PopupMenuItem(
+                  value: LibrarySort.titleAscending,
+                  child: Text('Title A–Z'),
+                ),
+                PopupMenuItem(
+                  value: LibrarySort.artistAscending,
+                  child: Text('Artist A–Z'),
+                ),
+                PopupMenuItem(
+                  value: LibrarySort.albumAscending,
+                  child: Text('Album A–Z'),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 17),
         if (_selectedTab == 0) ...[
           _LibrarySummary(
             title: 'Favorites',
-            subtitle: '${controller.favoriteTracks.length} songs',
+            subtitle: '${favorites.length} songs',
             icon: Icons.favorite_rounded,
             tint: const Color(0xFF70445E),
             onTap: () => setState(() => _selectedTab = 1),
+          ),
+          const SizedBox(height: 13),
+          _LibrarySummary(
+            title: 'Downloads',
+            subtitle: '${_filterTracks(controller.downloadedTracks).length} songs saved by AUREL',
+            icon: Icons.download_rounded,
+            tint: const Color(0xFF594A39),
+            onTap: () => controller.selectTab(3),
+          ),
+          const SizedBox(height: 9),
+          _LibrarySummary(
+            title: 'Recently Played',
+            subtitle: '${recent.length} listening memories',
+            icon: Icons.history_rounded,
+            tint: const Color(0xFF394A50),
+            onTap: () => setState(() => _selectedTab = 4),
           ),
           const SizedBox(height: 13),
           if (controller.playlists.isEmpty)
@@ -175,8 +327,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
               action: 'Create playlist',
               onTap: () => _createPlaylist(context),
             )
+          else if (playlists.isEmpty)
+            _LibraryEmptyState(
+              title: 'No matching playlists',
+              message: 'Try another search to find a playlist or one of its songs.',
+              action: 'Clear search',
+              onTap: _clearSearch,
+            )
           else ...[
-            ...controller.playlists.map(
+            ...playlists.map(
               (playlist) => _PlaylistCard(
                 playlist: playlist,
                 onTap: () => _openPlaylist(context, playlist.id),
@@ -197,36 +356,66 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ] else if (_selectedTab == 1) ...[
           _LibrarySectionHeading(
             title: 'Liked Songs',
-            count: '${controller.favoriteTracks.length} songs',
+            count: '${favorites.length} songs',
           ),
-          if (controller.favoriteTracks.isEmpty)
-            const _LibraryEmptyState(
-              title: 'No liked songs yet',
-              message:
-                  'Tap the heart on any track to save it to your collection.',
+          if (favorites.isEmpty)
+            _LibraryEmptyState(
+              title: _query.isNotEmpty
+                  ? 'No matching songs'
+                  : controller.offlineMode
+                      ? 'No liked downloads yet'
+                      : 'No liked songs yet',
+              message: _query.isNotEmpty
+                  ? 'Try a different title, artist or album name.'
+                  : controller.offlineMode
+                      ? 'Liked songs appear here in Offline mode after you save an allowed download inside AUREL.'
+                      : 'Tap the heart on any track to save it to your collection.',
+              action: _query.isEmpty ? null : 'Clear search',
+              onTap: _query.isEmpty ? null : _clearSearch,
             )
           else
-            ...controller.favoriteTracks.map(
+            ...favorites.map(
               (track) => TrackTile(
                 track: track,
-                queue: controller.favoriteTracks,
+                queue: favorites,
               ),
             ),
         ] else if (_selectedTab == 2) ...[
           const _LibrarySectionHeading(title: 'Albums', count: 'Saved music'),
           ..._buildGroups(
             context,
-            _groupTracks(
-              saved,
-              (track) => track.album.isEmpty ? 'Singles' : track.album,
-            ),
+            LibraryCollectionService.groupByAlbum(saved),
           ),
-        ] else ...[
-          const _LibrarySectionHeading(title: 'Artists', count: 'Saved music'),
+        ] else if (_selectedTab == 3) ...[
+          _LibrarySectionHeading(
+            title: 'Artists',
+            count: '${LibraryCollectionService.groupByArtist(saved).length} artists',
+          ),
           ..._buildGroups(
             context,
-            _groupTracks(saved, (track) => track.artist),
+            LibraryCollectionService.groupByArtist(saved),
           ),
+        ] else if (_selectedTab == 4) ...[
+          _LibrarySectionHeading(
+            title: 'Recently Played',
+            count: '${recent.length} songs',
+          ),
+          if (recent.isEmpty)
+            _LibraryEmptyState(
+              title: _query.isEmpty ? 'Your listening history starts here' : 'No listening matches',
+              message: _query.isEmpty
+                  ? 'Songs you play in AUREL will appear here, ready to continue where you left off.'
+                  : 'Try a different title, artist or album name.',
+              action: _query.isEmpty ? null : 'Clear search',
+              onTap: _query.isEmpty ? null : _clearSearch,
+            )
+          else
+            ...recent.map(
+              (track) => TrackTile(
+                track: track,
+                queue: recent,
+              ),
+            ),
         ],
       ],
     );
@@ -234,7 +423,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   List<Widget> _buildGroups(
     BuildContext context,
-    List<_TrackGroup> groups,
+    List<LibraryTrackGroup> groups,
   ) {
     if (groups.isEmpty) {
       return const [
@@ -398,20 +587,13 @@ class _LibraryEmptyState extends StatelessWidget {
   }
 }
 
-class _TrackGroup {
-  const _TrackGroup(this.name, this.tracks);
-
-  final String name;
-  final List<Track> tracks;
-}
-
 class _CollectionRow extends StatelessWidget {
   const _CollectionRow({
     required this.group,
     required this.onTap,
   });
 
-  final _TrackGroup group;
+  final LibraryTrackGroup group;
   final VoidCallback onTap;
 
   @override
@@ -429,33 +611,9 @@ class _CollectionRow extends StatelessWidget {
             padding: const EdgeInsets.all(9),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: first.artworkUrl.isEmpty
-                      ? Container(
-                          width: 52,
-                          height: 52,
-                          color: AurelColors.surfaceRaised,
-                          child: const Icon(
-                            Icons.album_rounded,
-                            color: AurelColors.champagne,
-                          ),
-                        )
-                      : Image.network(
-                          first.artworkUrl,
-                          width: 52,
-                          height: 52,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
-                            width: 52,
-                            height: 52,
-                            color: AurelColors.surfaceRaised,
-                            child: const Icon(
-                              Icons.album_rounded,
-                              color: AurelColors.champagne,
-                            ),
-                          ),
-                        ),
+                _LibraryArtwork(
+                  tracks: group.tracks,
+                  size: 52,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -498,6 +656,82 @@ class _CollectionRow extends StatelessWidget {
   }
 }
 
+class _LibraryArtwork extends StatelessWidget {
+  const _LibraryArtwork({
+    required this.tracks,
+    required this.size,
+    this.fallbackIcon = Icons.album_rounded,
+  });
+
+  final List<Track> tracks;
+  final double size;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    if (tracks.isEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AurelColors.surfaceRaised,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AurelColors.divider),
+        ),
+        child: Icon(
+          fallbackIcon,
+          color: AurelColors.champagne,
+          size: size * 0.48,
+        ),
+      );
+    }
+
+    if (tracks.length == 1) {
+      return AlbumArt(
+        imageUrl: tracks.first.artworkUrl,
+        size: size,
+        radius: 12,
+      );
+    }
+
+    final covers = tracks.take(4).toList(growable: false);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(1),
+          itemCount: 4,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+          ),
+          itemBuilder: (context, index) {
+            if (index >= covers.length) {
+              return Container(
+                color: AurelColors.surfaceRaised,
+                child: Icon(
+                  fallbackIcon,
+                  color: AurelColors.champagne.withValues(alpha: 0.7),
+                  size: size * 0.18,
+                ),
+              );
+            }
+            return AlbumArt(
+              imageUrl: covers[index].artworkUrl,
+              size: size / 2,
+              radius: 2,
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class _CollectionDetailPage extends StatelessWidget {
   const _CollectionDetailPage({
     required this.title,
@@ -507,20 +741,134 @@ class _CollectionDetailPage extends StatelessWidget {
   final String title;
   final List<Track> tracks;
 
+  Future<void> _playCollection(
+    BuildContext context,
+    AurelController controller,
+  ) async {
+    final playable = tracks.where(controller.hasPlayableSource).toList(
+      growable: false,
+    );
+    if (playable.isEmpty) return;
+
+    try {
+      await controller.playTrack(playable.first, queue: tracks);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final controller = context.watch<AurelController>();
+    final artwork = tracks
+        .map((track) => track.artworkUrl)
+        .firstWhere((url) => url.isNotEmpty, orElse: () => '');
+    final artists = tracks
+        .map((track) => track.artist.trim())
+        .where((artist) => artist.isNotEmpty)
+        .toSet();
+    final playable = tracks.any(controller.hasPlayableSource);
+
     return Scaffold(
+      backgroundColor: AurelColors.background,
       appBar: AppBar(title: Text(title)),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-        children: tracks
-            .map(
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(23),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF40372E),
+                  Color(0xFF211E1C),
+                  Color(0xFF111114),
+                ],
+              ),
+              border: Border.all(
+                color: AurelColors.champagne.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Column(
+              children: [
+                AlbumArt(
+                  imageUrl: artwork,
+                  size: 188,
+                  radius: 21,
+                ),
+                const SizedBox(height: 17),
+                const Text(
+                  'YOUR COLLECTION',
+                  style: TextStyle(
+                    color: AurelColors.champagne,
+                    fontSize: 9,
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${tracks.length} songs • ${artists.length} artists',
+                  style: const TextStyle(
+                    color: AurelColors.muted,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: playable
+                      ? () => _playCollection(context, controller)
+                      : null,
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: const Text('Play collection'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AurelColors.champagne,
+                    foregroundColor: AurelColors.background,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 23),
+          _LibrarySectionHeading(
+            title: 'Tracks',
+            count: '${tracks.length}',
+          ),
+          if (tracks.isEmpty)
+            const _LibraryEmptyState(
+              title: 'No tracks',
+              message: 'This collection is currently empty.',
+            )
+          else
+            ...tracks.map(
               (track) => TrackTile(
                 track: track,
                 queue: tracks,
               ),
-            )
-            .toList(),
+            ),
+        ],
       ),
     );
   }
@@ -610,20 +958,10 @@ class _PlaylistCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 49,
-                height: 49,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(13),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF78614A), Color(0xFF342B2B)],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.queue_music_rounded,
-                  color: AurelColors.champagneLight,
-                  size: 25,
-                ),
+              _LibraryArtwork(
+                tracks: playlist.tracks,
+                size: 49,
+                fallbackIcon: Icons.queue_music_rounded,
               ),
               const SizedBox(width: 13),
               Expanded(
@@ -702,26 +1040,27 @@ class PlaylistDetailScreen extends StatelessWidget {
 
   Future<void> _playPlaylist(
     BuildContext context,
-    MusicPlaylist playlist,
+    List<Track> tracks,
     AurelController controller,
   ) async {
-    final firstPlayable = playlist.tracks.cast<Track?>().firstWhere(
-          (track) =>
-              track != null &&
-              track.canPlay &&
-              (!controller.offlineMode || track.isDownloaded),
+    final firstPlayable = tracks.cast<Track?>().firstWhere(
+          (track) => track != null && controller.hasPlayableSource(track),
           orElse: () => null,
         );
     if (firstPlayable == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No tracks in this playlist are currently playable.'),
+        SnackBar(
+          content: Text(
+            controller.offlineMode
+                ? 'No downloaded tracks from this playlist are available offline.'
+                : 'No tracks in this playlist are currently playable.',
+          ),
         ),
       );
       return;
     }
     try {
-      await controller.playTrack(firstPlayable, queue: playlist.tracks);
+      await controller.playTrack(firstPlayable, queue: tracks);
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -742,8 +1081,11 @@ class PlaylistDetailScreen extends StatelessWidget {
       }
     }
     final selectedPlaylist = playlist;
-    final firstArtwork = selectedPlaylist?.tracks.isNotEmpty == true
-        ? selectedPlaylist!.tracks.first.artworkUrl
+    final playlistTracks = selectedPlaylist == null
+        ? const <Track>[]
+        : _tracksAvailableForMode(selectedPlaylist.tracks, controller);
+    final firstArtwork = playlistTracks.isNotEmpty
+        ? playlistTracks.first.artworkUrl
         : '';
 
     return Scaffold(
@@ -815,7 +1157,7 @@ class PlaylistDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              '${selectedPlaylist.tracks.length} tracks',
+                              '${playlistTracks.length} tracks',
                               style: const TextStyle(
                                 color: AurelColors.muted,
                                 fontSize: 11,
@@ -823,11 +1165,11 @@ class PlaylistDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 10),
                             FilledButton.icon(
-                              onPressed: selectedPlaylist.tracks.isEmpty
+                              onPressed: playlistTracks.isEmpty
                                   ? null
                                   : () => _playPlaylist(
                                         context,
-                                        selectedPlaylist,
+                                        playlistTracks,
                                         controller,
                                       ),
                               icon: const Icon(Icons.play_arrow_rounded),
@@ -840,43 +1182,91 @@ class PlaylistDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 19),
-                if (selectedPlaylist.tracks.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 25),
+                if (playlistTracks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 25),
                     child: Center(
                       child: Text(
-                        'No tracks yet. Add music from Search or Discover.',
-                        style: TextStyle(color: AurelColors.muted),
+                        controller.offlineMode
+                            ? 'No tracks from this playlist have been downloaded inside AUREL yet.'
+                            : 'No tracks yet. Add music from Search or Discover.',
+                        style: const TextStyle(color: AurelColors.muted),
                       ),
                     ),
                   )
                 else
-                  ...selectedPlaylist.tracks.map(
-                    (track) => Row(
-                      children: [
-                        Expanded(
-                          child: TrackTile(
-                            track: track,
-                            queue: selectedPlaylist.tracks,
+                  ...List<Widget>.generate(playlistTracks.length, (index) {
+                    final track = playlistTracks[index];
+                    return Padding(
+                      key: ValueKey(LibraryCollectionService.trackKey(track)),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TrackTile(
+                              track: track,
+                              queue: playlistTracks,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: 'Remove from playlist',
-                          onPressed: () => context
-                              .read<AurelController>()
-                              .removeTrackFromPlaylist(
-                                playlistId,
-                                track.id,
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Move up',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: index == 0
+                                    ? null
+                                    : () => context
+                                        .read<AurelController>()
+                                        .moveTrackInPlaylist(
+                                          playlistId,
+                                          track,
+                                          playlistTracks[index - 1],
+                                        ),
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_up_rounded,
+                                  size: 20,
+                                ),
                               ),
-                          icon: const Icon(
-                            Icons.remove_circle_outline_rounded,
-                            color: AurelColors.muted,
-                            size: 20,
+                              IconButton(
+                                tooltip: 'Remove from playlist',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => context
+                                    .read<AurelController>()
+                                    .removeTrackFromPlaylist(
+                                      playlistId,
+                                      track.id,
+                                      providerId: track.providerId,
+                                    ),
+                                icon: const Icon(
+                                  Icons.remove_circle_outline_rounded,
+                                  color: AurelColors.muted,
+                                  size: 18,
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Move down',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: index == playlistTracks.length - 1
+                                    ? null
+                                    : () => context
+                                        .read<AurelController>()
+                                        .moveTrackInPlaylist(
+                                          playlistId,
+                                          track,
+                                          playlistTracks[index + 1],
+                                        ),
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 20,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                        ],
+                      ),
+                    );
+                  }),
               ],
             ),
     );

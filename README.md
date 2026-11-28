@@ -6,18 +6,26 @@ A premium Android music player built with Flutter, using the approved champagne-
 
 ## Build status
 
-Release packaging is intentionally deferred while the app is being completed. GitHub Actions validates Firebase Functions, Dart formatting, Flutter analysis and tests, then compiles a debug Android App Bundle and an installable debug APK. On pushes to `main`, both debug outputs are attached to the workflow run as a 14-day artifact. This is a test build, not a production-signed release.
+Release packaging is intentionally deferred while the app is being completed. GitHub Actions validates Firebase Functions, Dart formatting, Flutter analysis and tests, then compiles a debug Android App Bundle to catch Android/Gradle/plugin integration failures. It does not publish a release APK or attach a downloadable build.
 
 ## Features
 
-- Unified search across nine catalogue adapters: six playable-audio collections (subject to item rights) and three recording-metadata indexes.
+- Unified discovery across eleven catalogue adapters: six playable-audio collections (subject to item rights) and five metadata indexes, including Last.fm discovery and ListenBrainz global popularity.
 - In-app playback and queue from sources that authorize a playable audio stream.
+- Deterministic song priority: AUREL-managed offline downloads, Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons, then Openverse; metadata-only fallbacks remain below playable audio.
+- Broader artist-led discovery: Last.fm artist top tracks are federated with track search, deduplicated and kept metadata-only unless another provider supplies playable audio.
+- Dedicated artist and album detail pages built from verified catalogue records, with normalized album grouping, paginated artist tracks, and real playback/download eligibility checks.
+- Duplicate recordings collapse into one result while same-recording alternatives stay internal for automatic source fallback.
 - Source ranking, ISRC matching, version-aware de-duplication, and provider attribution.
-- Champagne waveform seek control, background playback, lock-screen controls, mini-player, shuffle and repeat.
+- Champagne waveform seek control with Harmony's moving spectrum integrated into the progress bar, background playback, lock-screen controls, mini-player, shuffle and repeat.
 - Licensed lyrics when the provider makes them available.
+- Private offline library containing only audio the user explicitly downloads through AUREL; the app does not scan, import or play unrelated music stored elsewhere on the phone.
 - Favourites, playlists, AUREL-managed offline downloads, offline mode and recently played history.
 - User-selected AUREL username.
-- Firebase email/password and Google account implementation with cloud library restore.
+- Firebase email/password and Google account sign-in, plus credential linking and per-account usernames.
+- UID-isolated local favourites, playlists and history so switching accounts on one phone never mixes private libraries.
+- Cloud restore for favourites, playlists, the 100 most recently played tracks and previous-download history; playlist entries are stored separately for large collections.
+- After reinstall, previous downloads can be rechecked and fetched again when the original provider still authorizes the recording; audio bytes are never copied to cloud storage.
 - The same approved AUREL ribbon-A artwork on splash and Android launcher icon.
 
 AUREL does not scrape music sites, extract protected streams, record another app's playback, or hand off core playback to an external music app.
@@ -35,8 +43,12 @@ AUREL presents one unified search and one in-app player. Provider names are not 
 | Internet Archive | Audio collection discovery | Only public audio files with an explicit accepted licence in item metadata |
 | Wikimedia Commons | Open audio files | Direct audio with CC BY, CC BY-SA, CC0 or Public Domain metadata; creator credit is retained |
 | MusicBrainz | Recording metadata and ISRC matching | Metadata only; one request per second and non-commercial API terms |
+| Last.fm | Global track discovery, popular charts, artwork and track context | Metadata only; requires `LASTFM_API_KEY`; never supplies AUREL playback audio |
+| ListenBrainz | Site-wide popular recordings and community listening statistics | Metadata only; public popularity index, not a full audio catalogue |
 | Spotify | Commercial-catalogue metadata and ISRC matching | Metadata only in this AUREL player; no Spotify protected audio is copied into AUREL |
 | Apple Music | Commercial-catalogue metadata and recording matching | Metadata only in this AUREL player; native Apple Music playback is not enabled in this build |
+
+**Song priority:** verified copies downloaded through AUREL come first, followed by Audius, Jamendo, SoundCloud, Internet Archive, Wikimedia Commons and Openverse. Apple Music, Spotify, Last.fm, ListenBrainz and MusicBrainz are metadata-only fallbacks and never outrank playable audio. Metadata completeness breaks ties within the same source tier.
 
 **Important:** a catalogue match is not automatically a playable track. AUREL prefers the strongest eligible in-app stream for the same recording. Spotify and Apple Music metadata can help identify a recording, while an authorized SoundCloud, Audius, Jamendo or openly licensed copy supplies the audio. Live, remix, acoustic and alternate versions are kept distinct.
 
@@ -44,7 +56,7 @@ Providers that expose only an embed widget, restricted metadata, or unsupported 
 
 ## Internal catalogue setup
 
-See [Music catalogue architecture](docs/architecture/MUSIC_CATALOG.md) and [Firebase/provider setup](docs/setup/FIREBASE_AUTH_AND_SYNC.md).
+See [Music catalogue architecture](docs/architecture/MUSIC_CATALOG.md), [Firebase/provider setup](docs/setup/FIREBASE_AUTH_AND_SYNC.md), and the [step-by-step Firebase and Google account activation guide](docs/setup/CLOUD_ACCOUNT_ACTIVATION.md).
 
 - Jamendo: register an AUREL application and set `JAMENDO_CLIENT_ID`.
 - Audius: public catalogue access is used; an `AUDIUS_API_KEY` can be supplied to improve the authorized API rate limit.
@@ -54,17 +66,19 @@ See [Music catalogue architecture](docs/architecture/MUSIC_CATALOG.md) and [Fire
 - Openverse: anonymous read access works by default; optional registered API credentials can be stored in Firebase Secret Manager for its authenticated rate-limit tier.
 - Wikimedia Commons and Internet Archive: public read APIs are used with per-item licence and request-policy checks.
 - MusicBrainz: public non-commercial read API; requests are serialized to one per second.
+- Last.fm: the adapter is **disabled by default**. Last.fm's API terms require non-commercial use unless a separate commercial-use agreement is granted; public pages using its data require prior written approval, an approved AudioScrobbler attribution button linking to Last.fm, appropriate track/artist/album catalogue links, response-header-aware caching and storage below the 100 MB cap. Obtain and retain Last.fm's written approval and its approved brand asset before enabling the integration. Only then set `LASTFM_API_KEY` and `LASTFM_API_APPROVED=true` as GitHub Actions secrets (or pass both Dart defines locally). The API key is a public client identifier embedded in the app; do not put a Last.fm API secret in the APK. AUREL deliberately omits Last.fm requests unless both the key and explicit approval flag are present.
+- ListenBrainz: its public site-wide statistics endpoint adds a community popularity signal without an API key. It contributes metadata only; the player still needs a separately authorized audio source.
 - Firebase email/Google accounts and cloud restore: create the Firebase project, enable sign-in methods, apply `firestore.rules`, add GitHub Actions secrets and deploy the token-broker function.
 
 If a provider or account credential is absent, AUREL shows that source as unavailable and continues using the remaining configured sources. It never shows a fake successful sign-in or a false Play/Download action.
 
 ## Account restore
 
-Signing in with the same AUREL account restores saved usernames, favourites, playlists and the recently played track list (up to 100 items). Downloaded audio bytes are kept in the app's private storage and are removed by Android when the app is uninstalled. After reinstall, AUREL restores the track metadata and history; audio must be downloaded again only if the provider allows it.
+Signing in with the same AUREL account restores saved usernames, favourites, playlists and the recently played track list (up to 100 items). Downloaded audio bytes are kept in the app's private storage and are removed by Android when the app is uninstalled. After reinstall, signing into the same AUREL account restores the username, favourites, playlists and up to 100 recently played tracks. Local collections are separated by account UID on shared devices. The actual downloaded audio bytes remain in app-private storage and are removed by Android on uninstall, so those files must be downloaded again only when the source still authorizes it.
 
 ## Project structure
 
-The catalogue coordinator lives in `lib/data/catalog/music_catalog_service.dart`; each independent adapter lives in `lib/data/catalog/providers/`. Account, playback, download, lyrics and device services remain in `lib/data/services/`. See [Project structure](docs/architecture/PROJECT_STRUCTURE.md).
+The catalogue coordinator lives in `lib/data/catalog/music_catalog_service.dart`; each independent adapter lives in `lib/data/catalog/providers/`. Account, playback, download and lyrics services remain in `lib/data/services/`. See [Project structure](docs/architecture/PROJECT_STRUCTURE.md).
 
 ## Local development
 
@@ -79,7 +93,7 @@ flutter test
 flutter run
 ```
 
-The same bootstrap and icon-generation steps run in CI. CI compiles both a debug Android App Bundle and an installable debug APK. Successful pushes to `main` upload both files as a GitHub Actions artifact named `aurel-android-debug-<run number>`, retained for 14 days. The APK is suitable for device testing, while the AAB is a debug bundle; neither is a production release.
+The same bootstrap and icon-generation steps run in CI. CI also compiles a debug Android App Bundle as a platform integration check; it is not published or attached as a release download. No APK or release build is published.
 
 Android build configuration is generated by the GitHub Actions workflow with compile SDK 36 and minimum SDK 23. CI validates Firebase Functions TypeScript, checks Dart formatting, and runs Flutter analysis and tests. Release packaging will be reintroduced after the app passes the product acceptance checks.
 

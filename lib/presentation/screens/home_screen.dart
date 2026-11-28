@@ -52,10 +52,30 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AurelController>();
+    final localTracks = <String, Track>{
+      for (final track in controller.downloadedTracks)
+        if (track.isDownloaded && track.canPlay) track.id: track,
+    }.values.toList(growable: false);
     final tracks = controller.offlineMode
-        ? controller.downloadedTracks
+        ? localTracks
         : controller.discoverTracks;
-    final featured = tracks.isNotEmpty ? tracks.first : null;
+    Track? featured;
+    for (final track in tracks) {
+      if (controller.hasPlayableSource(track)) {
+        featured = track;
+        break;
+      }
+    }
+    final featuredTrack = featured;
+    final localTracksById = {
+      for (final track in localTracks) track.id: track,
+    };
+    final recentTracks = controller.offlineMode
+        ? controller.recentlyPlayed
+            .map((track) => localTracksById[track.id])
+            .whereType<Track>()
+            .toList(growable: false)
+        : controller.recentlyPlayed;
 
     return RefreshIndicator(
       color: AurelColors.champagne,
@@ -80,11 +100,11 @@ class HomeScreen extends StatelessWidget {
           _FeaturedMusicCard(
             track: featured,
             offline: controller.offlineMode,
-            onTap: featured == null
+            onTap: featuredTrack == null
                 ? () => context.read<AurelController>().selectTab(1)
                 : () => context
                     .read<AurelController>()
-                    .playTrack(featured, queue: tracks),
+                    .playTrack(featuredTrack, queue: tracks),
           ),
           const SizedBox(height: 26),
           _SectionHeading(
@@ -115,15 +135,15 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
-          if (controller.recentlyPlayed.isNotEmpty) ...[
+          if (recentTracks.isNotEmpty) ...[
             const SizedBox(height: 26),
             const _SectionHeading(title: 'Continue Listening'),
             const SizedBox(height: 12),
-            _RecentTrackStrip(tracks: controller.recentlyPlayed),
+            _RecentTrackStrip(tracks: recentTracks),
           ],
           const SizedBox(height: 27),
           _SectionHeading(
-            title: controller.offlineMode ? 'Downloaded Music' : 'Trending Now',
+            title: controller.offlineMode ? 'Available Offline' : 'Trending Now',
             action: controller.offlineMode ? null : 'See All',
             onTap: controller.offlineMode
                 ? null

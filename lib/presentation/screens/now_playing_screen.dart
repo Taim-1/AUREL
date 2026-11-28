@@ -118,24 +118,24 @@ class NowPlayingScreen extends StatelessWidget {
             children: [
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(7),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(27),
+                    borderRadius: BorderRadius.circular(25),
                     border: Border.all(
-                      color: AurelColors.champagne.withValues(alpha: 0.20),
+                      color: AurelColors.champagne.withValues(alpha: 0.18),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AurelColors.champagne.withValues(alpha: 0.09),
-                        blurRadius: 36,
-                        spreadRadius: 1,
+                        color: AurelColors.champagne.withValues(alpha: 0.055),
+                        blurRadius: 22,
+                        offset: const Offset(0, 7),
                       ),
                     ],
                   ),
                   child: AlbumArt(
                     imageUrl: track.artworkUrl,
                     size: artworkSize,
-                    radius: 21,
+                    radius: 20,
                   ),
                 ),
               ),

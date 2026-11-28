@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/aurel_theme.dart';
 import '../../data/models/track.dart';
@@ -29,10 +30,11 @@ class TrackTile extends StatelessWidget {
             '${(Duration(milliseconds: track.durationMs).inSeconds % 60).toString().padLeft(2, '0')}',
       if (track.licenseName.isNotEmpty) 'Usage license: ${track.licenseName}',
       if (track.attribution.isNotEmpty) 'Required credit: ${track.attribution}',
+      if (track.providerId == 'lastfm') 'Catalogue source: Last.fm',
       if (track.sourceUrl.isNotEmpty && track.attribution.isNotEmpty)
-        'Work details: ${track.sourceUrl}',
-      if (track.downloadAllowed) 'Offline download: Available',
-      if (!track.downloadAllowed) 'Offline download: Not available for this recording',
+        'Source page: ${track.sourceUrl}',
+      if (track.hasDownloadableSource) 'Offline download: Available',
+      if (!track.hasDownloadableSource) 'Offline download: Not available for this recording',
     ];
 
     showDialog<void>(
@@ -45,13 +47,51 @@ class TrackTile extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         content: SingleChildScrollView(
-          child: SelectableText(
-            details.join('\n\n'),
-            style: const TextStyle(
-              color: AurelColors.muted,
-              fontSize: 12,
-              height: 1.5,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText(
+                details.join('\n\n'),
+                style: const TextStyle(
+                  color: AurelColors.muted,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+              if (track.providerId == 'lastfm' &&
+                  Uri.tryParse(track.sourceUrl)?.host.endsWith('last.fm') ==
+                      true) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.tryParse(track.sourceUrl);
+                      if (uri == null ||
+                          uri.scheme != 'https' ||
+                          !(uri.host == 'last.fm' ||
+                              uri.host.endsWith('.last.fm'))) {
+                        return;
+                      }
+                      final opened = await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                      if (!opened && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Could not open the Last.fm page.'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: const Text('View on Last.fm'),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         actions: [
@@ -149,11 +189,12 @@ class TrackTile extends StatelessWidget {
     final controller = context.watch<AurelController>();
     final favorite = controller.isFavorite(track);
     final downloading = controller.downloadingIds.contains(track.id);
+    final alreadyDownloaded = controller.hasDownloadedCopy(track);
 
     return InkWell(
       borderRadius: BorderRadius.circular(17),
       onTap: () async {
-        if (!track.canPlay) {
+        if (!controller.hasPlayableSource(track)) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
@@ -229,15 +270,17 @@ class TrackTile extends StatelessWidget {
               ),
               onSelected: (value) => _handlePlaylistAction(context, value),
               itemBuilder: (_) => [
-                const PopupMenuItem<String>(
-                  value: '__play_next__',
-                  child: Text('Play next'),
-                ),
-                const PopupMenuItem<String>(
-                  value: '__queue__',
-                  child: Text('Add to queue'),
-                ),
-                const PopupMenuDivider(),
+                if (controller.hasPlayableSource(track)) ...[
+                  const PopupMenuItem<String>(
+                    value: '__play_next__',
+                    child: Text('Play next'),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: '__queue__',
+                    child: Text('Add to queue'),
+                  ),
+                  const PopupMenuDivider(),
+                ],
                 const PopupMenuItem<String>(
                   value: '__create__',
                   child: Text('Create new playlist'),
@@ -265,17 +308,21 @@ class TrackTile extends StatelessWidget {
               IconButton(
                 tooltip: downloading
                     ? 'Cancel download'
-                    : controller.offlineMode
-                        ? 'Turn off Offline mode to download'
-                        : track.downloadAllowed
-                            ? 'Download for offline listening'
-                            : 'Download not allowed',
-                onPressed: !track.downloadAllowed || controller.offlineMode
-                    ? null
-                    : downloading
-                        ? () => context
-                            .read<AurelController>()
-                            .cancelDownload(track.id)
+                    : alreadyDownloaded
+                        ? 'Saved offline'
+                        : controller.offlineMode
+                            ? 'Turn off Offline mode to download'
+                             : track.hasDownloadableSource
+                                ? 'Download for offline listening'
+                                : 'Download not allowed',
+                onPressed: downloading
+                    ? () => context
+                        .read<AurelController>()
+                        .cancelDownload(track.id)
+                    : alreadyDownloaded ||
+                            !track.hasDownloadableSource ||
+                            controller.offlineMode
+                        ? null
                         : () async {
                             final message = await context
                                 .read<AurelController>()
@@ -305,10 +352,12 @@ class TrackTile extends StatelessWidget {
                         ),
                       )
                     : Icon(
-                        track.downloadAllowed
-                            ? Icons.download_rounded
-                            : Icons.download_for_offline_outlined,
-                        color: track.downloadAllowed
+                        alreadyDownloaded
+                            ? Icons.download_done_rounded
+                            : track.hasDownloadableSource
+                                ? Icons.download_rounded
+                                : Icons.download_for_offline_outlined,
+                        color: alreadyDownloaded || track.hasDownloadableSource
                             ? AurelColors.champagne
                             : AurelColors.muted.withValues(alpha: 0.45),
                         size: 20,

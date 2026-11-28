@@ -16,6 +16,7 @@ class _AccountScreenState extends State<AccountScreen> {
   late final TextEditingController _usernameController;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
+  late final TextEditingController _confirmPasswordController;
 
   bool _creatingAccount = false;
   bool _busy = false;
@@ -30,6 +31,7 @@ class _AccountScreenState extends State<AccountScreen> {
     _usernameController = TextEditingController(text: account.userName);
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
   }
 
   @override
@@ -37,6 +39,7 @@ class _AccountScreenState extends State<AccountScreen> {
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -50,13 +53,17 @@ class _AccountScreenState extends State<AccountScreen> {
     try {
       await action();
     } on FirebaseAuthException catch (error) {
-      if (mounted) setState(() => _error = _friendlyAuthError(error));
+      if (mounted) {
+        setState(() => _error = _friendlyAuthError(error));
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _error = error.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -74,6 +81,11 @@ class _AccountScreenState extends State<AccountScreen> {
         'This email is already connected using another sign-in method.',
       'credential-already-in-use' =>
         'This Google or email login is already connected to another account.',
+      'provider-already-linked' => 'This sign-in method is already connected.',
+      'no-such-provider' => 'This sign-in method is not connected to this account.',
+      'requires-recent-login' => 'Sign in again before changing this security setting.',
+      'too-many-requests' => 'Too many attempts. Wait a little and try again.',
+      'operation-not-allowed' => 'This sign-in method is not enabled in Firebase yet.',
       _ => error.message ?? 'Sign-in failed. Please try again.',
     };
   }
@@ -89,14 +101,10 @@ class _AccountScreenState extends State<AccountScreen> {
     if (mounted) {
       final syncError = controller.cloudSyncError;
       setState(() {
-        if (syncError == null) {
-          _message = 'Your AUREL library is connected and ready to sync.';
-          _error = null;
-        } else {
-          _message =
-              'You are signed in. Cloud library sync will be available when setup is complete.';
-          _error = 'Cloud sync could not finish: $syncError';
-        }
+        _message = syncError == null
+            ? 'Signed in. Your AUREL library has been restored and synced.'
+            : 'Signed in successfully. Your saved library is still on this device, but cloud restore needs attention.';
+        _error = syncError;
       });
     }
   }
@@ -106,26 +114,49 @@ class _AccountScreenState extends State<AccountScreen> {
         await _afterAuthentication();
       });
 
+
   Future<void> _submitEmail() => _run(() async {
         final controller = context.read<AurelController>();
         final email = _emailController.text.trim();
         final password = _passwordController.text;
+        final at = email.indexOf('@');
+        final dot = email.lastIndexOf('.');
+        if (email.contains(' ') ||
+            at <= 0 ||
+            dot <= at + 1 ||
+            dot >= email.length - 1) {
+          throw const FormatException('Enter a valid email address.');
+        }
+        if (password.isEmpty) {
+          throw const FormatException('Enter your password.');
+        }
 
         if (_creatingAccount) {
+          if (password.length < 8) {
+            throw const FormatException(
+              'Choose a password with at least 8 characters.',
+            );
+          }
+          if (password != _confirmPasswordController.text) {
+            throw const FormatException('The passwords do not match.');
+          }
+          if (_usernameController.text.trim().length < 2) {
+            throw const FormatException(
+              'Choose a username with at least 2 characters.',
+            );
+          }
           await controller.account.createEmailAccount(
             email: email,
             password: password,
             username: _usernameController.text,
           );
           await _afterAuthentication();
+          _passwordController.clear();
+          _confirmPasswordController.clear();
           if (mounted) {
-            final syncError = controller.cloudSyncError;
             setState(() {
-              _message =
-                  'Account created. Check your email for the verification message.';
-              _error = syncError == null
-                  ? null
-                  : 'Your account was created, but cloud sync could not finish: $syncError';
+              _message = controller.account.emailVerificationNotice ??
+                  'Account created. Check your inbox to verify your email address.';
             });
           }
         } else {
@@ -134,6 +165,8 @@ class _AccountScreenState extends State<AccountScreen> {
             password: password,
           );
           await _afterAuthentication();
+          _passwordController.clear();
+          _confirmPasswordController.clear();
         }
       });
 
@@ -156,6 +189,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _signOut() => _run(() async {
         final controller = context.read<AurelController>();
         await controller.account.signOut();
+        await controller.onAccountSignedOut();
         controller.notifyAccountChanged();
         if (mounted) {
           setState(() {
@@ -173,17 +207,261 @@ class _AccountScreenState extends State<AccountScreen> {
     }
     await _run(() async {
       await context.read<AurelController>().account.sendPasswordReset(email);
-      if (mounted) setState(() => _message = 'Password reset email sent.');
+      if (mounted) {
+        setState(() => _message = 'Password reset email sent.');
+      }
+    });
+  }
+
+  Future<void> _refreshAccount() => _run(() async {
+        final controller = context.read<AurelController>();
+        final user = await controller.account.refreshCurrentUser();
+        _usernameController.text = await controller.account.loadUserName();
+        controller.notifyAccountChanged();
+        if (mounted) {
+          setState(() {
+            _message = user.emailVerified
+                ? 'Account refreshed. Your email address is verified.'
+                : 'Account refreshed. Your email address still needs verification.';
+          });
+        }
+      });
+
+  Future<void> _changePassword() async {
+    final account = context.read<AurelController>().account;
+    final current = TextEditingController();
+    final next = TextEditingController();
+    final confirmation = TextEditingController();
+    var saving = false;
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: AurelColors.surfaceRaised,
+          title: const Text('Change password'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: current,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Current password'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: next,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'New password (8+ characters)'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: confirmation,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Confirm new password'),
+                ),
+                if (dialogError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    dialogError!,
+                    style: const TextStyle(color: Color(0xFFE7A0A0), fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (next.text.length < 8) {
+                        setDialogState(() => dialogError =
+                            'Choose a new password with at least 8 characters.');
+                        return;
+                      }
+                      if (next.text != confirmation.text) {
+                        setDialogState(() => dialogError = 'The new passwords do not match.');
+                        return;
+                      }
+                      setDialogState(() {
+                        saving = true;
+                        dialogError = null;
+                      });
+                      try {
+                        await account.changePassword(
+                          currentPassword: current.text,
+                          newPassword: next.text,
+                        );
+                        if (!dialogContext.mounted || !mounted) return;
+                        Navigator.pop(dialogContext);
+                        setState(() {
+                          _message = 'Your password has been changed.';
+                        });
+                      } on FirebaseAuthException catch (error) {
+                        setDialogState(() {
+                          dialogError = _friendlyAuthError(error);
+                          saving = false;
+                        });
+                      } catch (error) {
+                        setDialogState(() {
+                          dialogError = error.toString().replaceFirst('Exception: ', '');
+                          saving = false;
+                        });
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Update password'),
+            ),
+          ],
+        ),
+      ),
+    );
+    current.dispose();
+    next.dispose();
+    confirmation.dispose();
+  }
+
+  Future<void> _changeEmail({required bool passwordLinked}) async {
+    final account = context.read<AurelController>().account;
+    final email = TextEditingController();
+    final password = TextEditingController();
+    var saving = false;
+    String? dialogError;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: AurelColors.surfaceRaised,
+          title: const Text('Change email address'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: const InputDecoration(labelText: 'New email address'),
+              ),
+              if (passwordLinked) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Current password'),
+                ),
+              ],
+              if (dialogError != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  dialogError!,
+                  style: const TextStyle(color: Color(0xFFE7A0A0), fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        saving = true;
+                        dialogError = null;
+                      });
+                      try {
+                        await account.requestEmailChange(
+                          newEmail: email.text,
+                          currentPassword: passwordLinked ? password.text : null,
+                        );
+                        if (!dialogContext.mounted || !mounted) return;
+                        Navigator.pop(dialogContext);
+                        setState(() {
+                          _message =
+                              'A verification link was sent to the new address. Your AUREL email changes after verification.';
+                        });
+                      } on FirebaseAuthException catch (error) {
+                        setDialogState(() {
+                          dialogError = _friendlyAuthError(error);
+                          saving = false;
+                        });
+                      } catch (error) {
+                        setDialogState(() {
+                          dialogError = error.toString().replaceFirst('Exception: ', '');
+                          saving = false;
+                        });
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Send verification'),
+            ),
+          ],
+        ),
+      ),
+    );
+    email.dispose();
+    password.dispose();
+  }
+
+  Future<void> _unlinkProvider(String providerId, String label) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AurelColors.surfaceRaised,
+        title: Text('Disconnect $label?'),
+        content: const Text(
+          'This removes this sign-in method from your AUREL account. At least one other sign-in method must remain connected.',
+          style: TextStyle(color: AurelColors.muted, fontSize: 12, height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep connected'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Disconnect'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
+    final controller = context.read<AurelController>();
+    await _run(() async {
+      await controller.account.unlinkProvider(providerId);
+      controller.notifyAccountChanged();
+      if (mounted) {
+        setState(() {
+          _message = '$label has been disconnected.';
+        });
+      }
     });
   }
 
   Future<void> _linkGoogle() => _run(() async {
-        await context.read<AurelController>().account.linkGoogle();
+        final controller = context.read<AurelController>();
+        await controller.account.linkGoogle();
+        controller.notifyAccountChanged();
         if (mounted) {
-        setState(() {
-          _message = 'Google is now linked to your AUREL account.';
-        });
-      }
+          setState(() {
+            _message = 'Google is now linked to your AUREL account.';
+          });
+        }
       });
 
   Future<void> _linkEmail() async {
@@ -238,16 +516,18 @@ class _AccountScreenState extends State<AccountScreen> {
                         dialogError = null;
                       });
                       try {
-                        await context.read<AurelController>().account.linkEmail(
-                              email: email.text,
-                              password: password.text,
-                            );
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext);
-                        }
-                        if (mounted) {
-                          setState(() => _message = 'Email sign-in is now linked.');
-                        }
+                        final controller = context.read<AurelController>();
+                        await controller.account.linkEmail(
+                          email: email.text,
+                          password: password.text,
+                        );
+                        controller.notifyAccountChanged();
+                        if (!dialogContext.mounted || !mounted) return;
+                        Navigator.pop(dialogContext);
+                        setState(() {
+                          _message = controller.account.emailVerificationNotice ??
+                              'Email sign-in is now linked. Verify the address to finish setup.';
+                        });
                       } on FirebaseAuthException catch (error) {
                         setDialogState(() {
                           dialogError = _friendlyAuthError(error);
@@ -274,7 +554,9 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     email.dispose();
     password.dispose();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -307,6 +589,7 @@ class _AccountScreenState extends State<AccountScreen> {
               usernameController: _usernameController,
               emailController: _emailController,
               passwordController: _passwordController,
+              confirmPasswordController: _confirmPasswordController,
               creatingAccount: _creatingAccount,
               busy: _busy,
               showPassword: _showPassword,
@@ -337,10 +620,13 @@ class _AccountScreenState extends State<AccountScreen> {
               onVerifyEmail: () => _run(
                 () => account.sendVerificationEmail(),
               ),
-              onRefreshUsername: () async {
-                _usernameController.text = await account.loadUserName();
-                if (mounted) setState(() {});
-              },
+              onRefreshAccount: _refreshAccount,
+              onChangePassword: _changePassword,
+              onChangeEmail: () => _changeEmail(
+                passwordLinked: account.linkedProviders.contains('password'),
+              ),
+              onUnlinkGoogle: () => _unlinkProvider('google.com', 'Google'),
+              onUnlinkEmail: () => _unlinkProvider('password', 'Email & password'),
             ),
           if (_error != null) ...[
             const SizedBox(height: 13),
@@ -349,6 +635,14 @@ class _AccountScreenState extends State<AccountScreen> {
           if (_message != null) ...[
             const SizedBox(height: 13),
             _StatusMessage(message: _message!, isError: false),
+          ],
+          if (_error == null && controller.cloudSyncError != null) ...[
+            const SizedBox(height: 13),
+            _StatusMessage(
+              message:
+                  'Cloud sync needs attention: ${controller.cloudSyncError}',
+              isError: true,
+            ),
           ],
           const SizedBox(height: 20),
           const Text(
@@ -375,7 +669,7 @@ class _AccountScreenState extends State<AccountScreen> {
             icon: Icons.download_for_offline_outlined,
             title: 'Downloaded audio',
             description:
-                'Audio files stay on this device. After reinstall, AUREL can restore track details and download again only where the provider allows it.',
+                'Your previous download list returns with your account. Audio files remain private to this device and can be downloaded again when the source still permits it.',
           ),
         ],
       ),
@@ -473,6 +767,7 @@ class _SignedOutCard extends StatelessWidget {
     required this.usernameController,
     required this.emailController,
     required this.passwordController,
+    required this.confirmPasswordController,
     required this.creatingAccount,
     required this.busy,
     required this.showPassword,
@@ -487,6 +782,7 @@ class _SignedOutCard extends StatelessWidget {
   final TextEditingController usernameController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
+  final TextEditingController confirmPasswordController;
   final bool creatingAccount;
   final bool busy;
   final bool showPassword;
@@ -576,6 +872,17 @@ class _SignedOutCard extends StatelessWidget {
               ),
             ),
           ),
+          if (creatingAccount) ...[
+            const SizedBox(height: 11),
+            TextField(
+              controller: confirmPasswordController,
+              obscureText: !showPassword,
+              decoration: const InputDecoration(
+                labelText: 'Confirm password',
+                prefixIcon: Icon(Icons.lock_outline_rounded),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             height: 48,
@@ -661,7 +968,11 @@ class _SignedInCard extends StatelessWidget {
     required this.onSync,
     required this.onSignOut,
     required this.onVerifyEmail,
-    required this.onRefreshUsername,
+    required this.onRefreshAccount,
+    required this.onChangePassword,
+    required this.onChangeEmail,
+    required this.onUnlinkGoogle,
+    required this.onUnlinkEmail,
   });
 
   final User user;
@@ -675,7 +986,11 @@ class _SignedInCard extends StatelessWidget {
   final VoidCallback onSync;
   final VoidCallback onSignOut;
   final VoidCallback onVerifyEmail;
-  final VoidCallback onRefreshUsername;
+  final VoidCallback onRefreshAccount;
+  final VoidCallback onChangePassword;
+  final VoidCallback onChangeEmail;
+  final VoidCallback onUnlinkGoogle;
+  final VoidCallback onUnlinkEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -721,6 +1036,28 @@ class _SignedInCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(color: AurelColors.muted, fontSize: 11),
           ),
+          if (emailLinked) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  user.emailVerified ? Icons.verified_rounded : Icons.info_outline_rounded,
+                  color: user.emailVerified ? AurelColors.champagneLight : const Color(0xFFE5B879),
+                  size: 16,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  user.emailVerified ? 'Email verified' : 'Email not verified',
+                  style: TextStyle(
+                    color: user.emailVerified ? AurelColors.champagneLight : const Color(0xFFE5B879),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 18),
           TextField(
             controller: usernameController,
@@ -758,6 +1095,16 @@ class _SignedInCard extends StatelessWidget {
               onPressed: busy ? null : onLinkGoogle,
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text('Link Google'),
+            )
+          else if (googleLinked && emailLinked)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: busy ? null : onUnlinkGoogle,
+                icon: const Icon(Icons.link_off_rounded, size: 17),
+                label: const Text('Disconnect Google'),
+                style: TextButton.styleFrom(foregroundColor: AurelColors.muted),
+              ),
             ),
           _ProviderStatus(
             icon: Icons.mail_outline_rounded,
@@ -769,14 +1116,49 @@ class _SignedInCard extends StatelessWidget {
               onPressed: busy ? null : onLinkEmail,
               icon: const Icon(Icons.add_rounded, size: 18),
               label: const Text('Link email'),
+            )
+          else if (googleLinked)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: busy ? null : onUnlinkEmail,
+                icon: const Icon(Icons.link_off_rounded, size: 17),
+                label: const Text('Disconnect email'),
+                style: TextButton.styleFrom(foregroundColor: AurelColors.muted),
+              ),
             ),
           if (emailLinked && user.emailVerified == false) ...[
             const SizedBox(height: 6),
             TextButton(
               onPressed: busy ? null : onVerifyEmail,
-              child: const Text('Send email verification'),
+              child: const Text('Resend verification email'),
             ),
           ],
+          const SizedBox(height: 18),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'ACCOUNT SECURITY',
+              style: TextStyle(
+                color: AurelColors.champagne,
+                fontSize: 10,
+                letterSpacing: 1.4,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          OutlinedButton.icon(
+            onPressed: busy ? null : onChangeEmail,
+            icon: const Icon(Icons.alternate_email_rounded, size: 18),
+            label: const Text('Change email address'),
+          ),
+          if (emailLinked)
+            OutlinedButton.icon(
+              onPressed: busy ? null : onChangePassword,
+              icon: const Icon(Icons.lock_reset_rounded, size: 18),
+              label: const Text('Change password'),
+            ),
           const SizedBox(height: 14),
           SizedBox(
             height: 47,
@@ -788,8 +1170,8 @@ class _SignedInCard extends StatelessWidget {
           ),
           const SizedBox(height: 9),
           TextButton(
-            onPressed: busy ? null : onRefreshUsername,
-            child: const Text('Refresh account details'),
+            onPressed: busy ? null : onRefreshAccount,
+            child: const Text('Refresh account & verification status'),
           ),
           TextButton(
             onPressed: busy ? null : onSignOut,

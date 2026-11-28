@@ -1,0 +1,143 @@
+import 'package:aurel/data/catalog/artist_catalog.dart';
+import 'package:aurel/data/models/track.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+Track track({
+  required String id,
+  String artist = 'Aurel Artist',
+  String album = '',
+  String title = 'Song',
+  String provider = 'jamendo',
+  String artwork = '',
+  String stream = 'https://audio.example/song.mp3',
+}) =>
+    Track(
+      id: id,
+      title: title,
+      artist: artist,
+      album: album,
+      providerId: provider,
+      artworkUrl: artwork,
+      streamUrl: stream,
+    );
+
+void main() {
+  group('ArtistCatalog.tracksForArtist', () {
+    test('matches normalized artist credits but excludes other artists', () {
+      final result = ArtistCatalog.tracksForArtist(
+        '  AUREL   ARTIST ',
+        [
+          track(id: 'one'),
+          track(id: 'two', artist: 'Other Artist'),
+          track(id: 'three', artist: 'aurel artist'),
+        ],
+      );
+
+      expect(result.map((item) => item.id), containsAll(['one', 'three']));
+      expect(result, hasLength(2));
+    });
+
+    test('removes duplicate provider records without merging other sources', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(id: 'same', title: 'First copy'),
+          track(id: 'same', title: 'Duplicate copy'),
+          track(id: 'same', provider: 'audius', title: 'Independent provider copy'),
+        ],
+      );
+
+      expect(result, hasLength(2));
+      expect(
+        result.map((item) => '${item.providerId}:${item.id}').toSet(),
+        {'jamendo:same', 'audius:same'},
+      );
+    });
+
+    test('keeps distinct tracks when a provider omits stable IDs', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(id: '', title: 'Opening', album: 'No IDs'),
+          track(id: '', title: 'Closing', album: 'No IDs'),
+        ],
+      );
+
+      expect(result, hasLength(2));
+    });
+
+    test('returns an immutable empty result for a blank artist', () {
+      expect(ArtistCatalog.tracksForArtist('   ', const []), isEmpty);
+    });
+
+    test('does not create matches from empty or unrelated artist metadata', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(id: 'blank', artist: ''),
+          track(id: 'other', artist: 'Aurel Artists'),
+        ],
+      );
+
+      expect(result, isEmpty);
+    });
+  });
+
+  group('ArtistCatalog.albumsForTracks', () {
+    test('groups normalized album titles and excludes singles', () {
+      final albums = ArtistCatalog.albumsForTracks([
+        track(id: 'one', album: 'First Light'),
+        track(id: 'two', album: ' first   light '),
+        track(id: 'three', album: ''),
+        track(id: 'four', album: 'Second Dawn'),
+      ]);
+
+      expect(albums, hasLength(2));
+      expect(albums.map((album) => album.title), ['First Light', 'Second Dawn']);
+      expect(albums.first.trackCount, 2);
+      expect(albums.last.trackCount, 1);
+    });
+
+    test('keeps same track IDs from different providers distinct', () {
+      final albums = ArtistCatalog.albumsForTracks([
+        track(id: 'shared', album: 'One Album'),
+        track(id: 'shared', provider: 'audius', album: 'One Album'),
+      ]);
+
+      expect(albums.single.trackCount, 2);
+    });
+
+    test('does not collapse different songs with missing IDs', () {
+      final albums = ArtistCatalog.albumsForTracks([
+        track(id: '', title: 'Opening', album: 'No IDs'),
+        track(id: '', title: 'Closing', album: 'No IDs'),
+      ]);
+
+      expect(albums.single.trackCount, 2);
+    });
+
+    test('uses the first available album artwork', () {
+      final albums = ArtistCatalog.albumsForTracks([
+        track(id: 'without-art', album: 'One Album'),
+        track(
+          id: 'with-art',
+          album: 'One Album',
+          artwork: 'https://images.example/cover.jpg',
+        ),
+      ]);
+
+      expect(albums.single.artworkUrl, 'https://images.example/cover.jpg');
+    });
+
+    test('returns album groups with immutable track collections', () {
+      final albums = ArtistCatalog.albumsForTracks([
+        track(id: 'one', album: 'One Album'),
+      ]);
+
+      expect(
+        () => albums.single.tracks.add(track(id: 'two', album: 'One Album')),
+        throwsUnsupportedError,
+      );
+    });
+  });
+}

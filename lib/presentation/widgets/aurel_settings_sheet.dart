@@ -159,7 +159,7 @@ class _AurelSettingsSheetState extends State<AurelSettingsSheet> {
                         ),
                         SizedBox(height: 3),
                         Text(
-                          'Play music saved inside AUREL without a connection.',
+                          'Play AUREL downloads and audio available on this device without a connection.',
                           style: TextStyle(
                             color: AurelColors.muted,
                             fontSize: 11,

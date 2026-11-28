@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../models/track.dart';
 import 'catalog_identity.dart';
+import 'catalog_ranking.dart';
 import 'providers/apple_music_catalog_service.dart';
 import 'providers/audius_service.dart';
 import 'providers/jamendo_service.dart';
@@ -11,6 +12,8 @@ import 'providers/soundcloud_service.dart';
 import 'providers/spotify_catalog_service.dart';
 import 'providers/wikimedia_commons_service.dart';
 import 'providers/music_brainz_service.dart';
+import 'providers/lastfm_catalog_service.dart';
+import 'providers/listenbrainz_catalog_service.dart';
 
 class CatalogPage {
   const CatalogPage({
@@ -37,6 +40,8 @@ class MusicCatalogService {
     required this.internetArchive,
     required this.wikimediaCommons,
     required this.musicBrainz,
+    required this.lastFm,
+    required this.listenBrainz,
   });
 
   final JamendoService jamendo;
@@ -48,25 +53,60 @@ class MusicCatalogService {
   final InternetArchiveService internetArchive;
   final WikimediaCommonsService wikimediaCommons;
   final MusicBrainzService musicBrainz;
+  final LastFmCatalogService lastFm;
+  final ListenBrainzCatalogService listenBrainz;
 
   static const pageSize = 30;
 
-  /// AUREL's internal source order. These values are never shown in the UI.
-  /// Local files always win; metadata-only catalogues are fallback metadata,
-  /// never playback candidates.
-  static const _providerRank = <String, int>{
-    'device': 120,
-    'local': 120,
-    'audius': 100,
-    'jamendo': 90,
-    'soundcloud': 80,
-    'internet_archive': 65,
-    'wikimedia_commons': 60,
-    'openverse': 55,
-    'apple_music': 20,
-    'spotify': 15,
-    'musicbrainz': 5,
-  };
+  // Search text fields can emit several near-identical requests while the
+  // user is typing. A short in-memory cache avoids repeated provider fan-out.
+  final Map<String, _CatalogCacheEntry> _pageCache = {};
+
+  CatalogPage? _readCache(String key, CancelToken? cancelToken) {
+    if (cancelToken?.isCancelled ?? false) {
+      throw DioException(
+        requestOptions: RequestOptions(path: 'catalog-cache'),
+        type: DioExceptionType.cancel,
+        message: 'Catalogue request cancelled.',
+      );
+    }
+    final entry = _pageCache[key];
+    if (entry == null) return null;
+    if (!entry.expiresAt.isAfter(DateTime.now())) {
+      _pageCache.remove(key);
+      return null;
+    }
+    return entry.page;
+  }
+
+  /// Drops cached pages after credentials or provider configuration change.
+  void clearCache() => _pageCache.clear();
+
+  void _writeCache(String key, CatalogPage page) {
+    // Last.fm's API licence sets a strict data-storage cap and requires
+    // caching to respect its response headers. Do not place Last.fm records
+    // (including merged alternatives) in AUREL's generic catalogue cache.
+    final containsLastFmData = page.tracks.any(
+      (track) =>
+          track.providerId == 'lastfm' ||
+          track.alternatives.any(
+            (alternative) => alternative.providerId == 'lastfm',
+          ),
+    );
+    if (containsLastFmData) return;
+
+    // Bound the cache so long sessions cannot accumulate unbounded results.
+    if (_pageCache.length >= 30 && !_pageCache.containsKey(key)) {
+      _pageCache.remove(_pageCache.keys.first);
+    }
+    final lifetime = page.sourceErrors.isEmpty
+        ? const Duration(minutes: 4)
+        : const Duration(seconds: 30);
+    _pageCache[key] = _CatalogCacheEntry(
+      page,
+      DateTime.now().add(lifetime),
+    );
+  }
 
   Future<CatalogPage> search(
     String query, {
@@ -82,6 +122,10 @@ class MusicCatalogService {
         sourceErrors: {},
       );
     }
+    final cacheKey = 'search:${normalized.toLowerCase()}:$page';
+    final cached = _readCache(cacheKey, cancelToken);
+    if (cached != null) return cached;
+
     final offset = page * pageSize;
     final collected = await _collect([
       _SourceRequest(
@@ -147,6 +191,26 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
+      if (lastFm.isConfigured)
+        _SourceRequest(
+          'Last.fm discovery',
+          () => lastFm.search(
+            normalized,
+            limit: pageSize,
+            page: page + 1,
+            cancelToken: cancelToken,
+          ),
+        ),
+      if (lastFm.isConfigured)
+        _SourceRequest(
+          'Last.fm artist catalogue',
+          () => lastFm.searchArtistTopTracks(
+            normalized,
+            limit: pageSize,
+            page: page + 1,
+            cancelToken: cancelToken,
+          ),
+        ),
       _SourceRequest(
         'Recording metadata',
         () => musicBrainz.search(
@@ -156,21 +220,28 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
+      _SourceRequest(
+        'Open audio',
+        () => wikimediaCommons.search(
+          normalized,
+          page: page,
+          cancelToken: cancelToken,
+        ),
+      ),
     ]);
-    final commons = await _collectCommons(
-      normalized,
-      page: page,
-      cancelToken: cancelToken,
-    );
-    return _buildPage(
-      _CollectedSources({...collected.sources, 'Open audio': commons}),
-    );
+    final result = _buildPage(collected);
+    _writeCache(cacheKey, result);
+    return result;
   }
 
   Future<CatalogPage> discover({
     int page = 0,
     CancelToken? cancelToken,
   }) async {
+    final cacheKey = 'discover:$page';
+    final cached = _readCache(cacheKey, cancelToken);
+    if (cached != null) return cached;
+
     final offset = page * pageSize;
     final collected = await _collect([
       _SourceRequest(
@@ -216,44 +287,35 @@ class MusicCatalogService {
           cancelToken: cancelToken,
         ),
       ),
+      _SourceRequest(
+        'ListenBrainz global charts',
+        () => listenBrainz.sitewideTopRecordings(
+          count: pageSize,
+          offset: offset,
+          cancelToken: cancelToken,
+        ),
+      ),
+      if (lastFm.isConfigured)
+        _SourceRequest(
+          'Last.fm charts',
+          () => lastFm.topTracks(
+            limit: pageSize,
+            page: page + 1,
+            cancelToken: cancelToken,
+          ),
+        ),
+      _SourceRequest(
+        'Open audio',
+        () => wikimediaCommons.search(
+          'instrumental music',
+          page: page,
+          cancelToken: cancelToken,
+        ),
+      ),
     ]);
-    final commons = await _collectCommons(
-      'instrumental music',
-      page: page,
-      cancelToken: cancelToken,
-    );
-    return _buildPage(
-      _CollectedSources({...collected.sources, 'Open audio': commons}),
-    );
-  }
-
-  Future<_SourceResult> _collectCommons(
-    String query, {
-    required int page,
-    CancelToken? cancelToken,
-  }) async {
-    if (cancelToken?.isCancelled ?? false) {
-      throw DioException(
-        requestOptions: RequestOptions(path: 'commons-search'),
-        type: DioExceptionType.cancel,
-        message: 'Open audio search cancelled.',
-      );
-    }
-    try {
-      final tracks = await wikimediaCommons.search(
-        query,
-        page: page,
-        cancelToken: cancelToken,
-      );
-      return _SourceResult.success(tracks);
-    } catch (error) {
-      if (error is DioException && error.type == DioExceptionType.cancel) {
-        rethrow;
-      }
-      return _SourceResult.failure(
-        error.toString().replaceFirst('Exception: ', ''),
-      );
-    }
+    final result = _buildPage(collected);
+    _writeCache(cacheKey, result);
+    return result;
   }
 
   Future<List<Track>> prepareQueue(
@@ -262,44 +324,119 @@ class MusicCatalogService {
   }) async {
     final output = <Track>[];
     for (final track in tracks) {
-      if (!track.canPlay) continue;
+      final hasPlayableAlternative = track.alternatives.any(
+        (alternative) => alternative.canPlay,
+      );
+      if (!track.canPlay && !hasPlayableAlternative) continue;
       try {
         output.add(await prepareTrack(track));
       } catch (_) {
-        // An unavailable provider entry must not block other playable
-        // providers in the queue. The specifically selected track is strict.
+        // An unavailable recording must not block the rest of the queue.
+        // The specifically selected track remains strict and reports failure.
         if (track.id == requiredTrackId) rethrow;
       }
     }
     return output;
   }
 
+  /// Tries same-recording copies in AUREL priority order. Alternatives were
+  /// grouped by recording identity before this method is called, so fallback
+  /// can never silently switch to a different song, remix or live version.
   Future<Track> prepareTrack(Track track) async {
-    if (!track.canPlay) {
-      throw const CatalogPlaybackException(
-        'This recording is listed in the AUREL catalogue, but an '
-        'authorized in-app audio stream is not available.',
+    // AUREL-managed downloads are already authorized local files. Never ask
+    // an online provider for a token while playing a saved offline copy.
+    if (track.isLocal && track.canPlay) return track;
+
+    final candidates = <Track>[
+      track,
+      ...track.alternatives,
+    ].where((candidate) => candidate.canPlay);
+
+    Object? lastError;
+    final attemptedSources = <String>{};
+    for (final candidate in candidates) {
+      final sourceKey = CatalogIdentity.providerKeyOf(candidate);
+      if (!attemptedSources.add(sourceKey)) continue;
+
+      try {
+        final prepared = candidate.isLocal && candidate.canPlay
+            ? candidate
+            : candidate.providerId == 'soundcloud'
+                ? await soundcloud.prepareForPlayback(candidate)
+                : candidate;
+        final preparedSourceKey = CatalogIdentity.providerKeyOf(prepared);
+
+        // Only remove the source that was prepared successfully. Sources that
+        // failed authorization remain attached as possible playback fallbacks.
+        final remaining = track.alternatives
+            .where(
+              (alternative) =>
+                  CatalogIdentity.providerKeyOf(alternative) != preparedSourceKey,
+            )
+            .toList(growable: false);
+        return prepared.copyWith(
+          id: track.id,
+          alternatives: remaining,
+        );
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError != null) {
+      throw CatalogPlaybackException(
+        'The preferred source and its eligible alternatives could not '
+        'prepare this recording: $lastError',
       );
     }
-    if (track.providerId == 'soundcloud') {
-      return soundcloud.prepareForPlayback(track);
-    }
-    return track;
+    throw const CatalogPlaybackException(
+      'This recording is listed in the AUREL catalogue, but an '
+      'authorized in-app audio stream is not available.',
+    );
   }
 
   /// Prepares authorization for an allowed offline copy independently of
   /// streaming eligibility. Some providers permit downloads for tracks that
   /// are not available as live streams.
   Future<Track> prepareTrackForDownload(Track track) async {
-    if (!track.downloadAllowed || track.downloadUrl.trim().isEmpty) {
-      throw const CatalogPlaybackException(
-        'Offline download is not permitted for this recording.',
+    final candidates = <Track>[
+      track,
+      ...track.alternatives,
+    ].where((candidate) => candidate.canDownloadDirectly);
+
+    Object? lastError;
+    final attemptedSources = <String>{};
+    for (final candidate in candidates) {
+      final sourceKey = CatalogIdentity.providerKeyOf(candidate);
+      if (!attemptedSources.add(sourceKey)) continue;
+      try {
+        final prepared = candidate.providerId == 'soundcloud'
+            ? await soundcloud.prepareForDownload(candidate)
+            : candidate;
+        final preparedSourceKey = CatalogIdentity.providerKeyOf(prepared);
+        final remaining = track.alternatives
+            .where(
+              (alternative) =>
+                  CatalogIdentity.providerKeyOf(alternative) != preparedSourceKey,
+            )
+            .toList(growable: false);
+        return prepared.copyWith(
+          id: track.id,
+          alternatives: remaining,
+        );
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError != null) {
+      throw CatalogPlaybackException(
+        'No permitted download source could prepare this recording: $lastError',
       );
     }
-    if (track.providerId == 'soundcloud') {
-      return soundcloud.prepareForDownload(track);
-    }
-    return track;
+    throw const CatalogPlaybackException(
+      'Offline download is not permitted for this recording.',
+    );
   }
 
   Future<_CollectedSources> _collect(
@@ -347,9 +484,9 @@ class MusicCatalogService {
 
     final ranked = <Track>[];
     for (final group in groups) {
-      final best = [...group]..sort(_compareTracks);
+      final best = [...group]..sort(CatalogRanking.compare);
       final selected = best.first;
-      final sources = group
+      final sources = best
           .map((track) => track.providerName)
           .toSet()
           .toList(growable: false);
@@ -380,6 +517,12 @@ class MusicCatalogService {
             orElse: () => selected,
           )
           .recordingId;
+      final recordingMbid = best
+          .firstWhere(
+            (track) => track.recordingMbid.trim().isNotEmpty,
+            orElse: () => selected,
+          )
+          .recordingMbid;
 
       ranked.add(
         selected.copyWith(
@@ -393,7 +536,11 @@ class MusicCatalogService {
           recordingId: selected.recordingId.trim().isEmpty
               ? recordingId
               : selected.recordingId,
+          recordingMbid: selected.recordingMbid.trim().isEmpty
+              ? recordingMbid
+              : selected.recordingMbid,
           matchedSources: sources,
+          alternatives: best.skip(1).toList(growable: false),
         ),
       );
     }
@@ -402,8 +549,8 @@ class MusicCatalogService {
     final playable = ranked.where((track) => track.canPlay).toList();
     final metadataOnly = ranked.where((track) => !track.canPlay).toList();
 
-    // Playable matches are always preferred. Metadata-only Spotify/Apple
-    // results remain discoverable when there is no eligible in-app copy.
+    // Playable matches are always preferred. Commercial and community
+    // metadata indexes remain discoverable without inventing an audio stream.
     final ordered = [...playable, ...metadataOnly];
     final pageThresholds = <String, int>{
       'Jamendo': pageSize,
@@ -415,6 +562,10 @@ class MusicCatalogService {
       'Internet Archive': 12,
       'Open audio': 20,
       'Recording metadata': 25,
+      'Last.fm discovery': pageSize,
+      'Last.fm artist catalogue': pageSize,
+      'Last.fm charts': pageSize,
+      'ListenBrainz global charts': pageSize,
     };
     final hasMore = results.sources.entries.any(
       (entry) =>
@@ -430,32 +581,8 @@ class MusicCatalogService {
     );
   }
 
-  int _compareTracks(Track a, Track b) {
-    // Never let a metadata-only catalogue outrank a playable recording.
-    final playableCompare = (b.canPlay ? 1 : 0).compareTo(a.canPlay ? 1 : 0);
-    if (playableCompare != 0) return playableCompare;
-
-    // Prefer a verified recording identity, then richer artwork and duration
-    // metadata, before applying AUREL's deterministic provider preference.
-    final aHasIsrc = a.recordingId.trim().isNotEmpty ? 1 : 0;
-    final bHasIsrc = b.recordingId.trim().isNotEmpty ? 1 : 0;
-    final isrcCompare = bHasIsrc.compareTo(aHasIsrc);
-    if (isrcCompare != 0) return isrcCompare;
-
-    final aHasArtwork = a.artworkUrl.trim().isNotEmpty ? 1 : 0;
-    final bHasArtwork = b.artworkUrl.trim().isNotEmpty ? 1 : 0;
-    final artworkCompare = bHasArtwork.compareTo(aHasArtwork);
-    if (artworkCompare != 0) return artworkCompare;
-
-    final aHasDuration = a.durationMs > 0 ? 1 : 0;
-    final bHasDuration = b.durationMs > 0 ? 1 : 0;
-    final durationCompare = bHasDuration.compareTo(aHasDuration);
-    if (durationCompare != 0) return durationCompare;
-
-    final aRank = _providerRank[a.providerId] ?? 0;
-    final bRank = _providerRank[b.providerId] ?? 0;
-    return bRank.compareTo(aRank);
-  }
+  int _compareTracks(Track a, Track b) =>
+      CatalogRanking.compare(a, b);
 }
 
 class CatalogPlaybackException implements Exception {
@@ -491,4 +618,12 @@ class _CollectedSources {
   const _CollectedSources(this.sources);
 
   final Map<String, _SourceResult> sources;
+}
+
+
+class _CatalogCacheEntry {
+  const _CatalogCacheEntry(this.page, this.expiresAt);
+
+  final CatalogPage page;
+  final DateTime expiresAt;
 }
