@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/aurel_theme.dart';
 import '../../data/services/aurel_controller.dart';
 import '../widgets/aurel_settings_sheet.dart';
+import 'account_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -174,6 +175,18 @@ class ProfileScreen extends StatelessWidget {
           title: 'Premium Features',
           subtitle: 'Free Forever',
           onTap: () => _showPremiumFeatures(context),
+        ),
+        _ProfileMenuItem(
+          icon: Icons.manage_accounts_outlined,
+          title: 'AUREL Account',
+          subtitle: user == null
+              ? 'Sign in or create an account • Optional'
+              : 'Manage your account and cloud sync',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const AccountScreen(),
+            ),
+          ),
         ),
         _ProfileMenuItem(
           icon: Icons.settings_outlined,
