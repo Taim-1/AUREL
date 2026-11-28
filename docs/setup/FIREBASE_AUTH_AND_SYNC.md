@@ -94,8 +94,11 @@ users/{uid}/library/favorites/items/{encodedTrackId}
   sortOrder
 
 users/{uid}/library/recentlyPlayed
-  tracks: [track metadata maps, newest first]
   updatedAt
+
+users/{uid}/library/recentlyPlayed/items/{encodedTrackId}
+  track
+  sortOrder
 
 users/{uid}/library/playlists/items/{encodedPlaylistId}
   playlist
@@ -103,6 +106,9 @@ users/{uid}/library/playlists/items/{encodedPlaylistId}
 ```
 
 The rules allow a signed-in user to read and write only documents underneath their own UID. Review the rules before production release and add App Check / abuse controls as appropriate.
+
+
+The recently played collection stores each track in its own document to avoid Firestore's 1 MiB per-document limit. Older builds may have stored a `tracks` array on the `recentlyPlayed` document; the current client reads that legacy format, migrates the list into `items`, and removes the old array only after the new item documents have been written successfully.
 
 ## Reinstall and account recovery behavior
 
