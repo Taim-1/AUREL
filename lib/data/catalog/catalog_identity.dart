@@ -53,6 +53,12 @@ class CatalogIdentity {
   /// Conflicting verified identifiers are a hard boundary. A weak metadata
   /// result must never bridge two groups that identify different recordings.
   static bool _hasIdentifierConflict(Track a, Track b) {
+    final aId = a.id.trim();
+    final bId = b.id.trim();
+    if (a.providerId == b.providerId && aId.isNotEmpty && aId == bId) {
+      return false;
+    }
+
     final aIsrc = _normalizeIsrc(a.recordingId);
     final bIsrc = _normalizeIsrc(b.recordingId);
     final bothHaveIsrc = aIsrc.isNotEmpty && bIsrc.isNotEmpty;
