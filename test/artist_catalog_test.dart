@@ -10,6 +10,7 @@ Track track({
   String provider = 'jamendo',
   String artwork = '',
   String stream = 'https://audio.example/song.mp3',
+  String recordingId = '',
 }) =>
     Track(
       id: id,
@@ -18,6 +19,7 @@ Track track({
       album: album,
       providerId: provider,
       artworkUrl: artwork,
+      recordingId: recordingId,
       streamUrl: stream,
     );
 
@@ -52,6 +54,70 @@ void main() {
         result.map((item) => '${item.providerId}:${item.id}').toSet(),
         {'jamendo:same', 'audius:same'},
       );
+    });
+
+    test('includes a recording when an alternate catalogue has the artist credit', () {
+      final primary = track(
+        id: 'audius-1',
+        provider: 'audius',
+        artist: 'Different spelling',
+      ).copyWith(
+        alternatives: [
+          track(
+            id: 'musicbrainz-1',
+            provider: 'musicbrainz',
+            artist: 'Aurel Artist',
+            stream: '',
+          ),
+        ],
+      );
+
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [primary],
+      );
+
+      expect(result, hasLength(1));
+      expect(result.single.id, 'audius-1');
+      expect(result.single.alternatives.single.artist, 'Aurel Artist');
+    });
+
+    test('matches a complete featured artist credit', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Guest Artist',
+        [
+          track(
+            id: 'featured',
+            artist: 'Aurel Artist feat. Guest Artist',
+          ),
+          track(id: 'unrelated', artist: 'Guest Artists United'),
+        ],
+      );
+
+      expect(result.map((item) => item.id), ['featured']);
+    });
+
+    test('merges verified cross-provider copies into one artist result', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(
+            id: 'jamendo-1',
+            provider: 'jamendo',
+            recordingId: 'USABC2600001',
+          ),
+          track(
+            id: 'audius-1',
+            provider: 'audius',
+            recordingId: 'US-ABC-26-00001',
+          ),
+        ],
+      );
+
+      expect(result, hasLength(1));
+      expect(result.single.providerId, 'audius');
+      expect(result.single.alternatives, hasLength(1));
+      expect(result.single.alternatives.single.providerId, 'jamendo');
     });
 
     test('keeps distinct tracks when a provider omits stable IDs', () {
