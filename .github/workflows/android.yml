@@ -74,7 +74,7 @@ jobs:
             keytool -genkeypair -v \
               -keystore "$debug_keystore" \
               -storepass android \
-              -alias androiddebugkey \
+              -alias AndroidDebugKey \
               -keypass android \
               -keyalg RSA \
               -keysize 2048 \
