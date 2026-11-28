@@ -92,7 +92,14 @@ jobs:
             echo "Add this fingerprint under Firebase Project settings → Your apps → AUREL Android → SHA certificate fingerprints."
             echo
             echo "This is the temporary GitHub Actions debug certificate. A separately signed release build will have its own fingerprint."
+            if [[ -n "${AUREL_GOOGLE_SERVER_CLIENT_ID:-}" ]]; then
+              echo "**Google OAuth Web client ID:** configured"
+            else
+              echo "**Google OAuth Web client ID:** missing"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::notice title=Firebase Android debug SHA-1::$debug_sha1"
 
       - name: Save stable CI debug signing key
         if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
