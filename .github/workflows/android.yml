@@ -191,7 +191,7 @@ jobs:
             git diff --name-only "$base_sha" "$GITHUB_SHA" |
               while IFS= read -r file; do
                 case "$file" in
-                  lib/*.dart|test/*.dart) printf '%s\\n' "$file" ;;
+                  lib/*.dart|test/*.dart) echo "$file" ;;
                 esac
               done
           )
