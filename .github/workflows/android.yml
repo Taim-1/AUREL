@@ -53,6 +53,13 @@ jobs:
       - name: Resolve dependencies
         run: flutter pub get
 
+      - name: Restore stable CI debug signing key
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: aurel-ci-debug-keystore-v1
+
       - name: Report Android signing fingerprints for Firebase OAuth
         working-directory: android
         timeout-minutes: 5
@@ -86,6 +93,13 @@ jobs:
             echo
             echo "This is the temporary GitHub Actions debug certificate. A separately signed release build will have its own fingerprint."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save stable CI debug signing key
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: aurel-ci-debug-keystore-v1
 
       - name: Generate AUREL launcher icons
         run: dart run flutter_launcher_icons
