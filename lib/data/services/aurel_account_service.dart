@@ -48,6 +48,7 @@ class AurelAccountService {
   bool _firebaseReady = false;
   bool _googleReady = false;
   String? initializationError;
+  String? googleInitializationError;
   String userName = 'Music Lover';
 
   bool get isConfigured => _firebaseReady && _auth != null && _firestore != null;
@@ -90,12 +91,21 @@ class AurelAccountService {
       _firestore = FirebaseFirestore.instance;
       _firebaseReady = true;
 
+      googleInitializationError = null;
       if (_googleServerClientId.isNotEmpty) {
-        _googleSignIn = GoogleSignIn.instance;
-        await _googleSignIn!.initialize(
-          serverClientId: _googleServerClientId,
-        );
-        _googleReady = true;
+        try {
+          _googleSignIn = GoogleSignIn.instance;
+          await _googleSignIn!.initialize(
+            serverClientId: _googleServerClientId,
+          );
+          _googleReady = true;
+        } catch (error) {
+          // Google OAuth is optional: a provider setup issue must not disable
+          // Firebase email/password authentication for the whole account.
+          _googleReady = false;
+          googleInitializationError = error.toString();
+          debugPrint('AUREL Google Sign-In initialization failed: $error');
+        }
       }
 
       if (currentUser != null) {
@@ -150,11 +160,28 @@ class AurelAccountService {
     required String username,
   }) async {
     _requireConfigured();
+    final normalizedUsername =
+        username.trim().replaceAll(RegExp(r'\\s+'), ' ');
+    if (normalizedUsername.length < 2 || normalizedUsername.length > 24) {
+      throw const FormatException(
+        'Choose a username between 2 and 24 characters.',
+      );
+    }
+
     final result = await _auth!.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
-    await setUserName(username);
+
+    // The Firebase Auth account is already created at this point. Keep the
+    // account usable and send verification even if Firestore has not been
+    // created or its rules have not yet been deployed.
+    try {
+      await setUserName(normalizedUsername);
+    } catch (error) {
+      debugPrint('AUREL username cloud save deferred: $error');
+    }
+
     await result.user?.sendEmailVerification();
     return result;
   }
