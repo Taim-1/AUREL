@@ -120,6 +120,78 @@ void main() {
       expect(result.single.alternatives.single.providerId, 'jamendo');
     });
 
+    test('shows only standard versions on artist pages', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(id: 'standard', title: 'Blue Hour'),
+          track(id: 'live', title: 'Blue Hour (Live at Wembley)'),
+          track(id: 'remix', title: 'Blue Hour - Remix'),
+          track(id: 'acoustic', title: 'Blue Hour [Acoustic Version]'),
+          track(id: 'slowed', title: 'Blue Hour (Slowed + Reverb)'),
+          track(id: 'sped', title: 'Blue Hour - Sped Up'),
+          track(id: 'karaoke', title: 'Blue Hour (Karaoke)'),
+          track(id: 'cover', title: 'Blue Hour - Cover'),
+          track(id: 'demo', title: 'Blue Hour (Demo)'),
+        ],
+      );
+
+      expect(result.map((item) => item.id), ['standard']);
+    });
+
+    test('excludes live and remix albums from artist discographies', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(id: 'studio', album: 'First Light'),
+          track(id: 'live-album', album: 'Live at Wembley'),
+          track(id: 'unplugged', album: 'MTV Unplugged'),
+          track(id: 'remixes', album: 'The Remixes'),
+          track(id: 'sessions', album: 'Acoustic Sessions'),
+        ],
+      );
+
+      expect(result.map((item) => item.id), ['studio']);
+    });
+
+    test('does not reject an ordinary title containing the word live', () {
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [
+          track(id: 'live-title', title: 'Live Your Life'),
+          track(id: 'live-suffix', title: 'A Life - Live'),
+        ],
+      );
+
+      expect(result.map((item) => item.id), ['live-title']);
+    });
+
+    test('keeps the original version when a merged result also has a remix', () {
+      final original = track(
+        id: 'original',
+        title: 'Blue Hour',
+        recordingId: 'USABC2600001',
+      ).copyWith(
+        alternatives: [
+          track(
+            id: 'remix',
+            title: 'Blue Hour (Remix)',
+            recordingId: 'USABC2600001',
+            provider: 'audius',
+          ),
+        ],
+      );
+
+      final result = ArtistCatalog.tracksForArtist(
+        'Aurel Artist',
+        [original],
+      );
+
+      expect(result, hasLength(1));
+      expect(result.single.id, 'original');
+      expect(result.single.alternatives, isEmpty);
+    });
+
     test('keeps distinct tracks when a provider omits stable IDs', () {
       final result = ArtistCatalog.tracksForArtist(
         'Aurel Artist',
