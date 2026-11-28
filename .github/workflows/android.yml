@@ -187,7 +187,19 @@ jobs:
           if [[ -z "$base_sha" || "$base_sha" =~ ^0+$ ]]; then
             base_sha="$(git rev-parse HEAD^)"
           fi
-          mapfile -t dart_files < <(git diff --name-only "$base_sha" "$GITHUB_SHA" | grep -E '^(lib|test)/.*\\.dart
+          mapfile -t dart_files < <(
+            git diff --name-only "$base_sha" "$GITHUB_SHA" |
+              while IFS= read -r file; do
+                case "$file" in
+                  lib/*.dart|test/*.dart) printf '%s\\n' "$file" ;;
+                esac
+              done
+          )
+          if (( ${#dart_files[@]} > 0 )); then
+            dart format --output=none --set-exit-if-changed "${dart_files[@]}"
+          else
+            echo "No Dart source or test files changed; formatting baseline is unchanged."
+          fi
 
       - name: Analyze
         run: flutter analyze
