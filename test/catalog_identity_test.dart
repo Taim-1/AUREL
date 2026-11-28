@@ -214,6 +214,22 @@ void main() {
       );
     });
 
+    test('same provider track ID remains authoritative despite metadata conflicts', () {
+      final first = recording(
+        id: 'jamendo-42',
+        provider: 'jamendo',
+        isrc: 'USABC2600001',
+      );
+      final duplicate = recording(
+        id: 'jamendo-42',
+        provider: 'jamendo',
+        isrc: 'USABC2600002',
+      );
+
+      expect(CatalogIdentity.matches(first, duplicate), isTrue);
+      expect(CatalogIdentity.group([first, duplicate]), hasLength(1));
+    });
+
     test('matches the same provider track ID without metadata', () {
       final first = recording(
         id: 'jamendo-42',
