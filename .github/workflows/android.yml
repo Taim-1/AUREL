@@ -50,12 +50,13 @@ jobs:
       - name: Generate Android project and apply AUREL platform files
         run: bash tool/bootstrap_android.sh
 
-      - name: Report Android signing fingerprints for Firebase OAuth
-        working-directory: android
-        run: ./gradlew :app:signingReport
-
       - name: Resolve dependencies
         run: flutter pub get
+
+      - name: Report Android signing fingerprints for Firebase OAuth
+        working-directory: android
+        timeout-minutes: 5
+        run: ./gradlew :app:signingReport --no-daemon --console=plain
 
       - name: Generate AUREL launcher icons
         run: dart run flutter_launcher_icons
