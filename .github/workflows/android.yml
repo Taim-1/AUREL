@@ -67,6 +67,21 @@ jobs:
         run: |
           set -euo pipefail
           report_file="$RUNNER_TEMP/aurel-signing-report.txt"
+          debug_keystore="$HOME/.android/debug.keystore"
+
+          mkdir -p "$(dirname "$debug_keystore")"
+          if [[ ! -f "$debug_keystore" ]]; then
+            keytool -genkeypair -v \
+              -keystore "$debug_keystore" \
+              -storepass android \
+              -alias AndroidDebugKey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
           ./gradlew :app:signingReport --no-daemon --console=plain | tee "$report_file"
 
           debug_sha1="$(awk '
