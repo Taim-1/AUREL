@@ -390,12 +390,6 @@ class AurelAccountService {
       remoteFavorites,
     );
     await saveCloudRecentlyPlayed(recentlyPlayed);
-    // Migrate the previous per-track history collection after the compact
-    // history document has been written successfully.
-    await _replaceTrackCollection(
-      library.doc('recentlyPlayed').collection('items'),
-      const [],
-    );
     await _replacePlaylistCollection(
       library.doc('playlists').collection('items'),
       remotePlaylists,
@@ -415,16 +409,22 @@ class AurelAccountService {
     final remoteHistory = tracks
         .where((track) => !track.isDeviceTrack && track.id.isNotEmpty)
         .take(100)
-        .map(_trackForCloud)
         .toList(growable: false);
 
-    await firestore
+    final historyDocument = firestore
         .collection('users')
         .doc(user.uid)
         .collection('library')
-        .doc('recentlyPlayed')
-        .set({
-      'tracks': remoteHistory,
+        .doc('recentlyPlayed');
+
+    // Keep each recording in its own document. A single array containing
+    // 100 complete track records can exceed Firestore's 1 MiB document limit.
+    await _replaceTrackCollection(
+      historyDocument.collection('items'),
+      remoteHistory,
+    );
+    await historyDocument.set({
+      'tracks': FieldValue.delete(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
