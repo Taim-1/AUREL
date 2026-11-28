@@ -152,19 +152,46 @@ void main() {
       expect(groups[2], [ambiguous]);
     });
 
-    test('groups one matching recording across catalogues', () {
-      final first = recording(id: 'first', duration: 200000);
+    test('does not let an ambiguous first result bridge conflicting IDs', () {
+      final first = recording(
+        id: 'first',
+        isrc: 'USABC2600001',
+        duration: 200000,
+      );
       final second = recording(
         id: 'second',
-        title: 'blue hour',
-        artist: 'AUREL ARTIST',
+        isrc: 'USABC2600002',
         duration: 204000,
       );
+      final ambiguous = recording(
+        id: 'ambiguous',
+        duration: 202000,
+      );
 
-      final groups = CatalogIdentity.group([first, second]);
+      final groups = CatalogIdentity.group([ambiguous, first, second]);
 
-      expect(groups, hasLength(1));
-      expect(groups.single, [first, second]);
+      expect(groups, hasLength(2));
+      expect(
+        groups.any((group) => group.contains(first) && group.contains(second)),
+        isFalse,
+      );
+    });
+
+    test('does not merge conflicting ISRCs even when the MBID agrees', () {
+      expect(
+        CatalogIdentity.matches(
+          recording(
+            mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+            isrc: 'USABC2600001',
+          ),
+          recording(
+            id: 'other',
+            mbid: '13dd61c7-ce73-4e97-9f0c-9f0e53144411',
+            isrc: 'USABC2600002',
+          ),
+        ),
+        isFalse,
+      );
     });
 
     test('does not merge when duration is missing', () {
@@ -186,7 +213,6 @@ void main() {
         isFalse,
       );
     });
-  });
 
     test('matches the same provider track ID without metadata', () {
       final first = recording(
@@ -253,5 +279,5 @@ void main() {
         isFalse,
       );
     });
-
+  });
 }
