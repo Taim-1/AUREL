@@ -23,6 +23,8 @@ import 'data/services/lyrics_service.dart';
 import 'data/catalog/providers/internet_archive_service.dart';
 import 'data/catalog/providers/wikimedia_commons_service.dart';
 import 'data/catalog/providers/music_brainz_service.dart';
+import 'data/catalog/providers/lastfm_catalog_service.dart';
+import 'data/catalog/providers/listenbrainz_catalog_service.dart';
 import 'data/services/playback_controller.dart';
 
 Future<void> main() async {
@@ -64,6 +66,8 @@ Future<void> main() async {
     internetArchive: InternetArchiveService(),
     wikimediaCommons: WikimediaCommonsService(),
     musicBrainz: MusicBrainzService(),
+    lastFm: LastFmCatalogService(),
+    listenBrainz: ListenBrainzCatalogService(),
   );
   final controller = AurelController(
     repository: repository,

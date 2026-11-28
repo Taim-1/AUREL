@@ -24,6 +24,7 @@ type TokenResult = {
 };
 
 const tokenCache = new Map<Provider, TokenResult>();
+const tokenRequests = new Map<Provider, Promise<TokenResult>>();
 const requestWindows = new Map<string, { start: number; count: number }>();
 
 type JsonErrorResponse = {
@@ -55,6 +56,14 @@ function enforceUserRateLimit(uid: string): boolean {
   const previous = requestWindows.get(uid);
 
   if (!previous || now - previous.start >= windowMs) {
+    // Keep the per-instance rate-limit table bounded during long-lived
+    // function instances that serve many distinct AUREL accounts.
+    if (requestWindows.size >= 10_000) {
+      for (const [key, window] of requestWindows) {
+        if (now - window.start >= windowMs) requestWindows.delete(key);
+      }
+      if (requestWindows.size >= 10_000) return false;
+    }
     requestWindows.set(uid, { start: now, count: 1 });
     return true;
   }
@@ -85,10 +94,8 @@ async function fetchFormToken(
   });
 
   if (!response.ok) {
-    const body = await response.text();
     console.error("Provider token exchange failed", {
       status: response.status,
-      body: body.slice(0, 300),
     });
     throw new Error("The provider rejected AUREL's server credentials.");
   }
@@ -164,10 +171,8 @@ async function openverseToken(): Promise<TokenResult> {
   );
 
   if (!response.ok) {
-    const body = await response.text();
     console.error("AUREL open-catalogue token exchange failed", {
       status: response.status,
-      body: body.slice(0, 300),
     });
     throw new Error("Additional catalogue authentication was rejected.");
   }
@@ -218,24 +223,35 @@ async function providerToken(provider: Provider): Promise<TokenResult> {
     return cached;
   }
 
-  let result: TokenResult;
-  switch (provider) {
-    case "spotify":
-      result = await spotifyToken();
-      break;
-    case "soundcloud":
-      result = await soundCloudToken();
-      break;
-    case "apple_music":
-      result = await appleMusicToken();
-      break;
-    case "openverse":
-      result = await openverseToken();
-      break;
-  }
+  // Several federated catalogue requests can ask for the same provider token
+  // at once. Share one exchange per provider instead of creating a burst of
+  // duplicate OAuth requests.
+  const inFlight = tokenRequests.get(provider);
+  if (inFlight) return inFlight;
 
-  tokenCache.set(provider, result);
-  return result;
+  const request = (async (): Promise<TokenResult> => {
+    switch (provider) {
+      case "spotify":
+        return spotifyToken();
+      case "soundcloud":
+        return soundCloudToken();
+      case "apple_music":
+        return appleMusicToken();
+      case "openverse":
+        return openverseToken();
+    }
+  })();
+
+  tokenRequests.set(provider, request);
+  try {
+    const result = await request;
+    tokenCache.set(provider, result);
+    return result;
+  } finally {
+    if (tokenRequests.get(provider) === request) {
+      tokenRequests.delete(provider);
+    }
+  }
 }
 
 export const catalogTokens = onRequest(
@@ -274,7 +290,7 @@ export const catalogTokens = onRequest(
 
     let uid: string;
     try {
-      const claims = await currentProjectAuth().verifyIdToken(match[1]);
+      const claims = await currentProjectAuth().verifyIdToken(match[1], true);
       uid = claims.uid;
     } catch {
       jsonError(response, 401, "Your AUREL session has expired. Sign in again.");

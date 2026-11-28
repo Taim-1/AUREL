@@ -1,10 +1,13 @@
 import 'dart:math' as math;
 
-// Paint must remain mutable because the active waveform assigns its shader.
+// Paint uses a fresh shader per frame to keep the Harmony spectrum smooth.
 // ignore_for_file: prefer_const_constructors
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/theme/aurel_theme.dart';
+
+/// A seekable champagne waveform with the Harmony visual style built in.
 class WaveformSeekBar extends StatefulWidget {
   const WaveformSeekBar({
     super.key,
@@ -25,37 +28,37 @@ class WaveformSeekBar extends StatefulWidget {
 
 class _WaveformSeekBarState extends State<WaveformSeekBar>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _glowController;
+  late final AnimationController _harmonyMotion;
 
   @override
   void initState() {
     super.initState();
-    _glowController = AnimationController(
+    _harmonyMotion = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1450),
+      duration: const Duration(milliseconds: 1900),
     );
-    _syncAnimation();
+    _syncMotion();
   }
 
   @override
   void didUpdateWidget(covariant WaveformSeekBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isPlaying != widget.isPlaying) {
-      _syncAnimation();
+      _syncMotion();
     }
   }
 
-  void _syncAnimation() {
+  void _syncMotion() {
     if (widget.isPlaying) {
-      _glowController.repeat();
+      _harmonyMotion.repeat();
     } else {
-      _glowController.stop();
+      _harmonyMotion.stop();
     }
   }
 
   @override
   void dispose() {
-    _glowController.dispose();
+    _harmonyMotion.dispose();
     super.dispose();
   }
 
@@ -74,138 +77,166 @@ class _WaveformSeekBarState extends State<WaveformSeekBar>
     final durationMs = math.max(1, widget.duration.inMilliseconds);
     final positionMs = widget.position.inMilliseconds.clamp(0, durationMs);
     final progress = positionMs / durationMs;
+    final positionPhase = positionMs / 900;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: (details) =>
-              _seekAt(details.localPosition.dx, constraints.maxWidth),
-          onHorizontalDragUpdate: (details) => _seekAt(
-            details.localPosition.dx,
-            constraints.maxWidth,
-          ),
-          child: SizedBox(
-            height: 52,
-            width: double.infinity,
-            child: AnimatedBuilder(
-              animation: _glowController,
-              builder: (context, _) => CustomPaint(
-                painter: _WaveformPainter(
-                  progress: progress,
-                  glow: widget.isPlaying ? _glowController.value : 0.28,
+    return Semantics(
+      label: 'Harmony playback progress',
+      value: '${(progress * 100).round()} percent',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (details) =>
+                _seekAt(details.localPosition.dx, constraints.maxWidth),
+            onHorizontalDragUpdate: (details) => _seekAt(
+              details.localPosition.dx,
+              constraints.maxWidth,
+            ),
+            child: SizedBox(
+              height: 58,
+              width: double.infinity,
+              child: AnimatedBuilder(
+                animation: _harmonyMotion,
+                builder: (context, _) => CustomPaint(
+                  painter: _HarmonyProgressPainter(
+                    progress: progress,
+                    phase: positionPhase + _harmonyMotion.value * math.pi * 2,
+                    isPlaying: widget.isPlaying,
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
 
-class _WaveformPainter extends CustomPainter {
-  _WaveformPainter({
+class _HarmonyProgressPainter extends CustomPainter {
+  const _HarmonyProgressPainter({
     required this.progress,
-    required this.glow,
+    required this.phase,
+    required this.isPlaying,
   });
 
   final double progress;
-  final double glow;
+  final double phase;
+  final bool isPlaying;
 
-  static final List<double> _heights = List<double>.generate( sixtyBars, (i) {
-    final primary = math.sin(i * 0.51 + 0.8).abs();
-    final secondary = math.cos(i * 0.19 + 0.4).abs();
-    final centerBoost = 0.28 + 0.72 * (1 - (i - 29.5).abs() / 30);
-    return (0.16 + primary * 0.42 + secondary * 0.20) * centerBoost;
-  }, growable: false);
-
-  static const int sixtyBars = 60;
+  static const int _barCount = 64;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const topInset = 7.0;
-    const bottomInset = 7.0;
-    const maxBarHeight = 34.0;
-    const nominalGap = 3.0;
-    const nominalBarWidth = 2.3;
-    final nominalWidth =
-        sixtyBars * nominalBarWidth + (sixtyBars - 1) * nominalGap;
-    final scale = math.min(1.0, size.width / nominalWidth);
-    final gap = nominalGap * scale;
-    final barWidth = nominalBarWidth * scale;
-    final totalWidth = sixtyBars * barWidth + (sixtyBars - 1) * gap;
-    final left = math.max(0.0, (size.width - totalWidth) / 2).toDouble();
-    final usableHeight = size.height - topInset - bottomInset;
-    final activeBars = (progress * sixtyBars).floor();
+    if (size.isEmpty) return;
 
-    final inactive = Paint()
-      ..color = const Color(0xFF665B4C).withValues(alpha: 0.52)
-      ..style = PaintingStyle.fill;
-    final active = Paint()
+    const topInset = 8.0;
+    const bottomInset = 8.0;
+    const maxBarHeight = 38.0;
+    const nominalBarWidth = 2.2;
+    const nominalGap = 1.9;
+
+    final nominalWidth =
+        _barCount * nominalBarWidth + (_barCount - 1) * nominalGap;
+    final scale = math.min(1.0, size.width / nominalWidth);
+    final barWidth = nominalBarWidth * scale;
+    final gap = nominalGap * scale;
+    final totalWidth = _barCount * barWidth + (_barCount - 1) * gap;
+    final left = math.max(0.0, (size.width - totalWidth) / 2).toDouble();
+    final centerY = size.height / 2;
+    final usableHeight = size.height - topInset - bottomInset;
+    final activeCount = (progress * _barCount).floor().clamp(0, _barCount);
+
+    final inactivePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF766B5D).withValues(alpha: 0.44);
+    final activePaint = Paint()
+      ..style = PaintingStyle.fill
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0xFFF2D9B3),
+          Color(0xFFF5E3C8),
           Color(0xFFD9BC91),
           Color(0xFF9C7951),
         ],
-      ).createShader(Rect.fromLTWH(0, 0, barWidth, maxBarHeight));
-    final halo = Paint()
-      ..color = const Color(0xFFD9BC91).withValues(alpha: 0.16 + glow * 0.12)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 5 + glow * 4);
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    for (var i = 0; i < sixtyBars; i++) {
-      final normalized = _heights[i];
-      final height = math.max(4.5, usableHeight * normalized).toDouble();
-      final x = left + i * (barWidth + gap);
-      final y = topInset + (usableHeight - height) / 2;
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, y, barWidth, math.min(height, maxBarHeight)),
-        const Radius.circular(2),
+    final activeGlow = Paint()
+      ..style = PaintingStyle.fill
+      ..color = AurelColors.champagne.withValues(alpha: 0.10)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+
+    for (var index = 0; index < _barCount; index++) {
+      final mirroredIndex = math.min(index, _barCount - 1 - index);
+      final distanceFromCenter = mirroredIndex / (_barCount / 2);
+      final centerEnvelope = 0.74 + 0.26 * (1 - distanceFromCenter);
+
+      final slowWave = math.sin(index * 0.27 + phase * 0.82);
+      final fineWave = math.cos(index * 0.49 - phase * 0.56);
+      final stillWave = math.sin(index * 0.34 + 0.7);
+      final motion = isPlaying
+          ? 0.52 + slowWave * 0.19 + fineWave * 0.10
+          : 0.52 + stillWave * 0.07;
+      final normalized = (0.28 + motion * 0.72) * centerEnvelope;
+      final barHeight = (usableHeight * normalized)
+          .clamp(5.0, maxBarHeight)
+          .toDouble();
+
+      final x = left + index * (barWidth + gap);
+      final y = centerY - barHeight / 2;
+      final barRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(x, y, barWidth, barHeight),
+        Radius.circular(barWidth / 2),
       );
 
-      if (i == activeBars && progress > 0 && progress < 1) {
-        canvas.drawRRect(rect, halo);
+      if (index < activeCount) {
+        canvas.drawRRect(
+          barRect,
+          activeGlow
+            ..color = AurelColors.champagne.withValues(
+              alpha: isPlaying ? 0.09 : 0.035,
+            ),
+        );
+        canvas.drawRRect(barRect, activePaint);
+      } else {
+        canvas.drawRRect(barRect, inactivePaint);
       }
-      canvas.drawRRect(rect, i < activeBars ? active : inactive);
     }
 
     final playheadX = left + totalWidth * progress;
-    final playheadPaint = Paint()
-      ..color = const Color(0xFFFFE6C1)
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round;
     final playheadGlow = Paint()
-      ..color = const Color(0xFFD9BC91).withValues(alpha: 0.24 + glow * 0.18)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 7 + glow * 3);
+      ..color = AurelColors.champagne.withValues(
+        alpha: isPlaying ? 0.24 : 0.13,
+      )
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    final playhead = Paint()
+      ..color = const Color(0xFFFFE9CA)
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(
-      Offset(playheadX, 3),
-      Offset(playheadX, size.height - 3),
-      playheadGlow..strokeWidth = 5,
+      Offset(playheadX, 5),
+      Offset(playheadX, size.height - 5),
+      playheadGlow,
     );
     canvas.drawLine(
       Offset(playheadX, 7),
       Offset(playheadX, size.height - 7),
-      playheadPaint,
+      playhead,
     );
     canvas.drawCircle(
-      Offset(playheadX, size.height / 2),
-      4,
-      Paint()..color = const Color(0xFFFFE6C1),
-    );
-    canvas.drawCircle(
-      Offset(playheadX, size.height / 2),
-      7 + glow * 1.5,
-      Paint()
-        ..color = const Color(0xFFD9BC91)
-            .withValues(alpha: 0.12 + glow * 0.07),
+      Offset(playheadX, centerY),
+      3.4,
+      Paint()..color = const Color(0xFFFFE9CA),
     );
   }
 
   @override
-  bool shouldRepaint(covariant _WaveformPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.glow != glow;
+  bool shouldRepaint(covariant _HarmonyProgressPainter oldDelegate) =>
+      oldDelegate.progress != progress ||
+      oldDelegate.phase != phase ||
+      oldDelegate.isPlaying != isPlaying;
 }

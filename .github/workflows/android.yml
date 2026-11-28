@@ -21,6 +21,8 @@ jobs:
     env:
       JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
       AUDIUS_API_KEY: ${{ secrets.AUDIUS_API_KEY }}
+      LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+      LASTFM_API_APPROVED: ${{ secrets.LASTFM_API_APPROVED }}
       AUREL_FIREBASE_API_KEY: ${{ secrets.AUREL_FIREBASE_API_KEY }}
       AUREL_FIREBASE_APP_ID: ${{ secrets.AUREL_FIREBASE_APP_ID }}
       AUREL_FIREBASE_PROJECT_ID: ${{ secrets.AUREL_FIREBASE_PROJECT_ID }}
@@ -39,6 +41,54 @@ jobs:
         run: |
           npm install --prefix functions --no-audit --no-fund
           npm --prefix functions run build
+
+      - name: Report cloud account configuration
+        env:
+          AUREL_FIREBASE_API_KEY: ${{ secrets.AUREL_FIREBASE_API_KEY }}
+          AUREL_FIREBASE_APP_ID: ${{ secrets.AUREL_FIREBASE_APP_ID }}
+          AUREL_FIREBASE_PROJECT_ID: ${{ secrets.AUREL_FIREBASE_PROJECT_ID }}
+          AUREL_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.AUREL_FIREBASE_MESSAGING_SENDER_ID }}
+          AUREL_GOOGLE_SERVER_CLIENT_ID: ${{ secrets.AUREL_GOOGLE_SERVER_CLIENT_ID }}
+        shell: bash
+        run: |
+          missing=()
+          for key in \
+            AUREL_FIREBASE_API_KEY \
+            AUREL_FIREBASE_APP_ID \
+            AUREL_FIREBASE_PROJECT_ID \
+            AUREL_FIREBASE_MESSAGING_SENDER_ID \
+            AUREL_GOOGLE_SERVER_CLIENT_ID; do
+            if [[ -z "${!key}" ]]; then
+              missing+=("$key")
+            fi
+          done
+          {
+            echo "## AUREL cloud accounts"
+            if (( ${#missing[@]} == 0 )); then
+              echo "Firebase and Google client configuration is present."
+            else
+              echo "Cloud account sign-in is not fully configured in this build."
+              echo
+              echo "Missing repository Actions secrets:"
+              for key in "${missing[@]}"; do echo "- $key"; done
+              echo
+              echo "No secret values are printed by this check."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if (( ${#missing[@]} > 0 )); then
+            for key in "${missing[@]}"; do
+              echo "::warning title=Missing cloud account setting::$key is not configured"
+            done
+          fi
+
+      - name: Report music catalogue configuration
+        shell: bash
+        run: |
+          if [[ -n "$JAMENDO_CLIENT_ID" ]]; then
+            echo "Jamendo application ID is configured."
+          else
+            echo "::warning title=Jamendo is not configured::Add JAMENDO_CLIENT_ID to repository Actions secrets."
+          fi
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -141,6 +191,8 @@ jobs:
           timeout 10m flutter build appbundle --debug --verbose
           --dart-define=JAMENDO_CLIENT_ID="$JAMENDO_CLIENT_ID"
           --dart-define=AUDIUS_API_KEY="$AUDIUS_API_KEY"
+          --dart-define=LASTFM_API_KEY="$LASTFM_API_KEY"
+          --dart-define=LASTFM_API_APPROVED="$LASTFM_API_APPROVED"
           --dart-define=AUREL_FIREBASE_API_KEY="$AUREL_FIREBASE_API_KEY"
           --dart-define=AUREL_FIREBASE_APP_ID="$AUREL_FIREBASE_APP_ID"
           --dart-define=AUREL_FIREBASE_PROJECT_ID="$AUREL_FIREBASE_PROJECT_ID"

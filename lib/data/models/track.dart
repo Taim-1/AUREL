@@ -10,19 +10,20 @@ class Track {
     this.licenseUrl = '',
     this.durationMs = 0,
     this.downloadAllowed = false,
-    this.isDeviceTrack = false,
     this.isDownloaded = false,
     this.localPath,
     this.providerId = 'jamendo',
     this.providerName = 'Jamendo',
     this.sourceUrl = '',
     this.recordingId = '',
+    this.recordingMbid = '',
     this.licenseName = '',
     this.attribution = '',
     this.isPlayable = true,
     this.isPreviewOnly = false,
     this.isMetadataOnly = false,
     this.matchedSources = const [],
+    this.alternatives = const [],
     this.playbackHeaders = const {},
   });
 
@@ -36,18 +37,20 @@ class Track {
   final String licenseUrl;
   final int durationMs;
   final bool downloadAllowed;
-  final bool isDeviceTrack;
   final bool isDownloaded;
   final String? localPath;
 
-  /// Stable provider key: jamendo, audius, soundcloud, spotify, apple_music
-  /// or device. The key is not inferred from a display label.
+  /// Stable provider key for the authorized catalogue adapter. The key is
+  /// not inferred from a display label.
   final String providerId;
   final String providerName;
   final String sourceUrl;
 
   /// ISRC when the provider exposes one. Used for exact cross-source matches.
   final String recordingId;
+
+  /// MusicBrainz recording UUID, distinct from an ISRC.
+  final String recordingMbid;
   final String licenseName;
   final String attribution;
 
@@ -59,30 +62,50 @@ class Track {
   /// Other catalogues that matched this same recording.
   final List<String> matchedSources;
 
+  /// Same-recording alternatives retained in AUREL's internal priority order.
+  /// The player may try the next eligible copy if the preferred source fails.
+  final List<Track> alternatives;
+
   /// Short-lived in-memory request headers (for example SoundCloud OAuth).
   /// Deliberately omitted from toJson so access tokens never reach local or
   /// cloud library persistence.
   final Map<String, String> playbackHeaders;
 
-  bool get hasLocalPlaybackUri => localPath?.trim().isNotEmpty == true;
+  bool get hasLocalPlaybackUri {
+    final path = localPath?.trim();
+    if (path == null || path.isEmpty) return false;
+    final uri = Uri.tryParse(path);
+    return uri != null && (uri.scheme.isEmpty || uri.scheme == 'file');
+  }
 
-  bool get isLocal =>
-      hasLocalPlaybackUri && (isDeviceTrack || isDownloaded);
+  bool get isLocal => isDownloaded && hasLocalPlaybackUri;
+
+  /// Whether this recording has at least one provider-approved HTTPS download.
+  /// A primary catalogue result may be stream-only while a same-recording
+  /// alternative permits offline saving.
+  bool get canDownloadDirectly =>
+      downloadAllowed && _isSecureHttpsUrl(downloadUrl);
+
+  bool get hasDownloadableSource =>
+      canDownloadDirectly || alternatives.any(
+        (candidate) => candidate.canDownloadDirectly,
+      );
 
   bool get canPlay {
     // Previews and metadata-only records are never full playable recordings.
     if (isPreviewOnly || isMetadataOnly || !isPlayable) return false;
 
-    // A device/downloaded item must use its real local URI. Never fall back
-    // to a network stream for a broken offline entry.
-    if (isDeviceTrack || isDownloaded) return hasLocalPlaybackUri;
+    // An AUREL-managed download must use its saved local file. Never fall
+    // back to a network stream for a broken offline entry.
+    if (isDownloaded) return hasLocalPlaybackUri;
     return _isSecureHttpsUrl(streamUrl);
   }
 
   String get playbackUri {
-    if (localPath != null && localPath!.isNotEmpty) {
-      if (localPath!.startsWith('content://')) return localPath!;
-      return Uri.file(localPath!).toString();
+    if (isDownloaded && hasLocalPlaybackUri) {
+      final path = localPath!.trim();
+      final uri = Uri.tryParse(path);
+      return uri?.scheme == 'file' ? uri.toString() : Uri.file(path).toString();
     }
     return streamUrl;
   }
@@ -456,57 +479,186 @@ class Track {
       providerName: 'Recording metadata',
       sourceUrl: id.isEmpty ? '' : 'https://musicbrainz.org/recording/$id',
       recordingId: recordingId,
+      recordingMbid: _isValidMusicBrainzId(id) ? id : '',
       isPlayable: false,
       isMetadataOnly: true,
     );
   }
 
-  factory Track.fromDevice(Map<Object?, Object?> json) {
-    final uri = (json['uri'] ?? '').toString();
-    final id = (json['id'] ?? uri).toString();
-    final duration = json['duration'];
+
+  factory Track.fromLastFm(Map<String, dynamic> json) {
+    final rawArtist = json['artist'];
+    final artist = rawArtist is Map
+        ? (rawArtist['name'] ?? '').toString().trim()
+        : (rawArtist ?? '').toString().trim();
+    final rawAlbum = json['album'];
+    final album = rawAlbum is Map
+        ? (rawAlbum['title'] ?? rawAlbum['name'] ?? '').toString().trim()
+        : '';
+    // Last.fm API terms do not license artwork/image reuse.
+    final rawDuration = json['duration'];
+    final reportedDuration = rawDuration is num
+        ? rawDuration.round()
+        : int.tryParse(rawDuration?.toString() ?? '') ?? 0;
+    // Last.fm search/track-info data may report milliseconds, while
+    // artist.getTopTracks reports seconds. Normalize the smaller positive
+    // values to milliseconds without changing already-millisecond values.
+    final duration = reportedDuration > 0 && reportedDuration < 10000
+        ? reportedDuration * 1000
+        : reportedDuration;
+    final mbid = (json['mbid'] ?? '').toString().trim();
+    final source = (json['url'] ?? '').toString().trim();
+    final parsedSource = Uri.tryParse(source);
+    final sourceUri = parsedSource != null && parsedSource.scheme.isEmpty
+        ? Uri.tryParse('https://$source')
+        : parsedSource;
+    final sourceHost = sourceUri?.host.toLowerCase() ?? '';
+    final safeSource = sourceUri != null &&
+            sourceUri.scheme == 'https' &&
+            (sourceHost == 'last.fm' || sourceHost.endsWith('.last.fm'))
+        ? sourceUri.toString()
+        : '';
+    final title = (json['name'] ?? 'Unknown recording').toString().trim();
+    final stableKey = mbid.isNotEmpty
+        ? mbid
+        : safeSource.isNotEmpty
+            ? safeSource
+            : '${artist.toLowerCase()}::${title.toLowerCase()}';
+
     return Track(
-      id: 'device-$id',
-      title: (json['title'] ?? 'Unknown track').toString(),
-      artist: (json['artist'] ?? 'Unknown artist').toString(),
-      album: (json['album'] ?? '').toString(),
-      durationMs: duration is num ? duration.round() : 0,
-      isDeviceTrack: true,
-      localPath: uri,
-      providerId: 'device',
-      providerName: 'On this device',
-      isPlayable: true,
+      id: 'lastfm-$stableKey',
+      title: title.isEmpty ? 'Unknown recording' : title,
+      artist: artist.isEmpty ? 'Unknown artist' : artist,
+      album: album,
+      artworkUrl: '',
+      durationMs: duration,
+      providerId: 'lastfm',
+      providerName: 'Last.fm',
+      sourceUrl: safeSource,
+      attribution: 'Metadata provided by Last.fm. No audio is supplied by this source.',
+      // Last.fm's MBID is a MusicBrainz recording UUID, not an ISRC.
+      recordingMbid: _isValidMusicBrainzId(mbid) ? mbid : '',
+      isPlayable: false,
+      isMetadataOnly: true,
     );
   }
 
-  factory Track.fromJson(Map<String, dynamic> json) => Track(
-        id: (json['id'] ?? '').toString(),
-        title: (json['title'] ?? '').toString(),
-        artist: (json['artist'] ?? '').toString(),
-        album: (json['album'] ?? '').toString(),
-        artworkUrl: (json['artworkUrl'] ?? '').toString(),
-        streamUrl: (json['streamUrl'] ?? '').toString(),
-        downloadUrl: (json['downloadUrl'] ?? '').toString(),
-        licenseUrl: (json['licenseUrl'] ?? '').toString(),
-        durationMs: (json['durationMs'] as num?)?.round() ?? 0,
-        downloadAllowed: json['downloadAllowed'] == true,
-        isDeviceTrack: json['isDeviceTrack'] == true,
-        isDownloaded: json['isDownloaded'] == true,
-        localPath: json['localPath']?.toString(),
-        providerId: (json['providerId'] ?? 'jamendo').toString(),
-        providerName: (json['providerName'] ?? 'Jamendo').toString(),
-        sourceUrl: (json['sourceUrl'] ?? '').toString(),
-        recordingId: (json['recordingId'] ?? '').toString(),
-        licenseName: (json['licenseName'] ?? '').toString(),
-        attribution: (json['attribution'] ?? '').toString(),
-        isPlayable: json['isPlayable'] != false,
-        isPreviewOnly: json['isPreviewOnly'] == true,
-        isMetadataOnly: json['isMetadataOnly'] == true,
-        matchedSources: (json['matchedSources'] as List?)
-                ?.map((value) => value.toString())
-                .toList(growable: false) ??
-            const [],
+
+  factory Track.fromListenBrainz(Map<String, dynamic> json) {
+    final recordingMbid = (json['recording_mbid'] ?? '').toString().trim();
+    final releaseMbid = (json['release_mbid'] ?? '').toString().trim();
+    final title = (json['track_name'] ?? 'Unknown recording').toString().trim();
+    final artist = (json['artist_name'] ?? 'Unknown artist').toString().trim();
+    final album = (json['release_name'] ?? '').toString().trim();
+    final rawLength = json['length'];
+    final duration = rawLength is num
+        ? rawLength.round()
+        : int.tryParse(rawLength?.toString() ?? '') ?? 0;
+    final validReleaseMbid = _isValidMusicBrainzId(releaseMbid);
+    final validRecordingMbid = _isValidMusicBrainzId(recordingMbid);
+    final artworkUrl = validReleaseMbid
+        ? 'https://coverartarchive.org/release/$releaseMbid/front-250'
+        : '';
+    final sourceUrl = validRecordingMbid
+        ? 'https://musicbrainz.org/recording/$recordingMbid'
+        : '';
+    final stableKey = validRecordingMbid
+        ? recordingMbid
+        : '${artist.toLowerCase()}::${title.toLowerCase()}';
+
+    return Track(
+      id: 'listenbrainz-$stableKey',
+      title: title.isEmpty ? 'Unknown recording' : title,
+      artist: artist.isEmpty ? 'Unknown artist' : artist,
+      album: album,
+      artworkUrl: artworkUrl,
+      durationMs: duration,
+      providerId: 'listenbrainz',
+      providerName: 'ListenBrainz',
+      sourceUrl: sourceUrl,
+      // A MusicBrainz recording MBID is not an ISRC.
+      recordingMbid: validRecordingMbid ? recordingMbid : '',
+      isPlayable: false,
+      isMetadataOnly: true,
+    );
+  }
+
+  factory Track.fromJson(Map<String, dynamic> json) {
+    final providerId = (json['providerId'] ?? 'jamendo').toString();
+    final id = (json['id'] ?? '').toString();
+
+    if (json['isDeviceTrack'] == true ||
+        providerId == 'device' ||
+        id.startsWith('device-')) {
+      throw const FormatException(
+        'Tracks indexed from the device library are no longer supported.',
       );
+    }
+
+    return Track(
+      id: id,
+      title: (json['title'] ?? '').toString(),
+      artist: (json['artist'] ?? '').toString(),
+      album: (json['album'] ?? '').toString(),
+      artworkUrl: (json['artworkUrl'] ?? '').toString(),
+      streamUrl: (json['streamUrl'] ?? '').toString(),
+      downloadUrl: (json['downloadUrl'] ?? '').toString(),
+      licenseUrl: (json['licenseUrl'] ?? '').toString(),
+      durationMs: (json['durationMs'] as num?)?.round() ?? 0,
+      downloadAllowed: json['downloadAllowed'] == true,
+      isDownloaded: false,
+      localPath: null,
+      providerId: providerId,
+      providerName: (json['providerName'] ?? 'Jamendo').toString(),
+      sourceUrl: (json['sourceUrl'] ?? '').toString(),
+      recordingId: (json['recordingId'] ?? '').toString(),
+      recordingMbid: (json['recordingMbid'] ?? '').toString(),
+      licenseName: (json['licenseName'] ?? '').toString(),
+      attribution: (json['attribution'] ?? '').toString(),
+      isPlayable: json['isPlayable'] != false,
+      isPreviewOnly: json['isPreviewOnly'] == true,
+      isMetadataOnly: json['isMetadataOnly'] == true,
+      matchedSources: (json['matchedSources'] as List?)
+              ?.map((value) => value.toString())
+              .toList(growable: false) ??
+          const [],
+      alternatives: (json['alternatives'] as List?)
+              ?.whereType<Map>()
+              .map((value) {
+                try {
+                  return Track.fromJson(
+                    Map<String, dynamic>.from(value),
+                  ).copyWith(alternatives: const []);
+                } on FormatException {
+                  return null;
+                }
+              })
+              .whereType<Track>()
+              .toList(growable: false) ??
+          const [],
+    );
+  }
+
+  factory Track.fromDownloadedJson(Map<String, dynamic> json) {
+    if (json['isDownloaded'] != true) {
+      throw const FormatException(
+        'Only AUREL-managed downloaded recordings can enter the offline library.',
+      );
+    }
+
+    final track = Track.fromJson(json);
+    final path = (json['localPath'] ?? '').toString().trim();
+    if (path.isEmpty) {
+      throw const FormatException(
+        'The saved AUREL download does not have a local file path.',
+      );
+    }
+
+    return track.copyWith(
+      isDownloaded: true,
+      localPath: path,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -519,22 +671,26 @@ class Track {
         'licenseUrl': licenseUrl,
         'durationMs': durationMs,
         'downloadAllowed': downloadAllowed,
-        'isDeviceTrack': isDeviceTrack,
         'isDownloaded': isDownloaded,
         'localPath': localPath,
         'providerId': providerId,
         'providerName': providerName,
         'sourceUrl': sourceUrl,
         'recordingId': recordingId,
+        'recordingMbid': recordingMbid,
         'licenseName': licenseName,
         'attribution': attribution,
         'isPlayable': isPlayable,
         'isPreviewOnly': isPreviewOnly,
         'isMetadataOnly': isMetadataOnly,
         'matchedSources': matchedSources,
+        'alternatives': alternatives
+            .map((track) => track.copyWith(alternatives: const []).toJson())
+            .toList(growable: false),
       };
 
   Track copyWith({
+    String? id,
     String? title,
     String? artist,
     String? album,
@@ -544,11 +700,13 @@ class Track {
     String? streamUrl,
     int? durationMs,
     String? recordingId,
+    String? recordingMbid,
     List<String>? matchedSources,
+    List<Track>? alternatives,
     Map<String, String>? playbackHeaders,
   }) =>
       Track(
-        id: id,
+        id: id ?? this.id,
         title: title ?? this.title,
         artist: artist ?? this.artist,
         album: album ?? this.album,
@@ -558,23 +716,37 @@ class Track {
         licenseUrl: licenseUrl,
         durationMs: durationMs ?? this.durationMs,
         downloadAllowed: downloadAllowed,
-        isDeviceTrack: isDeviceTrack,
         isDownloaded: isDownloaded ?? this.isDownloaded,
         localPath: localPath ?? this.localPath,
         providerId: providerId,
         providerName: providerName,
         sourceUrl: sourceUrl,
         recordingId: recordingId ?? this.recordingId,
+        recordingMbid: recordingMbid ?? this.recordingMbid,
         licenseName: licenseName,
         attribution: attribution,
         isPlayable: isPlayable,
         isPreviewOnly: isPreviewOnly,
         isMetadataOnly: isMetadataOnly,
         matchedSources: matchedSources ?? this.matchedSources,
+        alternatives: alternatives ?? this.alternatives,
         playbackHeaders: playbackHeaders ?? this.playbackHeaders,
       );
 }
 
+
+bool _isValidMusicBrainzId(String value) {
+  final parts = value.split('-');
+  const expectedLengths = [8, 4, 4, 4, 12];
+  if (parts.length != expectedLengths.length) return false;
+  for (var index = 0; index < parts.length; index++) {
+    if (parts[index].length != expectedLengths[index] ||
+        int.tryParse(parts[index], radix: 16) == null) {
+      return false;
+    }
+  }
+  return true;
+}
 
 bool _isSecureHttpsUrl(String value) {
   final uri = Uri.tryParse(value.trim());

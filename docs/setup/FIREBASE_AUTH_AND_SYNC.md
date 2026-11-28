@@ -6,7 +6,7 @@
 - Google sign-in through the official Google Sign-In Flutter plugin.
 - Linking Google and email/password credentials to the same Firebase account.
 - User-selected AUREL username.
-- Cloud sync for favourites, playlists and recently played track metadata.
+- Cloud sync for favourites, playlists, recently played tracks and previous-download metadata.
 - Merge of the current device library with cloud data after sign-in.
 - A private Firestore path scoped to the authenticated Firebase UID.
 
@@ -80,7 +80,7 @@ firebase deploy --only functions:catalogTokens
 The Android app requests a short-lived token through the authenticated AUREL token broker. If the credentials or account are not available, it falls back to anonymous public search. Registered users receive a slightly higher default rate limit; larger limits require a separate request and are not guaranteed.
 ### Jamendo production ID
 
-Register an AUREL application with Jamendo, then either set its public application ID as the `JAMENDO_CLIENT_ID` GitHub Actions secret for CI/device builds, or enter it in AUREL → Settings → Music catalogue. The in-app setting is stored locally on that device and overrides the build-time value. This is a public application ID, not a private API secret.
+Replace the documented read-only development ID with your own registered Jamendo application ID by setting the `JAMENDO_CLIENT_ID` GitHub Actions secret.
 
 ## Firestore layout
 
@@ -94,24 +94,53 @@ users/{uid}/library/favorites/items/{encodedTrackId}
   sortOrder
 
 users/{uid}/library/recentlyPlayed
+  tracks: [track metadata maps, newest first]
   updatedAt
 
-users/{uid}/library/recentlyPlayed/items/{encodedTrackId}
+users/{uid}/library/downloads/items/{encodedTrackKey}
   track
   sortOrder
 
 users/{uid}/library/playlists/items/{encodedPlaylistId}
-  playlist
+  id
+  name
+  trackCount
+  sortOrder
+  schemaVersion: 2
+  updatedAt
+
+users/{uid}/library/playlists/items/{encodedPlaylistId}/tracks/{encodedTrackKey}
+  track
   sortOrder
 ```
 
-The rules allow a signed-in user to read and write only documents underneath their own UID. Review the rules before production release and add App Check / abuse controls as appropriate.
+Playlist schema version 2 stores each track in a child document rather than embedding every track in one playlist record. This avoids Firestore's per-document size ceiling for long playlists. Older embedded playlist records remain readable; the next successful full sync migrates them to the subcollection format. Track document keys are provider-aware, so metadata-only catalogue results without a numeric provider ID are not silently discarded.
 
-
-The recently played collection stores each track in its own document to avoid Firestore's 1 MiB per-document limit. Older builds may have stored a `tracks` array on the `recentlyPlayed` document; the current client reads that legacy format, migrates the list into `items`, and removes the old array only after the new item documents have been written successfully.
+The rules allow a signed-in user to read and write only documents underneath their own UID, including playlist track subcollections. Review the rules before production release and add App Check / abuse controls as appropriate.
 
 ## Reinstall and account recovery behavior
 
-After reinstall, the user signs in with the same Google or email account. AUREL downloads the cloud metadata for that UID and merges it with any existing local library. The Home greeting and Profile name use the saved username.
+After reinstall, the user signs in with the same Google or email account. AUREL downloads the cloud metadata for that UID and merges it with that account's local namespace. Favourites, playlists, history and the AUREL username are stored separately for each UID, so switching accounts on one phone does not mix private libraries. Pre-account guest collections are migrated to the first account that claims them.
 
-This restores the listening-history list, favourites and playlists. It does not restore the raw audio bytes for AUREL-managed offline downloads. AUREL can offer a fresh in-app download only when the original provider still permits it; the app does not import or browse unrelated phone files.
+This restores the listening-history list, favourites, playlists and the list of tracks previously downloaded through AUREL. It does not restore the raw audio bytes for AUREL-managed offline downloads. The Downloads screen offers to recheck the original recording and download a fresh copy when a provider and its licence still permit it. AUREL can offer a fresh in-app download only when the original provider still permits it; the app does not import or browse unrelated phone files.
+
+## Account sign-in, verification and security
+
+The Account & Sync screen supports the following Firebase Authentication flows:
+
+- Create an AUREL account with email/password and an AUREL username.
+- Sign in with email/password or the native Google Sign-In flow.
+- Link Google and email/password to the same Firebase UID; existing collections stay under that UID.
+- Send a password-reset email when a user cannot sign in.
+- Send or resend email verification and refresh the Firebase user after the verification link is opened.
+- Change the password after re-authenticating with the current password.
+- Change the account email only after re-authentication; Firebase sends a verification link before the new email replaces the current one.
+- Disconnect Google or email/password only when another sign-in method remains linked.
+
+New email/password accounts require a minimum of eight characters in the AUREL form and a matching confirmation. Firebase Authentication still applies its own configured password policy and rate limits.
+
+Google is not enabled merely because the Flutter dependency is present. The Firebase project must enable Google as a sign-in provider, the Android app must contain the correct SHA-1 and SHA-256 signing fingerprints, and the matching OAuth Web client ID must be supplied as AUREL_GOOGLE_SERVER_CLIENT_ID. Email/password must separately be enabled in Firebase Authentication.
+
+After a user signs in, AUREL scopes local favourites, playlists and listening history to that Firebase UID, restores that UID's cloud metadata, and then syncs the merged library. AUREL never stores a Google or Firebase service-account private key in Dart, Git, or the APK. The build-time Firebase client settings and public OAuth client ID are supplied through the five GitHub Actions secrets listed above; keep their values inside GitHub/Firebase configuration and do not paste them into source files or chat.
+
+If Firebase credentials are missing, the local player remains usable and Account & Sync explains which configuration step is missing. The app must not display a successful Google/email connection until Firebase Authentication actually returns a signed-in user and the provider appears in User.providerData.

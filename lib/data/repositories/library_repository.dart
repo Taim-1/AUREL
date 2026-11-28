@@ -14,14 +14,64 @@ class LibraryRepository {
   static const _downloadsKey = 'aurel.downloads.v1';
   static const _playlistsKey = 'aurel.playlists.v1';
   static const _recentKey = 'aurel.recent.v1';
+  static const _downloadHistoryKey = 'aurel.download_history.v1';
   static const _clientIdKey = 'aurel.jamendo.client_id';
   static const _offlineModeKey = 'aurel.offline_mode.v1';
+  static const _accountScopeKey = 'aurel.library.account_scope.v1';
 
-  Future<List<Track>> loadFavorites() => _readTracks(_favoritesKey);
+  String _accountScope = 'guest';
 
-  Future<List<Track>> loadDownloads() => _readTracks(_downloadsKey);
+  String _collectionKey(String key) =>
+      _accountScope == 'guest' ? key : '$key.$_accountScope';
 
-  Future<List<Track>> loadRecentlyPlayed() => _readTracks(_recentKey);
+  /// Keeps local collections isolated per Firebase UID. Downloads remain
+  /// device-owned and deliberately use their original global storage key.
+  Future<void> setAccountScope(String? userId) async {
+    final normalized = userId?.trim() ?? '';
+    final nextScope = normalized.isEmpty ? 'guest' : normalized;
+    final previousScope = await _preferences.getString(_accountScopeKey);
+
+    // Move pre-account library data into the first account that claims this
+    // device's guest collection. Never copy one signed-in user's library into
+    // a different signed-in user's namespace.
+    if (nextScope != 'guest' &&
+        (previousScope == null || previousScope == 'guest')) {
+      await _migrateLegacyGuestCollection(_favoritesKey, nextScope);
+      await _migrateLegacyGuestCollection(_playlistsKey, nextScope);
+      await _migrateLegacyGuestCollection(_recentKey, nextScope);
+      await _migrateLegacyGuestCollection(_downloadHistoryKey, nextScope);
+    }
+
+    _accountScope = nextScope;
+    await _preferences.setString(_accountScopeKey, nextScope);
+  }
+
+  Future<void> _migrateLegacyGuestCollection(
+    String legacyKey,
+    String targetScope,
+  ) async {
+    final targetKey = '$legacyKey.$targetScope';
+    final target = await _preferences.getStringList(targetKey);
+    final legacy = await _preferences.getStringList(legacyKey);
+    if (target == null && legacy != null) {
+      await _preferences.setStringList(targetKey, legacy);
+    }
+    if (legacy != null) {
+      await _preferences.remove(legacyKey);
+    }
+  }
+
+  Future<List<Track>> loadFavorites() =>
+      _readTracks(_collectionKey(_favoritesKey));
+
+  Future<List<Track>> loadDownloads() =>
+      _readTracks(_downloadsKey, includeAurelDownloads: true);
+
+  Future<List<Track>> loadRecentlyPlayed() =>
+      _readTracks(_collectionKey(_recentKey));
+
+  Future<List<Track>> loadDownloadHistory() =>
+      _readTracks(_collectionKey(_downloadHistoryKey));
 
   Future<bool> loadOfflineMode() async =>
       await _preferences.getBool(_offlineModeKey) ?? false;
@@ -30,7 +80,8 @@ class LibraryRepository {
       _preferences.setBool(_offlineModeKey, enabled);
 
   Future<List<MusicPlaylist>> loadPlaylists() async {
-    final raw = await _preferences.getStringList(_playlistsKey) ?? const <String>[];
+    final raw = await _preferences.getStringList(_collectionKey(_playlistsKey)) ??
+        const <String>[];
     final playlists = <MusicPlaylist>[];
     for (final item in raw) {
       try {
@@ -46,12 +97,20 @@ class LibraryRepository {
     return playlists;
   }
 
-  Future<List<Track>> _readTracks(String key) async {
+  Future<List<Track>> _readTracks(
+    String key, {
+    bool includeAurelDownloads = false,
+  }) async {
     final raw = await _preferences.getStringList(key) ?? const <String>[];
     final tracks = <Track>[];
     for (final item in raw) {
       try {
-        tracks.add(Track.fromJson(jsonDecode(item) as Map<String, dynamic>));
+        final json = jsonDecode(item) as Map<String, dynamic>;
+        tracks.add(
+          includeAurelDownloads
+              ? Track.fromDownloadedJson(json)
+              : Track.fromJson(json),
+        );
       } on FormatException {
         // Ignore a corrupted saved item without losing the rest of the library.
       } on TypeError {
@@ -62,17 +121,20 @@ class LibraryRepository {
   }
 
   Future<void> saveFavorites(List<Track> tracks) =>
-      _writeTracks(_favoritesKey, tracks);
+      _writeTracks(_collectionKey(_favoritesKey), tracks);
 
   Future<void> saveDownloads(List<Track> tracks) =>
       _writeTracks(_downloadsKey, tracks);
 
   Future<void> saveRecentlyPlayed(List<Track> tracks) =>
-      _writeTracks(_recentKey, tracks);
+      _writeTracks(_collectionKey(_recentKey), tracks);
+
+  Future<void> saveDownloadHistory(List<Track> tracks) =>
+      _writeTracks(_collectionKey(_downloadHistoryKey), tracks);
 
   Future<void> savePlaylists(List<MusicPlaylist> playlists) =>
       _preferences.setStringList(
-        _playlistsKey,
+        _collectionKey(_playlistsKey),
         playlists.map((playlist) => jsonEncode(playlist.toJson())).toList(),
       );
 

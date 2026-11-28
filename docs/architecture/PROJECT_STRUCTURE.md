@@ -15,21 +15,24 @@ AUREL/
 │   ├── core/theme/                 # Fixed Champagne Noir design system
 │   ├── data/
 │   │   ├── catalog/
+│   │   │   ├── artist_catalog.dart
 │   │   │   ├── catalog_identity.dart
-│   │   │   ├── music_catalog_service.dart
+│   │   │   ├── catalog_ranking.dart
+│   │   │   ├── local_track_priority.dart
+│   │   │   └── music_catalog_service.dart
 │   │   │   └── providers/          # One isolated adapter per catalogue
 │   │   ├── models/                 # Track, playlist and lyrics models
 │   │   ├── repositories/           # Local library and user-state persistence
 │   │   └── services/               # Playback, downloads, lyrics, account, tokens
 │   ├── presentation/
-│   │   ├── screens/                # Home, Search, Library, Player, Downloads
+│   │   ├── screens/                # Home, Search, Artist/Album, Library, Player, Downloads
 │   │   ├── widgets/                # Shared artwork, player and list components
 │   │   └── app_shell.dart
 │   ├── app.dart
 │   └── main.dart                   # Dependency composition and startup
 ├── platform/android/               # Reviewed Android manifest, activity and resources
 ├── tool/bootstrap_android.sh       # Generate Gradle project and apply AUREL Android files
-├── test/                            # Model, identity and service tests
+├── test/                            # Model, catalogue identity/grouping and service tests
 ├── firestore.rules
 ├── firebase.json
 └── pubspec.yaml
@@ -41,6 +44,8 @@ AUREL/
 - `AurelController` coordinates user actions and local state.
 - `MusicCatalogService` coordinates adapters, error isolation, canonical identity, deduplication and ranking.
 - `CatalogIdentity` owns cross-source recording matching and is covered by unit tests.
+- `ArtistCatalog` creates deterministic, tested artist-track and album groupings from catalogue metadata; it never invents discography details.
+- AUREL's download-first playback selection lives in `lib/data/catalog/local_track_priority.dart`. It replaces a matching online catalogue row with a verified AUREL-managed download while keeping only same-recording playable online alternatives available for automatic recovery.
 - Each provider adapter converts one external API into the shared `Track` model.
 - Repositories own persistence. Provider adapters never write to user libraries.
 - Playback, account, downloads and lyrics services remain independent from catalogue adapters.
@@ -58,7 +63,7 @@ AUREL/
 
 ## Library and offline boundary
 
-The Downloads tab contains only audio saved through AUREL into app-managed storage. It is not a phone file browser, device music importer or whole-device storage viewer. A saved record is playable only while its local URI is present.
+AUREL does not provide a phone-wide music browser and does not request Android audio-library permissions. Its offline collection contains only verified audio files downloaded through AUREL into private app storage. Tracks that have not been downloaded remain online catalogue entries and cannot be played while Offline mode is enabled.
 
 ## Verification and release
 
