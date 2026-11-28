@@ -93,9 +93,10 @@ users/{uid}/library/favorites/items/{encodedTrackId}
   track
   sortOrder
 
-users/{uid}/library/recentlyPlayed
-  tracks: [track metadata maps, newest first]
-  updatedAt
+users/{uid}/library/recentlyPlayed/items/{encodedTrackKey}
+  track
+  sortOrder
+  playedAt
 
 users/{uid}/library/downloads/items/{encodedTrackKey}
   track
@@ -114,7 +115,7 @@ users/{uid}/library/playlists/items/{encodedPlaylistId}/tracks/{encodedTrackKey}
   sortOrder
 ```
 
-Playlist schema version 2 stores each track in a child document rather than embedding every track in one playlist record. This avoids Firestore's per-document size ceiling for long playlists. Older embedded playlist records remain readable; the next successful full sync migrates them to the subcollection format. Track document keys are provider-aware, so metadata-only catalogue results without a numeric provider ID are not silently discarded.
+Recently played tracks and playlist entries are stored as individual child documents rather than growing arrays embedded in a single Firestore document. This avoids Firestore's per-document size ceiling as a listening history or playlist grows. Playlist schema version 2 stores each track in a child document. Older embedded playlist records remain readable; the next successful full sync migrates them to the subcollection format. Track document keys are provider-aware, so metadata-only catalogue results without a numeric provider ID are not silently discarded.
 
 The rules allow a signed-in user to read and write only documents underneath their own UID, including playlist track subcollections. Review the rules before production release and add App Check / abuse controls as appropriate.
 
