@@ -88,6 +88,15 @@ jobs:
             echo "AUREL cloud account configuration is present."
           fi
 
+      - name: Report music catalogue configuration
+        shell: bash
+        run: |
+          if [[ -n "$JAMENDO_CLIENT_ID" ]]; then
+            echo "Jamendo application ID is configured."
+          else
+            echo "::warning title=Jamendo is not configured::Add JAMENDO_CLIENT_ID to repository Actions secrets to enable Jamendo discovery."
+          fi
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
